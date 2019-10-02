@@ -26,7 +26,7 @@ class RenderProgram;
 void drawLine(RenderProgram& program,glm::vec3 color,const std::vector<glm::vec4>& points);
 void drawCircle(RenderProgram& program, glm::vec3 color,double x, double y, double radius);
 void drawNGon(RenderProgram& program, const glm::vec3& color, const glm::vec2& center, double radius, int n, double angle);
-glm::vec2 rotatePoint(const glm::vec2& p, const glm::vec2& rotateAround, double angle);
+glm::vec2 rotatePoint(const glm::vec2& p, const glm::vec2& rotateAround, double angle); //angle in radians
 void drawRectangle(RenderProgram& program, const glm::vec3& color, const glm::vec4& rect, double angle);
 void addPointToBuffer(float buffer[], glm::vec3 point, int index);
 void addPointToBuffer(float buffer[], glm::vec2 point, int index);
@@ -214,7 +214,7 @@ struct PolyRender
     static void init(int screenWidth, int screenHeight);
     static void requestLine(const glm::vec4& line, const glm::vec4& color);
     static void requestCircle(const glm::vec4& color,double x, double y, double radius);
-    static void requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, float z);
+    static void requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z);
     static void requestNGon(int n, const glm::vec2& center, double side, const glm::vec4& color, double angle, bool filled, float z); //draws a regular n gon. Angle is in radians
     static void render();
 private:

@@ -16,7 +16,7 @@ protected:
     SpriteWrapper* sprite = nullptr;
     void (*toDo) () = nullptr;
 public:
-    Button(const glm::vec4& box, void (*func)(), SpriteWrapper& spr, const FontParameter& param, Font* font);
+    Button(const glm::vec4& box, void (*func)(), SpriteWrapper* spr, const FontParameter& param, Font* font);
     Button(Button&& button);
     virtual void press();
     virtual void render();
@@ -32,7 +32,7 @@ class WindowSwitchButton : public Button
     Interface* interface = nullptr;
     Window* switchTo = nullptr;
 public:
-    WindowSwitchButton(const glm::vec4& box,SpriteWrapper& spr, Interface& face, Window& to, const FontParameter& param, Font* font);
+    WindowSwitchButton(const glm::vec4& box,SpriteWrapper* spr, Interface& face, Window& to, const FontParameter& param, Font* font);
     void press();
 };
 

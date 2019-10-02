@@ -35,6 +35,8 @@ SDL_Keycode KeyManager::justPressed = -1;
 std::list<SDL_Keycode> KeyManager::numbers;
 Uint32 KeyManager::lastEvent = 0;
 SDL_Keycode KeyManager::lastKey = -1;
+char KeyManager::lastChar = 0;
+char KeyManager::lastLetter = 0;
 double KeyManager::getLatest()
 {
     if (numbers.size() > 0)
@@ -82,8 +84,10 @@ int KeyManager::findNumber(double n) //finds the index of n or -1 if n isn't fou
 
 void KeyManager::getKeys(SDL_Event& e)
 {
+    justPressed = -1;
+    lastChar = 0;
     int sym = e.key.keysym.sym;
-    if (e.type != lastEvent || sym != lastKey)
+    if (e.type != lastEvent || sym != lastKey || lastLetter != e.text.text[0])
     {
         if (e.type == SDL_KEYDOWN)
         {
@@ -93,24 +97,18 @@ void KeyManager::getKeys(SDL_Event& e)
                 justPressed = sym;
             }
         }
-        else
-        {
-            if (e.type == SDL_KEYUP)
+        else if (e.type == SDL_KEYUP)
             {
                 removeNumber(sym);
             }
+        else if (e.type == SDL_TEXTINPUT)
+        {
+            lastChar = e.text.text[0];
         }
     }
+    lastLetter = e.text.text[0];
     lastKey = sym;
     lastEvent = e.type;
-    if (sym == justPressed)
-    {
-        justPressed = -1;
-    }
-    else
-    {
-        justPressed = sym;
-    }
 
 }
 void KeyManager::removeNumber(double number)
@@ -126,10 +124,17 @@ SDL_Keycode KeyManager::getJustPressed()
 {
     return justPressed;
 }
+
+char KeyManager::getLastChar()
+{
+    return lastChar;
+}
+
 bool MouseManager::left = false;
 bool MouseManager::right = false;
 bool MouseManager::middle = false;
 int MouseManager::justClicked = -1;
+int MouseManager::justReleased = -1;
 bool* MouseManager::getButton(int key)
 {
     switch (key)
@@ -149,6 +154,8 @@ bool* MouseManager::getButton(int key)
 }
 void MouseManager::update(SDL_Event& e)
 {
+    justReleased = -1;
+    justClicked = -1;
     if (e.type == SDL_MOUSEBUTTONDOWN)
     {
         bool* ptr = getButton(e.button.button);
@@ -157,19 +164,14 @@ void MouseManager::update(SDL_Event& e)
             justClicked = e.button.button;
             *ptr = true;
         }
-        else
-        {
-            justClicked = -1;
-        }
     }
     else
     {
-        justClicked = -1;
         if (e.type == SDL_MOUSEBUTTONUP)
         {
             *getButton(e.button.button) = false;
+            justReleased = e.button.button;
         }
-
     }
 }
 
@@ -189,4 +191,9 @@ const bool MouseManager::isPressed(int key)
 int MouseManager::getJustClicked()
 {
     return justClicked;
+}
+
+int MouseManager::getJustReleased()
+{
+    return justReleased;
 }

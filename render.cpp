@@ -20,6 +20,31 @@ double vecDistance(const glm::vec2& v1, const glm::vec2& v2)
 }
 bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2)
 {
+    if (vec1.z < 0 || vec1.a < 0 || vec2.z < 0 || vec2.a < 0) //if a dimension is negative, we will have to rearrange where the corners are
+    {
+        glm::vec4 rect1 = vec1, rect2 = vec2;
+        if (vec1.z < 0)
+        {
+            rect1.x += vec1.z;
+            rect1.z *= -1;
+        }
+        if (vec1.a < 0)
+        {
+            rect1.y += vec1.a;
+            rect1.a *= -1;
+        }
+        if (vec2.z < 0)
+        {
+            rect2.x += vec2.z;
+            rect2.z *= -1;
+        }
+        if (vec2.a < 0)
+        {
+            rect2.y += vec2.a;
+            rect2.a *= -1;
+        }
+        return vecIntersect(rect1,rect2);
+    }
     return (vec1.x <= vec2.x + vec2.z && vec1.x + vec1.z>= vec2.x && vec1.y <= vec2.y + vec2.a && vec1.y + vec1.a >= vec2.y);
 }
 
@@ -838,12 +863,20 @@ void PolyRender::requestCircle( const glm::vec4& color,double x, double y, doubl
     }
 }
 
-void PolyRender::requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, float z)
+void PolyRender::requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z)
 {
     glm::vec2 topLeft = {rect.x,rect.y};
     glm::vec2 topRight = {rect.x + rect.z, rect.y};
     glm::vec2 botLeft = {rect.x,rect.y + rect.a};
     glm::vec2 botRight = {topRight.x,botLeft.y};
+    if (angle != 0)
+    {
+        glm::vec2 center = {rect.x + rect.z/2, rect.y + rect.a/2};
+        topLeft = rotatePoint(topLeft,center,angle);
+        topRight = rotatePoint(topRight,center,angle);
+        botLeft = rotatePoint(botLeft,center,angle);
+        botRight = rotatePoint(botRight, center, angle);
+    }
     if (filled)
     {
         polygons.push_back({4,color});

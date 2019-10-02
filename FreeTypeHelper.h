@@ -16,8 +16,9 @@ struct FontParameter //Represents all the information  required to call the writ
 {
     std::string text = "";
     glm::vec4 rect = {0,0,0,0};
-    float z = 0;
+    double angle = 0;
     glm::vec3 color = {0,0,0};
+    float z = 0;
 };
 
 class Font
