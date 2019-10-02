@@ -1,4 +1,5 @@
 #include <iostream>
+
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include "FreeTypeHelper.h"
@@ -108,6 +109,7 @@ void Font::write(RenderProgram& p, const FontParameter& param)
     glBindVertexArray(VAO);
     // Iterate through all characters
     std::string::const_iterator c;
+    glm::vec2 center = {param.rect.x + param.rect.z/2, param.rect.y + param.rect.a/2};
     double x = param.rect.x;
 //    double maxY = y;
     //y = stanH - y;
@@ -120,6 +122,7 @@ void Font::write(RenderProgram& p, const FontParameter& param)
         Font::Character ch = characters[*c];
         GLfloat xpos = x +ch.bearing.x/ch.advance*letterWidth;
         GLfloat ypos = (param.rect.y) + (maxVert.x - ch.bearing.y)/maxHeight*param.rect.a;//We use 2*ch.size.y - ch.bearing.y because we need to use ch.size.y - bearing.y + ch.size.y because that is the total height the letter uses
+        glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
         GLfloat w = ch.size.x/(ch.advance/64)*letterWidth;
         GLfloat h = (ch.size.y)/(maxHeight)*param.rect.a;
        /* if (ypos + h > maxY)
@@ -128,10 +131,10 @@ void Font::write(RenderProgram& p, const FontParameter& param)
         }*/
             // Update VBO for each character
        GLfloat vertices[6][4] = {
-            { xpos,     ypos ,   0.0, 0.0 },
-            { xpos + w, ypos,   1.0, 0.0 },
-            { xpos,     ypos+h,  0.0, 1.0 },
-            { xpos + w, ypos+h,  1.0, 1.0 }
+            { pos.x,     pos.y ,   0.0, 0.0 },
+            { pos.x + w, pos.y,   1.0, 0.0 },
+            { pos.x,     pos.y+h,  0.0, 1.0 },
+            { pos.x + w, pos.y+h,  1.0, 1.0 }
         };
 
         // Render glyph texture over quad

@@ -5,13 +5,13 @@
 #include "glInterface.h"
 
 
-Button::Button(const glm::vec4& box,  void (*func)(), SpriteWrapper& spr, const FontParameter& param, Font* font)
+Button::Button(const glm::vec4& box,  void (*func)(), SpriteWrapper* spr, const FontParameter& param, Font* font)
 {
     this->font = font;
     changeRect(box);
     toDo = func;
     this->paper = param;
-    sprite = &spr;
+    sprite = spr;
 }
 
 Button::Button(Button&& button)
@@ -30,6 +30,7 @@ Button::Button(Button&& button)
 void Button::changeRect(const glm::vec4& rect)
 {
     this->rect = rect;
+    paper.rect = rect;
 }
 
 void Button::press()
@@ -42,7 +43,10 @@ void Button::press()
 
 void Button::render()
 {
-    sprite->request({rect});
+    if (sprite)
+    {
+        sprite->request({paper.rect});
+    }
     if (font)
     {
         font->write(Font::wordProgram,paper);
@@ -54,7 +58,7 @@ const glm::vec4& Button::getRect()
     return rect;
 }
 
-WindowSwitchButton::WindowSwitchButton(const glm::vec4& box, SpriteWrapper& spr, Interface& face, Window& to, const FontParameter& param, Font* font) : Button(box,nullptr,spr, param, font)
+WindowSwitchButton::WindowSwitchButton(const glm::vec4& box, SpriteWrapper* spr, Interface& face, Window& to, const FontParameter& param, Font* font) : Button(box,nullptr,spr, param, font)
 {
     interface = &face;
     switchTo = &to;
@@ -103,7 +107,6 @@ void Window::addButton(Button* button)
 
 void Window::update(int x, int y, bool clicked)
 {
-
     int size = buttons.size();
     for (int i = 0; i < size; ++i)
     {
