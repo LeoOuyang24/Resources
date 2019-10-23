@@ -41,15 +41,20 @@ void Button::press()
     }
 }
 
-void Button::render()
+void Button::render(int x, int y)
 {
+    glm::vec4 renderRect = paper.rect;
+    renderRect.x += x;
+    renderRect.y += y;
     if (sprite)
     {
-        sprite->request({paper.rect});
+        sprite->request({renderRect});
     }
     if (font)
     {
-        font->write(Font::wordProgram,paper);
+        FontParameter copyPaper = paper;
+        copyPaper.rect = renderRect;
+        font->write(Font::wordProgram,copyPaper);
     }
 }
 

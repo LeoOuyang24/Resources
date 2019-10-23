@@ -19,7 +19,7 @@ public:
     Button(const glm::vec4& box, void (*func)(), SpriteWrapper* spr, const FontParameter& param, Font* font);
     Button(Button&& button);
     virtual void press();
-    virtual void render();
+    virtual void render(int x = 0, int y = 0); //x and y are the offset if we want to render the button relative to something
     const glm::vec4& getRect();
     void changeRect(const glm::vec4& rect);
 
