@@ -3,16 +3,19 @@
 
 double DeltaTime::deltaTime;
 double DeltaTime::lastTime = 0;
+gameFrame DeltaTime::currentFrame = 0;
 
 void DeltaTime::update()
 {
     deltaTime = (SDL_GetTicks() - lastTime);
     lastTime = SDL_GetTicks();
+    currentFrame ++;
 }
 
 void DeltaTime::set()
 {
     setTime = SDL_GetTicks();
+    setFrame = currentFrame;
 }
 double DeltaTime::getTime()
 {
@@ -26,6 +29,13 @@ bool DeltaTime::isSet()
 {
     return setTime != -1;
 }
+
+bool DeltaTime::framesPassed(gameFrame passed)
+{
+    //std::cout << currentFrame - setFrame << std::endl;
+    return isSet() && currentFrame - setFrame >= passed;
+}
+
 bool DeltaTime::timePassed(double passed)
 {
     return isSet() && SDL_GetTicks() - setTime >= passed;

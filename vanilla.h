@@ -182,7 +182,6 @@ public:
     virtual const Line* intersects(const Polygon& other) const
     {
         const std::vector<Line> otherVec = other.getLines();
-        int linesSize = lines.size();
         int otherVecSize = otherVec.size();
       //  std::cout << linesSize << " " << otherVecSize << std::endl;
         for (int i = 0; i < otherVecSize; i ++)
