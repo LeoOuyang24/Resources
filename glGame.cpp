@@ -341,13 +341,14 @@ RawQuadTree::~RawQuadTree()
 
 void RawQuadTree::render(const glm::vec2& displacement)
 {
-
+    //drawRectangle(RenderProgram::lineProgram,{0,0,0},region,0);
     if (nodes[0])
     {
-        drawLine(RenderProgram::lineProgram,{0,0,0},{{region.x-displacement.x,region.y + region.a/2-displacement.y,region.x + region.z-displacement.x, region.y + region.a/2-displacement.y},
-             {region.x + region.z/2-displacement.x, region.y-displacement.y, region.x+region.z/2-displacement.x, region.y + region.a-displacement.y}});
+        PolyRender::requestLine({region.x-displacement.x,region.y + region.a/2-displacement.y,region.x + region.z-displacement.x, region.y + region.a/2-displacement.y},{0,0,0,1});
+        PolyRender::requestLine({region.x + region.z/2-displacement.x, region.y-displacement.y, region.x+region.z/2-displacement.x, region.y + region.a-displacement.y},{0,0,0,1} );
         for (int i = 0; i < 4; i ++)
         {
+
             nodes[i]->render(displacement);
         }
     }
@@ -453,6 +454,11 @@ int RawQuadTree::count()
         }
     }
     return answer;
+}
+
+int RawQuadTree::size()
+{
+    return vec.size();
 }
 
 RawQuadTree* RawQuadTree::find(Positional& obj)

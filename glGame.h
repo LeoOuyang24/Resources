@@ -74,7 +74,8 @@ public:
     RawQuadTree(const glm::vec4& rect);
     void render(const glm::vec2& displacement);
     ~RawQuadTree();
-    int count ();
+    int count (); //total number of things in this quadtree and its children
+    int size(); //number of things in this quadtree
     Positional* remove(Positional& obj); //removes the shared_ptr of obj. If the ptr is the only ptr, the obj will also be deleted. Returns true if obj is found and removed but not necessarily deleted
     RawQuadTree* find(Positional& obj); //finds the quadtree obj belongs in. Returns null if the obj doesn't belong. Can return this QuadTree.
     void getNearest(std::vector<Positional*>& vec, Positional& obj); //get all Positionals that are in the same quadtree as obj
@@ -82,6 +83,10 @@ public:
     void add(Positional& obj);
     void clear();
     RawQuadTree* update(Positional& obj, RawQuadTree& expected); //given an obj and its expected quadtree, checks to see if the obj is where its expected. If it has moved, change and return its new location
+    inline const glm::vec4& getRect()
+    {
+        return region;
+    }
 };
 
 #endif // GLGAME_H_INCLUDED
