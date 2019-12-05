@@ -1,0 +1,5 @@
+This document keeps track of all changes as well as considered changes made to the resources as well as why they were made. Consider this a "learning from the past" kind of document. 
+
+12/5/2019:
+	RawQuadTree was changed from a quadtree of raw pointers to weak pointers before being changed back to raw pointers. The reason for changing to weak pointers was to prevent dangling pointers in the case of a master list deleting an object. However, there's no reason to use weak ptr because removal of the object from the master list also removes the pointer from the quadtree. The benefit of a weak_ptr is that it keeps track of whether or not 
+the object still exists but in this case, it wouldn't matter since the pointer would be deleted anyway. The remove function from the quadtree already removes the pointers in the tree, so it makes no sense to have weak_ptr. 
