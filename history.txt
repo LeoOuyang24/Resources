@@ -3,3 +3,4 @@ This document keeps track of all changes as well as considered changes made to t
 12/5/2019:
 	RawQuadTree was changed from a quadtree of raw pointers to weak pointers before being changed back to raw pointers. The reason for changing to weak pointers was to prevent dangling pointers in the case of a master list deleting an object. However, there's no reason to use weak ptr because removal of the object from the master list also removes the pointer from the quadtree. The benefit of a weak_ptr is that it keeps track of whether or not 
 the object still exists but in this case, it wouldn't matter since the pointer would be deleted anyway. The remove function from the quadtree already removes the pointers in the tree, so it makes no sense to have weak_ptr. 
+	QuadTree's getNearest methods were changed to modify a vector of shared_ptr. This allows for std::shared_ptr or weak_ptr copying and allows other objects to share QuadTree's ownership.
