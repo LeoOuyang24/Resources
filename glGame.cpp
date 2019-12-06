@@ -136,14 +136,14 @@ void QuadTree::add(std::shared_ptr<Positional>& obj)
     }
 }
 
-void QuadTree::getNearest(std::vector<Positional*>& vec, Positional& obj)
+void QuadTree::getNearest(std::vector<std::shared_ptr<Positional>>& vec, Positional& obj)
 {
     if (obj.collides(region))
     {
         int size = this->vec.size();
         for (int i = 0; i < size;i ++)
         {
-            vec.push_back(this->vec[i].get());
+            vec.push_back(vec[i]);
         }
         if (nodes[0])
         {
@@ -155,7 +155,7 @@ void QuadTree::getNearest(std::vector<Positional*>& vec, Positional& obj)
     }
 }
 
-void QuadTree::getNearest(std::vector<Positional*>& vec, const glm::vec4& area)
+void QuadTree::getNearest(std::vector<std::shared_ptr<Positional>>& vec, const glm::vec4& area)
 {
     if (vecIntersect(area,region))
     {
@@ -165,7 +165,7 @@ void QuadTree::getNearest(std::vector<Positional*>& vec, const glm::vec4& area)
             Positional* ptr = this->vec[i].get();
             if (ptr->collides(area))
             {
-                vec.push_back(ptr);
+                vec.push_back(vec[i]);
             }
         }
         if (nodes[0])

@@ -36,7 +36,7 @@ public:
     const glm::vec4& getRect() const;
 };
 
-class QuadTree
+class QuadTree //this is a quadtree of shared_ptr, meaning this quadtree actually owns its objects
 {
     static const int maxCapacity; //maximum capacity
     std::vector<std::shared_ptr<Positional>> vec;
@@ -52,8 +52,8 @@ public:
     int count ();
     std::shared_ptr<Positional>* remove(Positional& obj); //removes the shared_ptr of obj. If the ptr is the only ptr, the obj will also be deleted. Returns true if obj is found and removed but not necessarily deleted
     QuadTree* find(Positional& obj); //finds the quadtree obj belongs in. Returns null if the obj doesn't belong. Can return this QuadTree.
-    void getNearest(std::vector<Positional*>& vec, Positional& obj); //get all Positionals that are in the same quadtree as obj
-    void getNearest(std::vector<Positional*>& vec, const glm::vec4& area); //get all Positionals that intersect with area
+    void getNearest(std::vector<std::shared_ptr<Positional>>& vec, Positional& obj); //get all Positionals that are in the same quadtree as obj
+    void getNearest(std::vector<std::shared_ptr<Positional>>& vec, const glm::vec4& area); //get all Positionals that intersect with area
     void add(Positional& obj);
     void add(std::shared_ptr<Positional>& ptr);
     void add(std::shared_ptr<Positional>&& ptr); //adds ptr to vec. This should only be called if it is known that this quadtree should contain ptr
