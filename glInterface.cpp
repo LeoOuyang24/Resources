@@ -51,11 +51,11 @@ void Button::render(int x, int y)
     renderRect.y += y;
     if (!sprite && backgroundColor.a > 0) //if the sprite would over lap the background color or the backgroundColor is transparent, don't render it
     {
-        PolyRender::requestRect(rect,backgroundColor,true,0,0);
+        PolyRender::requestRect({renderRect.x, renderRect.y,rect.z, rect.a},backgroundColor,true,0,0);
     }
-    if (sprite)
+    else if (sprite)
     {
-        sprite->request({rect});
+        sprite->request({{renderRect.x, renderRect.y,rect.z, rect.a}});
     }
     if (font)
     {
