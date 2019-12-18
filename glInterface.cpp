@@ -5,13 +5,15 @@
 #include "glInterface.h"
 
 
-Button::Button(const glm::vec4& box,  void (*func)(), SpriteWrapper* spr, const FontParameter& param, Font* font)
+Button::Button(const glm::vec4& box,  void (*func)(), SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color)
 {
     this->font = font;
     changeRect(box);
     toDo = func;
     this->paper = param;
     sprite = spr;
+    backgroundColor = color;
+
 }
 
 Button::Button(Button&& button)
@@ -25,6 +27,7 @@ Button::Button(Button&& button)
     button.font = nullptr;
     button.sprite = nullptr;
     button.toDo = nullptr;
+    backgroundColor = button.backgroundColor;
 }
 
 void Button::changeRect(const glm::vec4& rect)
@@ -46,9 +49,13 @@ void Button::render(int x, int y)
     glm::vec4 renderRect = paper.rect;
     renderRect.x += x;
     renderRect.y += y;
+    if (!sprite && backgroundColor.a > 0) //if the sprite would over lap the background color or the backgroundColor is transparent, don't render it
+    {
+        PolyRender::requestRect(rect,backgroundColor,true,0,0);
+    }
     if (sprite)
     {
-        sprite->request({renderRect});
+        sprite->request({rect});
     }
     if (font)
     {
@@ -63,7 +70,7 @@ const glm::vec4& Button::getRect()
     return rect;
 }
 
-WindowSwitchButton::WindowSwitchButton(const glm::vec4& box, SpriteWrapper* spr, Interface& face, Window& to, const FontParameter& param, Font* font) : Button(box,nullptr,spr, param, font)
+WindowSwitchButton::WindowSwitchButton(const glm::vec4& box, SpriteWrapper* spr, Interface& face, Window& to, const FontParameter& param, Font* font, const glm::vec4& color) : Button(box,nullptr,spr, param, font, color)
 {
     interface = &face;
     switchTo = &to;
@@ -77,37 +84,36 @@ void WindowSwitchButton::press()
     }
 }
 
-Window::Window(const glm::vec2& dimen, SpriteWrapper* spr)
+Window::Window(const glm::vec2& dimen, SpriteWrapper* spr, const glm::vec4& bg)
 {
-    init(dimen,spr);
+    init(dimen,spr,bg);
 }
 
-Window::Window(const glm::vec4& box, SpriteWrapper* spr)
+Window::Window(const glm::vec4& box, SpriteWrapper* spr, const glm::vec4& bg)
 {
-    init(box, spr);
+    init(box, spr,bg);
 }
 
-void Window::init(const glm::vec2& dimen, SpriteWrapper* spr) //if window is supposed to be centered
+void Window::init(const glm::vec2& dimen, SpriteWrapper* spr, const glm::vec4& bg) //if window is supposed to be centered
 {
     glm::vec2 screenDimen = RenderProgram::getScreenDimen();
     rect = {screenDimen.x/2 - dimen.x/2, screenDimen.y/2 - dimen.y/2, dimen.x, dimen.y };
     sprite = spr;
+    backgroundColor = bg;
 }
 
-void Window::init(const glm::vec4& box, SpriteWrapper* spr)
+void Window::init(const glm::vec4& box, SpriteWrapper* spr, const glm::vec4& bg)
 {
     rect = box;
     sprite = spr;
+    backgroundColor = bg;
 }
 
-void Window::addButton(Button* button)
+void Window::addButton(Button& button)
 {
-    if (button)
-    {
-        buttons.emplace_back(button);
-        const glm::vec4* ptr = &(button->getRect());
-        button->changeRect({ptr->x + rect.x, ptr->y + rect.y, ptr->z, ptr->a});
-    }
+    buttons.emplace_back(&button);
+    const glm::vec4* ptr = &(button.getRect());
+    button.changeRect({ptr->x + rect.x, ptr->y + rect.y, ptr->z, ptr->a});
 }
 
 void Window::update(int x, int y, bool clicked)
@@ -124,6 +130,10 @@ void Window::update(int x, int y, bool clicked)
     if (sprite)
     {
         sprite->request({{rect}});
+    }
+    else if (backgroundColor.a > 0)
+    {
+        PolyRender::requestRect(rect,backgroundColor,true,0,0);
     }
 }
 
