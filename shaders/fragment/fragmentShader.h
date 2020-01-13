@@ -2,7 +2,7 @@
 
 out vec4 fragColor;
 in vec2 texCoord;
-in vec3 shade;
+in vec4 shade;
 uniform sampler2D sprite;
 
 void main()
@@ -12,6 +12,6 @@ void main()
     {
         discard;
     }
-    fragColor = vec4(text.rgb*shade,text.a);
+    fragColor = vec4(text*shade);
 
 }
