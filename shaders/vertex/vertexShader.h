@@ -3,14 +3,14 @@
 layout (location = 0) in vec4 values;
 layout (location = 3) in mat4 transform;
 layout (location = 7) in float effect;
-layout (location = 8) in vec3 color;
+layout (location = 8) in vec4 color;
 layout (location = 9) in float depth;
 layout (location = 10) in vec4 portion;
 
 uniform mat4 projection;
 
 out vec2 texCoord;
-out vec3 shade;
+out vec4 shade;
 
 
 void main()

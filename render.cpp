@@ -417,7 +417,7 @@ void RenderProgram::setVec2fv(std::string name, glm::vec2 value)
     glUseProgram(0);
 }
 
-const int Sprite::floats = 25;
+const int Sprite::floats = 26;
 const int Sprite::floatSize = sizeof(float);
    void Sprite::load(std::string source,bool transparent)
     {
@@ -532,7 +532,7 @@ void Sprite::loadData(GLfloat* data, const SpriteParameter& parameter, int index
 {
     if (data!= nullptr)
     {
-        GLsizei stride = (floatSize*floats); //space between everything. We are passing a 4x4 matrix, a vec4, a vec3, and a single float
+      //  GLsizei stride = (floatSize*floats); //space between everything. We are passing a 4x4 matrix, a vec4, a vec3, and a single float
             const SpriteParameter* current = &parameter;
             glm::mat4 matt = glm::mat4(1.0f);
             matt = glm::translate(matt,{(int)current->rect.x + (current->rect.z*(current->rect.z != 2))/2,(int)current->rect.y + (current->rect.a*(current->rect.a != 2))/2,0}); //scaling messes with the position of the object. If the object is being rendered to a size of 2x2, there is no reason to counteract the scaling.
@@ -547,11 +547,12 @@ void Sprite::loadData(GLfloat* data, const SpriteParameter& parameter, int index
             data[index + 16 + 1] = current->tint.x;
             data[index + 16 + 2] =  current->tint.y;
             data[index + 16 + 3] = current->tint.z;
-            data[index + 20] = current->z;
-            data[index + 20 + 1] = current->portion.x;
-            data[index + 20 + 2] = current->portion.y;
-            data[index + 20 + 3] = current->portion.z;
-            data[index + 20 + 4] = current->portion.a;
+            data[index + 16 + 4] = current->tint.a;
+            data[index + 20 + 1] = current->z;
+            data[index + 20 + 2] = current->portion.x;
+            data[index + 20 + 3] = current->portion.y;
+            data[index + 20 + 4] = current->portion.z;
+            data[index + 20 + 5] = current->portion.a;
            /* int vertAmount = current->indices.size();
             for (int j = 0; j < vertAmount; j ++)
             {
@@ -581,7 +582,7 @@ void Sprite::draw(RenderProgram& program, GLfloat* data, int instances)
     glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, stride, (void*)(2 * vec4Size));
     glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, stride, (void*)(3 * vec4Size));
     glVertexAttribPointer(7, 1, GL_FLOAT, GL_FALSE, stride, (void*)(4*vec4Size)); //effect
-    glVertexAttribPointer(8, 3, GL_FLOAT, GL_FALSE, stride, (void*)(4*vec4Size + floatSize)); //color
+    glVertexAttribPointer(8, 4, GL_FLOAT, GL_FALSE, stride, (void*)(4*vec4Size + floatSize)); //color
     glVertexAttribPointer(9, 1,GL_FLOAT, GL_FALSE, stride, (void*)((floats-5)*floatSize)); //z
     glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, stride, (void*)((floats-4)*floatSize)); //portion
     glEnableVertexAttribArray(3);
@@ -753,14 +754,14 @@ void SpriteWrapper::render()
     if (spr)
     {
         int size = parameters.size();
-      GLsizei vec4Size = sizeof(glm::vec4);
+      //GLsizei vec4Size = sizeof(glm::vec4);
         int floats = spr->getFloats();
         GLfloat* data = new GLfloat[size*floats];
         glBindVertexArray(spr->VAO);
         glBindTexture(GL_TEXTURE_2D,spr->texture);
         glBindBuffer(GL_ARRAY_BUFFER,spr->modVBO);
         int index = 0;
-        bool deleted = false;
+       // bool deleted = false;
         for (int i = 0; i < size; i ++)
         {
             const SpriteParameter* current = &(parameters[i]);
@@ -774,7 +775,7 @@ void SpriteWrapper::render()
                 if (i != size - 1)
                 {
                     data = new GLfloat[(size-i-1)*floats];
-                    deleted = true;
+                   // deleted = true;
                 }
             }
         }
@@ -830,7 +831,7 @@ unsigned int PolyRender::polyVBO = -1;
 unsigned int PolyRender::colorVBO = -1;
 unsigned short PolyRender::restart = 65535;
 RenderProgram PolyRender::polyRenderer;
-std::vector<std::pair<glm::vec4,glm::vec4>> PolyRender::lines;
+std::vector<std::pair<glm::vec3,glm::vec4>> PolyRender::lines;
 std::vector<std::pair<int,glm::vec4>> PolyRender::polygons;
 std::vector<glm::vec3> PolyRender::polyPoints;
 void PolyRender::init(int screenWidth, int screenHeight)
@@ -850,9 +851,10 @@ void PolyRender::init(int screenWidth, int screenHeight)
 
 }
 
-void PolyRender::requestLine(const glm::vec4& line, const glm::vec4& color)
+void PolyRender::requestLine(const glm::vec4& line, const glm::vec4& color, float z)
 {
-    lines.push_back(std::pair<glm::vec4,glm::vec4>(line,color));
+    lines.push_back(std::pair<glm::vec3,glm::vec4>({line.x,line.y,z},color));
+    lines.push_back(std::pair<glm::vec3, glm::vec4>({line.z,line.a,z},color));
 }
 void PolyRender::requestCircle( const glm::vec4& color,double x, double y, double radius)
 {
@@ -887,10 +889,10 @@ void PolyRender::requestRect(const glm::vec4& rect, const glm::vec4& color, bool
     }
     else
     {
-        requestLine({topLeft.x,topLeft.y,topRight.x,topRight.y},color);
-        requestLine({topLeft.x,topLeft.y,botLeft.x,botLeft.y},color);
-        requestLine({botLeft.x,botLeft.y,botRight.x,botRight.y},color);
-        requestLine({botRight.x,botRight.y,topRight.x,topRight.y},color);
+        requestLine({topLeft.x,topLeft.y,topRight.x,topRight.y},color,z);
+        requestLine({topLeft.x,topLeft.y,botLeft.x,botLeft.y},color,z);
+        requestLine({botLeft.x,botLeft.y,botRight.x,botRight.y},color,z);
+        requestLine({botRight.x,botRight.y,topRight.x,topRight.y},color,z);
     }
 }
 
@@ -922,7 +924,8 @@ void PolyRender::requestNGon(int n, const glm::vec2& center, double side, const 
         for (int i = 0; i < n; ++i)
         {
             next = rotatePoint(first, center,cycleAngle);
-            lines.push_back({{first.x,first.y,next.x,next.y},color});
+            requestLine({first.x,first.y,next.x,next.y},color,z);
+            //lines.push_back({{first.x,first.y,next.x,next.y},color},z);
             first = next;
         }
    }
@@ -933,14 +936,12 @@ void PolyRender::renderLines()
 {
     glBindVertexArray(VAO);
     int size = lines.size();
-    GLfloat verticies[size*6];
-    GLfloat colors[size*4*2];
+    GLfloat verticies[size*3];
+    GLfloat colors[size*4];
     for (int i = 0; i < size; i ++)
     {
-       addPointToBuffer(verticies,{lines[i].first.x,lines[i].first.y},i*6);
-       addPointToBuffer(verticies,{lines[i].first.b,lines[i].first.a},i*6+3);
-       addPointToBuffer(colors,lines[i].second,i*8);
-       addPointToBuffer(colors,lines[i].second,i*8+4);
+       addPointToBuffer(verticies,{lines[i].first.x,lines[i].first.y,lines[i].first.z},i*3);
+       addPointToBuffer(colors,lines[i].second,i*4);
     }
 //std::cout << glGetError() << std::endl;
     glBindBuffer(GL_ARRAY_BUFFER,lineVBO);

@@ -435,6 +435,36 @@ void RawQuadTree::getNearest(std::vector<Positional*>& vec, const glm::vec4& are
     }
 }
 
+void RawQuadTree::getNearestHelper(std::vector<Positional*>& vec, const glm::vec2& center, double radius)
+{
+    if (pointInVec(region, center.x, center.y) || pointVecDistance(region,center.x,center.y) <= radius)
+    {
+        int size = this->vec.size();
+        for (int i = 0; i < size;i ++)
+        {
+            Positional* ptr = this->vec[i];
+            if (ptr->distance(center) <= radius)
+            {
+                vec.push_back(ptr);
+            }
+        }
+        if (nodes[0])
+        {
+            for (int i = 0; i < 4; i ++)
+            {
+                nodes[i]->getNearestHelper(vec, center,radius);
+            }
+        }
+    }
+}
+
+std::vector<Positional*> RawQuadTree::getNearest(const glm::vec2& center, double radius)
+{
+    std::vector<Positional*> vec;
+    getNearestHelper(vec,center, radius);
+    return vec;
+}
+
 void RawQuadTree::split()
 {
     nodes[0] = new RawQuadTree({region.x,region.y,region.z/2,region.a/2});

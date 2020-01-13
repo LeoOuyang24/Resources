@@ -10,6 +10,8 @@
 #include <vector>
 #include <memory>
 
+#include "render.h"
+
 bool rectPathIntersect(const glm::vec4& oldRect, const glm::vec4& newRect, const glm::vec4& collide); //returns true if oldRect collided with collide on its path to newRect
 
 class Positional //anything that has a position
@@ -19,6 +21,10 @@ protected:
 public:
     Positional(const glm::vec2& point);
     virtual bool collides(const glm::vec4& box); //how to determine whether or not this thing collides with a rect (used in quadtree)
+    virtual double distance(const glm::vec2& point) //finds how far this positional is from a point (used in to find all objects within a distance
+     {
+         return pointDistance(point, pos);
+     }
     virtual glm::vec2 getPos() const;
     ~Positional()
     {
@@ -32,6 +38,10 @@ protected:
 public:
     RectPositional(const glm::vec4& box);
     virtual bool collides(const glm::vec4& box);
+    virtual double distance(const glm::vec2& point)
+    {
+        return pointVecDistance(rect, point.x, point.y);
+    }
     virtual glm::vec2 getPos() const;
     const glm::vec4& getRect() const;
 };
@@ -70,6 +80,7 @@ class RawQuadTree
     bool contains(Positional& positional);
     RawQuadTree* nodes[4] = {nullptr,nullptr,nullptr,nullptr};
     void move(RawQuadTree& t1, RawQuadTree& t2, Positional& obj); //given that obj is in t1, this removes obj and adds it into t2
+    void getNearestHelper(std::vector<Positional*>& vec, const glm::vec2& center, double radius);
 public:
     RawQuadTree(const glm::vec4& rect);
     void render(const glm::vec2& displacement);
@@ -80,6 +91,7 @@ public:
     RawQuadTree* find(Positional& obj); //finds the quadtree obj belongs in. Returns null if the obj doesn't belong. Can return this QuadTree.
     void getNearest(std::vector<Positional*>& vec, Positional& obj); //get all Positionals that are in the same quadtree as obj
     void getNearest(std::vector<Positional*>& vec, const glm::vec4& area); //get all Positionals that intersect with area
+    std::vector<Positional*> getNearest(const glm::vec2& center, double radius); //finds all objects within a certain radius
     void add(Positional& obj);
     void clear();
     RawQuadTree* update(Positional& obj, RawQuadTree& expected); //given an obj and its expected quadtree, checks to see if the obj is where its expected. If it has moved, change and return its new location

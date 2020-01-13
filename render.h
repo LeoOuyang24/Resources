@@ -71,7 +71,7 @@ struct SpriteParameter //stores a bunch of information regarding how to render t
      glm::vec4 rect = {0,0,0,0};
     float radians = 0;
     RenderEffect effect = NONE; //effects to do. (mirror, flip, etc)
-    glm::vec3 tint = {1,1,1};
+    glm::vec4 tint = {1,1,1,1};
     RenderProgram* program = &RenderProgram::basicProgram;
     float z = 0;
     glm::vec4 portion = {0,0,1,1};
@@ -203,8 +203,8 @@ public:
 
 struct PolyRender
 {
-    static std::vector<std::pair<glm::vec4,glm::vec4>> lines; //lines and their colors
-    static std::vector<std::pair<int,glm::vec4>> polygons;
+    static std::vector<std::pair<glm::vec3,glm::vec4>> lines; //lines and their colors
+    static std::vector<std::pair<int,glm::vec4>> polygons; //number of edges and color of each polygon
     static std::vector<glm::vec3> polyPoints; //points of polygons
     static RenderProgram polyRenderer;
     static unsigned int VAO;
@@ -212,7 +212,7 @@ struct PolyRender
     static unsigned int polyVBO;
     static unsigned int colorVBO;
     static void init(int screenWidth, int screenHeight);
-    static void requestLine(const glm::vec4& line, const glm::vec4& color);
+    static void requestLine(const glm::vec4& line, const glm::vec4& color, float z = 0);
     static void requestCircle(const glm::vec4& color,double x, double y, double radius);
     static void requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z);
     static void requestNGon(int n, const glm::vec2& center, double side, const glm::vec4& color, double angle, bool filled, float z); //draws a regular n gon. Angle is in radians
