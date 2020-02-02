@@ -56,6 +56,7 @@ class MouseManager
     static bool left;
     static bool right;
     static bool middle;
+    static Uint32 lastEvent;
     static bool* getButton(int key); //helper function that returns the boolean corresponding to the key pressed
 public:
    static void update(SDL_Event& e);
