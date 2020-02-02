@@ -145,6 +145,7 @@ bool MouseManager::right = false;
 bool MouseManager::middle = false;
 int MouseManager::justClicked = -1;
 int MouseManager::justReleased = -1;
+Uint32 MouseManager::lastEvent = 0;
 bool* MouseManager::getButton(int key)
 {
     switch (key)
@@ -166,23 +167,27 @@ void MouseManager::update(SDL_Event& e)
 {
     justReleased = -1;
     justClicked = -1;
-    if (e.type == SDL_MOUSEBUTTONDOWN)
+    if (lastEvent != e.type)
     {
-        bool* ptr = getButton(e.button.button);
-        if (*ptr == false)
+        if (e.type == SDL_MOUSEBUTTONDOWN)
         {
-            justClicked = e.button.button;
-            *ptr = true;
+            bool* ptr = getButton(e.button.button);
+            if (*ptr == false)
+            {
+                justClicked = e.button.button;
+                *ptr = true;
+            }
+        }
+        else
+        {
+            if (e.type == SDL_MOUSEBUTTONUP)
+            {
+                *getButton(e.button.button) = false;
+                justReleased = e.button.button;
+            }
         }
     }
-    else
-    {
-        if (e.type == SDL_MOUSEBUTTONUP)
-        {
-            *getButton(e.button.button) = false;
-            justReleased = e.button.button;
-        }
-    }
+    lastEvent = e.type;
 }
 
 std::pair<int,int> MouseManager::getMousePos()

@@ -940,7 +940,8 @@ void PolyRender::renderLines()
     GLfloat colors[size*4];
     for (int i = 0; i < size; i ++)
     {
-       addPointToBuffer(verticies,{lines[i].first.x,lines[i].first.y,lines[i].first.z},i*3);
+       addPointToBuffer(verticies,lines[i].first,i*3);
+       //std::cout << verticies[i*3] << " " << verticies[i*3 + 1] << " " << verticies[i*3 + 2] << std::endl;
        addPointToBuffer(colors,lines[i].second,i*4);
     }
 //std::cout << glGetError() << std::endl;
@@ -958,7 +959,7 @@ void PolyRender::renderLines()
 
     polyRenderer.use();
 
-    glDrawArrays(GL_LINES,0,size*2);
+    glDrawArrays(GL_LINES,0,size);
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER,0);
     lines.clear();
