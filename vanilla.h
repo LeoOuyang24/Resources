@@ -334,4 +334,5 @@ bool rectIntersectWithinRange(float x1, float y1, float w1, float h1, double dis
 double absMin(double x, double y);
 double absMax(double x, double y);
 
+void fastPrint(std::string str);
 #endif // VANILLA_H_INCLUDED

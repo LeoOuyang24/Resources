@@ -44,6 +44,7 @@ public:
     }
     virtual glm::vec2 getPos() const;
     const glm::vec4& getRect() const;
+    glm::vec2 getCenter() const;
 };
 
 class QuadTree //this is a quadtree of shared_ptr, meaning this quadtree actually owns its objects

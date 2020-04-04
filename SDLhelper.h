@@ -57,6 +57,7 @@ class MouseManager
     static bool right;
     static bool middle;
     static Uint32 lastEvent;
+    static std::pair<int,int> mouseWheel;
     static bool* getButton(int key); //helper function that returns the boolean corresponding to the key pressed
 public:
    static void update(SDL_Event& e);
@@ -64,6 +65,7 @@ public:
     static int getJustReleased();
     static const bool isPressed(int key);
     static std::pair<int,int> getMousePos();
+    static const std::pair<int,int>& getMouseWheel(); //returns mouseWheel scrolling info as well as whether or not the mouse is scrolling
 
 
 };

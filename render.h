@@ -38,6 +38,7 @@ class RenderProgram
 
     unsigned int program;
     static int screenWidth, screenHeight;
+    static glm::vec2 xRange, yRange, zRange; //represents the smallest and largest values x,y,z can be
 public:
     static GLuint VBO, VAO;
     static RenderProgram basicProgram, lineProgram; //basic allows for basic sprite rendering. Line program is simpler and renders lines.
@@ -47,6 +48,13 @@ public:
     {
 
     }
+    static const glm::vec2& getXRange();
+    static const glm::vec2& getYRange();
+    static const glm::vec2& getZRange();
+    static void setXRange(float x1, float x2);
+    static void setYRange(float y1, float y2);
+    static void setZRange(float z1, float z2);
+    static glm::mat4 getOrtho();
     static glm::vec2 getScreenDimen();
     void setMatrix4fv(std::string name, const GLfloat* value);
     void setVec3fv(std::string name,glm::vec3 value);
@@ -55,6 +63,7 @@ public:
     void use();
     void init(std::string vertexPath, std::string fragmentPath);
     static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
+
 };
 
 //extern RenderProgram RenderProgram::basicProgram;
@@ -217,6 +226,7 @@ struct PolyRender
     static void requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z);
     static void requestNGon(int n, const glm::vec2& center, double side, const glm::vec4& color, double angle, bool filled, float z); //draws a regular n gon. Angle is in radians
     static void render();
+    static void renderMesh(float* mesh, int w, int h);
 private:
     static void renderLines();
     static void renderPolygons();

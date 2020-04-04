@@ -333,6 +333,9 @@ int RenderProgram::screenHeight = 0;
 RenderProgram RenderProgram::basicProgram;
 RenderProgram RenderProgram::lineProgram;
 RenderProgram RenderProgram::paintProgram;
+glm::vec2 RenderProgram::xRange = {0,0};
+glm::vec2 RenderProgram::yRange = {0,0};
+glm::vec2 RenderProgram::zRange = {0,0};
 RenderProgram::RenderProgram(std::string vertexPath, std::string fragmentPath)
 {
     init(vertexPath,fragmentPath);
@@ -372,8 +375,12 @@ void RenderProgram::init(int screenWidth, int screenHeight)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
 
+    xRange = {0,screenWidth};
+    yRange = {0,screenHeight};
+    zRange = {-10,10}; //magic numbers. Can be anything
+
     RenderProgram::lineProgram.init("../../resources/shaders/vertex/simpleVertex.h","../../resources/shaders/fragment/simpleFragment.h");
-    glm::mat4 mat = (glm::ortho(0.0f, (float)screenWidth,(float)screenHeight, 0.0f, -1.0f, 1.0f));
+    glm::mat4 mat = getOrtho();
     lineProgram.setMatrix4fv("projection",glm::value_ptr(mat));
     RenderProgram::basicProgram.init("../../resources/shaders/vertex/vertexShader.h","../../resources/shaders/fragment/fragmentShader.h");
     basicProgram.setMatrix4fv("projection",glm::value_ptr(mat));
@@ -381,6 +388,41 @@ void RenderProgram::init(int screenWidth, int screenHeight)
     paintProgram.setMatrix4fv("projection",glm::value_ptr(mat));
     glGenVertexArrays(1,&VAO);
     glGenBuffers(1,&VBO);
+
+
+}
+
+const glm::vec2& RenderProgram::getXRange()
+{
+    return xRange;
+}
+const glm::vec2& RenderProgram::getYRange()
+{
+    return yRange;
+}
+const glm::vec2& RenderProgram::getZRange()
+{
+    return zRange;
+}
+void RenderProgram::setXRange(float x1, float x2)
+{
+    xRange.x = x1;
+    xRange.y = x2;
+}
+void RenderProgram::setYRange(float y1, float y2)
+{
+    yRange.x = y1;
+    yRange.y = y2;
+}
+void RenderProgram::setZRange(float z1, float z2)
+{
+    zRange.x = z1;
+    zRange.y = z2;
+}
+
+glm::mat4 RenderProgram::getOrtho()
+{
+    return (glm::ortho(xRange.x, xRange.y, yRange.y, yRange.x, zRange.x, zRange.y));
 }
 
 glm::vec2 RenderProgram::getScreenDimen()
@@ -390,6 +432,8 @@ glm::vec2 RenderProgram::getScreenDimen()
 
 void RenderProgram::use()
 {
+        glm::mat4 mat = RenderProgram::getOrtho();
+       setMatrix4fv("projection",glm::value_ptr(mat));
     glUseProgram(program);
 }
 void RenderProgram::setMatrix4fv(std::string name, const GLfloat* value)
@@ -841,10 +885,9 @@ void PolyRender::init(int screenWidth, int screenHeight)
     glGenBuffers(1,&colorVBO);
     glGenBuffers(1,&polyVBO);
 
-    glm::mat4 mat = (glm::ortho(0.0f, (float)screenWidth,(float)screenHeight, 0.0f, -1.0f, 1.0f));
+
 
     polyRenderer.init("../../resources/shaders/vertex/polygonVertex.h","../../resources/shaders/fragment/simpleFragment.h");
-        polyRenderer.setMatrix4fv("projection",glm::value_ptr(mat));
 
     glPrimitiveRestartIndex(restart);
     glEnable(GL_PRIMITIVE_RESTART);
@@ -1006,6 +1049,11 @@ void PolyRender::renderPolygons()
 
     polyPoints.clear();
     polygons.clear();
+
+}
+
+void PolyRender::renderMesh(float* mesh, int w, int h)
+{
 
 }
 
