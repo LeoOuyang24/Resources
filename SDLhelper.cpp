@@ -146,6 +146,7 @@ bool MouseManager::middle = false;
 int MouseManager::justClicked = -1;
 int MouseManager::justReleased = -1;
 Uint32 MouseManager::lastEvent = 0;
+std::pair<int,int> MouseManager::mouseWheel;
 bool* MouseManager::getButton(int key)
 {
     switch (key)
@@ -167,26 +168,36 @@ void MouseManager::update(SDL_Event& e)
 {
     justReleased = -1;
     justClicked = -1;
-    if (lastEvent != e.type)
+    if (e.type == SDL_MOUSEWHEEL)
     {
-        if (e.type == SDL_MOUSEBUTTONDOWN)
+        mouseWheel = {e.wheel.x,e.wheel.y};
+    }
+    else
+    {
+        mouseWheel = {0,0};
+        if (lastEvent != e.type)
         {
-            bool* ptr = getButton(e.button.button);
-            if (*ptr == false)
+            if (e.type == SDL_MOUSEBUTTONDOWN)
             {
-                justClicked = e.button.button;
-                *ptr = true;
+                bool* ptr = getButton(e.button.button);
+                if (*ptr == false)
+                {
+                    justClicked = e.button.button;
+                    *ptr = true;
+                }
             }
-        }
-        else
-        {
-            if (e.type == SDL_MOUSEBUTTONUP)
+
+            else
             {
-                *getButton(e.button.button) = false;
-                justReleased = e.button.button;
+                if (e.type == SDL_MOUSEBUTTONUP)
+                {
+                    *getButton(e.button.button) = false;
+                    justReleased = e.button.button;
+                }
             }
         }
     }
+
     lastEvent = e.type;
 }
 
@@ -211,4 +222,9 @@ int MouseManager::getJustClicked()
 int MouseManager::getJustReleased()
 {
     return justReleased;
+}
+
+const std::pair<int,int>& MouseManager::getMouseWheel()
+{
+    return mouseWheel;
 }

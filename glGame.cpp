@@ -25,7 +25,7 @@ glm::vec2 Positional::getPos() const
     return pos;
 }
 
-RectPositional::RectPositional(const glm::vec4& box) : Positional({rect.x,rect.y}), rect(box)
+RectPositional::RectPositional(const glm::vec4& box) : Positional({box.x,box.y}), rect(box)
 {
 
 }
@@ -43,6 +43,11 @@ const glm::vec4& RectPositional::getRect() const
 bool RectPositional::collides(const glm::vec4& box)
 {
     return vecIntersect(box,rect);
+}
+
+glm::vec2 RectPositional::getCenter() const
+{
+    return {rect.x + rect.z/2, rect.y + rect.a/2};
 }
 
 const int QuadTree::maxCapacity = 100;
@@ -250,10 +255,10 @@ bool QuadTree::contains(Positional& positional)
 void QuadTree::move(QuadTree& t1, QuadTree& t2, Positional& obj)
 {
     int size = t1.vec.size();
-    int size2 = t2.vec.size();
+  //  int size2 = t2.vec.size();
     for (int i = 0; i < size; i ++)
     {
-        glm::vec2 x= t1.vec[i].get()->getPos();
+       // glm::vec2 x= t1.vec[i].get()->getPos();
         if (t1.vec[i].get() == &obj)
         {
             t2.add(t1.vec[i]);
@@ -330,8 +335,8 @@ void RawQuadTree::clear()
             delete nodes[i];
         }
     }
+   // std::cout << vec.size() << " Deleted!" << std::endl;
     vec.clear();
-    std::cout << "Deleted!" << std::endl;
 }
 
 RawQuadTree::~RawQuadTree()
@@ -370,6 +375,10 @@ void RawQuadTree::add(Positional& obj)
             if (found)//if found is not equal to null, add it wherever it's supposed to be
             {
                 found->add(obj);
+            }
+            else
+            {
+                throw std::logic_error("Couldn't add the obj anywhere!");
             }
         }
     }
@@ -417,6 +426,7 @@ void RawQuadTree::getNearest(std::vector<Positional*>& vec, const glm::vec4& are
     if (vecIntersect(area,region))
     {
         int size = this->vec.size();
+        //std::cout << size << std::endl;
         for (int i = 0; i < size;i ++)
         {
             Positional* ptr = this->vec[i];
@@ -523,6 +533,10 @@ RawQuadTree* RawQuadTree::find(Positional& obj)
             answer = this;
         }
     }
+    if (answer == nullptr)
+    {
+
+    }
     return answer;
 }
 
@@ -542,10 +556,8 @@ bool RawQuadTree::contains(Positional& positional)
 void RawQuadTree::move(RawQuadTree& t1, RawQuadTree& t2, Positional& obj)
 {
     int size = t1.vec.size();
-    int size2 = t2.vec.size();
     for (int i = 0; i < size; i ++)
     {
-        glm::vec2 x= t1.vec[i]->getPos();
         if (t1.vec[i] == &obj)
         {
             t2.add(*(t1.vec[i]));
@@ -597,8 +609,8 @@ RawQuadTree* RawQuadTree::update(Positional& positional, RawQuadTree& expected)
     }
     else
     {
-        std::cout << positional.getPos().x << " " << positional.getPos().y << " " << region.z << " " << region.a << std::endl;
-        throw new std::invalid_argument("failed to update positional because positional wasn't found");
+        std::cerr << positional.getPos().x << " " << positional.getPos().y << " " << region.x << " " << region.y << " " << region.z << " " << region.a << "\n";
+        throw new std::invalid_argument("");
     }
     return newTree;
 
