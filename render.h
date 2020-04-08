@@ -225,6 +225,7 @@ struct PolyRender
     static void requestCircle(const glm::vec4& color,double x, double y, double radius);
     static void requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z);
     static void requestNGon(int n, const glm::vec2& center, double side, const glm::vec4& color, double angle, bool filled, float z); //draws a regular n gon. Angle is in radians
+    static void requestPolygon(const std::vector<glm::vec3>& points, const glm::vec4& color);
     static void render();
     static void renderMesh(float* mesh, int w, int h);
 private:

@@ -280,39 +280,21 @@ double PointDistance(const Point& p1, const Point& p2);
 
 int convertTo1(double number); // a method that converts a number to 1 or -1 depending on its sign. If entry is 0, return 0;
 
-class GradientNumber
+class GradientNumber //a number that approaches a goal number at a given speed
 {
-    double first, last;
-    double current;
-    double speed;
-    double* goal;
+    double goal = 0;
+    double current = 0;
+    double speed = 0;
 public:
-    GradientNumber(double a = 0, double b = 0, double velocity= 1)
-    {
-      load(a,b,velocity);
-    }
-    void load (double a,double b, double velocity)
-    {
-        speed = velocity;
-        first = a;
-        last = b;
-        current = a;
-        goal = &last;
-       // std::cout << a << " " << b << std::endl;
-    }
-    double update()
-    {
-        if (current == first)
-        {
-            goal = &last;
-        }
-        else if (current == last)
-        {
-            goal = &first;
-        }
-        current += convertTo1(*goal - current)*std::min(fabs(speed), fabs(*goal - current));
-        return current;
-    }
+    GradientNumber(double a = 0, double b = 0, double velocity= 1);
+    void load (double a,double b, double velocity); //alternate constructor so Gradient Number doesn't have to be initialized immediately
+    double update(); //updates current and returns the value
+    void setValue(double d);
+    void setGoal(double d);
+    void setSpeed(double s);
+    double getValue();
+    bool atTarget();
+
 };
 
 int randWithGaps(std::vector<std::pair<int,int>> ranges);

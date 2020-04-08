@@ -975,6 +975,16 @@ void PolyRender::requestNGon(int n, const glm::vec2& center, double side, const 
 
 }
 
+void PolyRender::requestPolygon(const std::vector<glm::vec3>& points, const glm::vec4& color)
+{
+    int size = points.size();
+    for (int i = 0; i < size; ++i)
+    {
+        polyPoints.push_back(points[i]);
+    }
+    polygons.push_back({size,color});
+}
+
 void PolyRender::renderLines()
 {
     glBindVertexArray(VAO);
