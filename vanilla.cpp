@@ -291,6 +291,49 @@ double absMax(double x, double y)
     return y;
 }
 
+GradientNumber::GradientNumber(double a,double b, double velocity)
+{
+  load(a,b,velocity);
+}
+void GradientNumber::load(double a,double b, double velocity)
+{
+    setSpeed(velocity);
+    setGoal(b);
+    setValue(a);
+   // std::cout << a << " " << b << std::endl;
+}
+
+double GradientNumber::update()
+{
+    current += absMin(speed*convertTo1(goal-current), (goal - current));
+    return current;
+}
+
+void GradientNumber::setValue(double d)
+{
+    current = d;
+}
+
+void GradientNumber::setGoal(double d)
+{
+    goal = d;
+}
+
+void GradientNumber::setSpeed(double s)
+{
+    speed = s;
+}
+
+double GradientNumber::getValue()
+{
+    return current;
+}
+
+bool GradientNumber::atTarget()
+{
+    return current == goal;
+}
+
 int randWithGaps(const std::vector<std::pair<int,int>>& ranges)
 {
     int range = rand()%ranges.size();
