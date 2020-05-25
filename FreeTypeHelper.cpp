@@ -5,13 +5,27 @@
 #include "FreeTypeHelper.h"
 
 RenderProgram Font::wordProgram;
-Font Font::alef;
+Font Font::tnr;
+
+int Font::writeLength(std::string str)
+{
+    int length = 0;
+    int size = str.size();
+    for (int i = 0; i < size; ++i)
+    {
+        length += characters[str[i]].advance >> 6;
+    }
+    return length;
+}
+
     void Font::init(int screenWidth, int screenHeight)
     {
         wordProgram.init("../../resources/shaders/vertex/wordVertex.h","../../resources/shaders/fragment/wordFragment.h");
-        wordProgram.setMatrix4fv("projection", glm::value_ptr((glm::ortho(0.0f, (float)screenWidth, (float)screenHeight, 0.0f,-1.0f,1.0f))));
+        wordProgram.setMatrix4fv("projection", glm::value_ptr(RenderProgram::getOrtho()));
 
-        alef.init("../../resources/Alef-Regular.ttf");
+        tnr.init("../../resources/tnr.ttf");
+
+        FontManager::addFont(tnr);
     }
     Font::Font(std::string source)
     {
@@ -81,6 +95,7 @@ Font Font::alef;
             characters.insert(std::pair<GLchar, Character>(c, character));
 
         }
+
         FT_Done_Face(face);
         FT_Done_FreeType(library);
         glGenVertexArrays(1, &VAO);
@@ -96,35 +111,43 @@ glm::vec2 Font::getDimen(std::string text, GLfloat hScale, GLfloat vScale)
     for (c = text.begin(); c != text.end(); c++)
     {
         Character ch = characters[*c];
-        GLfloat h = ch.bearing.y * vScale;
+        GLfloat h = ch.size.y * vScale;
         totalWidth += (ch.advance)*hScale/64;
         maxHeight += (h-maxHeight)*(h > maxHeight);
     }
     return {totalWidth,maxHeight};
 }
+
+void Font::requestWrite(FontParameter&& param)
+{
+      //  std::cout << "Start: " << writeRequests.size() << std::endl;
+    writeRequests.emplace_back(param);
+   // std::cout << "End: " << writeRequests.size() << std::endl;
+}
+
 void Font::write(RenderProgram& p, const FontParameter& param)
 {
-    p.setVec3fv("textColor",param.color);
+    p.setVec4fv("textColor",param.color);
     p.use();
     glBindVertexArray(VAO);
     // Iterate through all characters
     std::string::const_iterator c;
     glm::vec2 center = {param.rect.x + param.rect.z/2, param.rect.y + param.rect.a/2};
     double x = param.rect.x;
-//    double maxY = y;
-    //y = stanH - y;
-    //glm::vec2 maxDimen = getDimen(param.text,param.rect.z,param.rect.a);
-    double letterWidth = param.rect.z/param.text.size();
-    glm::vec2 screenDimen = RenderProgram::getScreenDimen();
+    glm::vec2 dimen = getDimen(param.text,1,1);
+//std::cout << length << std::endl;
+    double scale = std::min(param.rect.z/dimen.x,param.rect.a/(maxVert.y + maxVert.x));
+   // std::cout << scale << std::endl;
     double maxHeight = (maxVert.x + maxVert.y);
+   // PolyRender::requestRect({x,param.rect.y + maxVert.x, param.rect.z,param.rect.a - maxVert.x},{1,0,0,1},true,0,param.z);
     for (c = param.text.begin(); c != param.text.end(); c++)
     {
         Font::Character ch = characters[*c];
-        GLfloat xpos = x +ch.bearing.x/ch.advance*letterWidth;
-        GLfloat ypos = (param.rect.y) + (maxVert.x - ch.bearing.y)/maxHeight*param.rect.a;//We use 2*ch.size.y - ch.bearing.y because we need to use ch.size.y - bearing.y + ch.size.y because that is the total height the letter uses
+        GLfloat xpos = x +ch.bearing.x*scale;
+        GLfloat ypos = (param.rect.y) + (maxVert.x - ch.bearing.y)*scale;
         glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
-        GLfloat w = ch.size.x/(ch.advance/64)*letterWidth;
-        GLfloat h = (ch.size.y)/(maxHeight)*param.rect.a;
+        GLfloat w = ch.size.x*scale;
+        GLfloat h = (ch.size.y)*scale;
        /* if (ypos + h > maxY)
         {
             maxY = ypos+h;
@@ -136,6 +159,7 @@ void Font::write(RenderProgram& p, const FontParameter& param)
             { pos.x,     pos.y+h,  0.0, 1.0 },
             { pos.x + w, pos.y+h,  1.0, 1.0 }
         };
+       // PolyRender::requestRect({x,param.rect.y + maxVert.x - ch.bearing.y, w,h},{1,0,0,1},false,0,param.z);
 
         // Render glyph texture over quad
         // Update content of VBO memory
@@ -155,10 +179,49 @@ void Font::write(RenderProgram& p, const FontParameter& param)
         glBindBuffer(GL_ARRAY_BUFFER,0);
        // t.renderInstanced(,{{{200,200,64,64}}});
         // Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-        x += letterWidth; // Bitshift by 6 to get value in pixels (2^6 = 64)
+        x += (ch.advance >> 6)*scale; // Bitshift by 6 to get value in pixels (2^6 = 64)
     }
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void Font::write(RenderProgram& p)
+{
+        //std::cout << "Writing: " << writeRequests.size() << std::endl;
+    int size = writeRequests.size();
+    for (int i = 0; i < size; ++i)
+    {
+        write(p,writeRequests[i]);
+    }
+}
+
+void Font::clear()
+{
+    writeRequests.clear();
+    //std::cout << writeRequests.size() << std::endl;
+}
+
+Font::~Font()
+{
+    clear();
+    characters.clear();
+}
+
+std::vector<Font*> FontManager::fonts;
+
+void FontManager::addFont(Font& font)
+{
+    fonts.push_back(&font);
+}
+
+void FontManager::update()
+{
+    int size = fonts.size();
+    for (int i = 0; i < size; ++i)
+    {
+        fonts[i]->write(Font::wordProgram);
+        fonts[i]->clear();
+    }
 }
 /*glm::vec2 Font::write(RenderProgram& p,std::string text, GLfloat x, GLfloat y,GLfloat z, GLfloat scale,glm::vec3 color)
 {

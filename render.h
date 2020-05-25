@@ -232,8 +232,11 @@ private:
     static void renderLines();
     static void renderPolygons();
     static unsigned short restart; //restart indice
-
 };
 
+class RenderController //controls all rendering
+{
+    //std::map
+};
 
 #endif // SPRITES_H_INCLUDED
