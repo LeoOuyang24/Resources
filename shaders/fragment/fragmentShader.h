@@ -8,7 +8,7 @@ uniform sampler2D sprite;
 void main()
 {
     vec4 text = texture(sprite,texCoord);
-    if (text.a == 0)
+    if (text.a < .5)
     {
         discard;
     }

@@ -371,13 +371,17 @@ void RenderProgram::init(int screenWidth, int screenHeight)
         // Problem: glewInit failed, something is seriously wrong.
         std::cout << "glewInit failed: " << glewGetErrorString(err) << std::endl;
       }
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_DEPTH_TEST);
+
 
     xRange = {0,screenWidth};
     yRange = {0,screenHeight};
     zRange = {-10,10}; //magic numbers. Can be anything
+
+glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);    glEnable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+   // glEnable(GL_CULL_FACE);
+    glEnable(GL_PRIMITIVE_RESTART);
+    glClearColor(1,1,1,1);
 
     RenderProgram::lineProgram.init("../../resources/shaders/vertex/simpleVertex.h","../../resources/shaders/fragment/simpleFragment.h");
     glm::mat4 mat = getOrtho();

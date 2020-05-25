@@ -61,7 +61,7 @@ void Button::render(int x, int y)
     {
         FontParameter copyPaper = paper;
         copyPaper.rect = renderRect;
-        font->write(Font::wordProgram,copyPaper);
+        font->requestWrite({paper.text,renderRect,paper.angle,paper.color,paper.z});
     }
 }
 

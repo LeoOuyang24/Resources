@@ -402,7 +402,7 @@ void RawQuadTree::add(Positional& obj)
     }
 }
 
-void RawQuadTree::getNearest(std::vector<Positional*>& vec, Positional& obj)
+void RawQuadTree::getNearestHelper(std::vector<Positional*>& vec, Positional& obj)
 {
     if (obj.collides(region))
     {
@@ -415,13 +415,20 @@ void RawQuadTree::getNearest(std::vector<Positional*>& vec, Positional& obj)
         {
             for (int i = 0; i < 4; i ++)
             {
-                nodes[i]->getNearest(vec, obj);
+                nodes[i]->getNearestHelper(vec, obj);
             }
         }
     }
 }
 
-void RawQuadTree::getNearest(std::vector<Positional*>& vec, const glm::vec4& area)
+positionalVec RawQuadTree::getNearest(Positional& obj)
+{
+    positionalVec vec;
+    getNearestHelper(vec,obj);
+    return vec;
+}
+
+void RawQuadTree::getNearestHelper(positionalVec& vec, const glm::vec4& area)
 {
     if (vecIntersect(area,region))
     {
@@ -439,10 +446,17 @@ void RawQuadTree::getNearest(std::vector<Positional*>& vec, const glm::vec4& are
         {
             for (int i = 0; i < 4; i ++)
             {
-                nodes[i]->getNearest(vec, area);
+                nodes[i]->getNearestHelper(vec, area);
             }
         }
     }
+}
+
+positionalVec RawQuadTree::getNearest(const glm::vec4& area)
+{
+    positionalVec vec;
+    getNearestHelper(vec,area);
+    return vec;
 }
 
 void RawQuadTree::getNearestHelper(std::vector<Positional*>& vec, const glm::vec2& center, double radius)
