@@ -14,6 +14,11 @@ double pointDistance(const glm::vec2& v1, const glm::vec2& v2)
     return sqrt(pow(v1.x - v2.x,2) + pow(v1.y - v2.y,2));
 }
 
+glm::vec2 midpoint(const glm::vec4& v1)
+{
+    return {v1.x + v1.z/2, v1.y + v1.a/2};
+}
+
 double vecDistance(const glm::vec2& v1, const glm::vec2& v2)
 {
     return sqrt(pow(v1.x-v2.x,2) + pow(v1.y - v2.y,2));
@@ -47,6 +52,24 @@ bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2)
     }
     return (vec1.x <= vec2.x + vec2.z && vec1.x + vec1.z>= vec2.x && vec1.y <= vec2.y + vec2.a && vec1.y + vec1.a >= vec2.y);
 }
+
+glm::vec4 vecIntersectRegion(const glm::vec4& vec1, const glm::vec4& vec2) //returns the region of two colliding rects
+{
+    glm::vec4 answer= {0,0,0,0};
+
+    if (vec1.y + vec1.a >= vec2.y && vec1.y <= vec2.y + vec2.a)
+    {
+        answer.y = std::max(vec1.y, vec2.y);
+        answer.a = std::min(vec2.y + vec2.a, vec1.y + vec1.a) - answer.y;
+    }
+    if (vec1.x + vec1.z >= vec2.x && vec1.x <= vec2.x + vec2.z)
+    {
+        answer.x = std::max(vec1.x, vec2.x);
+        answer.z = std::min(vec2.x + vec2.z, vec1.x + vec1.z) - answer.x;
+    }
+    return answer;
+}
+
 
 bool pointInVec(const glm::vec4& vec1, double x, double y, double angle)
 {
@@ -204,6 +227,12 @@ void addPointToBuffer(float buffer[], glm::vec2 point, int index)
 {
     addPointToBuffer(buffer, {point.x, point.y, 0}, index);
 }
+
+void printRect(const glm::vec4& rect)
+{
+    std::cout << rect.x << " " << rect.y << " " << rect.z << " " << rect.a << std::endl;
+}
+
 void drawNGon(RenderProgram& program, const glm::vec3& color, const glm::vec2& center, double radius, int n, double angle)
 {
     if (n > 2)
@@ -1027,9 +1056,12 @@ void PolyRender::renderPolygons()
     glBindVertexArray(VAO);
     int size = polygons.size();
     int pointsSize = polyPoints.size();
-    GLfloat verticies[pointsSize*3];
-    GLfloat colors[(pointsSize)*4];
-    GLuint indicies[pointsSize + size];
+    long vertSize  = pointsSize*3;
+    long colorSize = pointsSize*4;
+    long indSize = pointsSize + size;
+    GLfloat* verticies = new GLfloat[vertSize];
+    GLfloat* colors = new GLfloat[colorSize];
+    GLuint* indicies = new GLuint[indSize];
     int index = 0;
     for (int i = 0; i < size; ++i)
     {
@@ -1042,27 +1074,31 @@ void PolyRender::renderPolygons()
         index += polygons[i].first;
         indicies[index + i] = restart;
     }
-
     glBindBuffer(GL_ARRAY_BUFFER,polyVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(verticies),verticies,GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,vertSize*sizeof(GLfloat),verticies,GL_STATIC_DRAW);
     glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,(void*)0);
     glEnableVertexAttribArray(0);
     //glVertexAttribDivisor(0,1);
 
     glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(colors), colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,colorSize*sizeof(GLfloat), colors, GL_STATIC_DRAW);
     glVertexAttribPointer(1,4,GL_FLOAT,GL_FALSE,0,(void*)0);
     glEnableVertexAttribArray(1);
     //glVertexAttribDivisor(1,1);
 
     polyRenderer.use();
-    glDrawElements(GL_TRIANGLE_STRIP,pointsSize + size,GL_UNSIGNED_INT,&indicies);
+    glDrawElements(GL_TRIANGLE_STRIP,indSize,GL_UNSIGNED_INT,indicies);
 
     glBindBuffer(GL_ARRAY_BUFFER,0);
     glBindVertexArray(0);
 
+
     polyPoints.clear();
     polygons.clear();
+
+    delete[] verticies;
+    delete[] colors;
+    delete[] indicies;
 
 }
 
