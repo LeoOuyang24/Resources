@@ -1,83 +1,85 @@
-   #include "vanilla.h"
+#include <limits.h>
 
-    Named::Named(std::string nameTag)
-    {
-        name = nameTag;
-    }
+#include "vanilla.h"
+
+Named::Named(std::string nameTag)
+{
+    name = nameTag;
+}
 
 std::string Named::getName() const
     {
         return name;
     }
 
-    IDed::IDed(int ID)
-    {
-        id = ID;
-    }
+IDed::IDed(int ID)
+{
+    id = ID;
+}
 
-    int IDed::getID()
-    {
-        return id;
-    }
+int IDed::getID()
+{
+    return id;
+}
 
-    NumberManager::NumberManager()
-    {
+NumberManager::NumberManager()
+{
 
-    }
-    void NumberManager::addNumber(double number)
+}
+void NumberManager::addNumber(double number)
+{
+    int size = numbers.size();
+    for(int i = 0; i < size; i ++)
     {
-        int size = numbers.size();
-        for(int i = 0; i < size; i ++)
+        if (number <= numbers[i])
         {
-            if (number <= numbers[i])
-            {
-                numbers.insert(numbers.begin() + i,number);
-                return;
-            }
+            numbers.insert(numbers.begin() + i,number);
+            return;
         }
-        numbers.push_back(number);
     }
-    int NumberManager::findNumber(double code)
+    numbers.push_back(number);
+}
+int NumberManager::findNumber(double code)
+{
+    int lower = 0;
+    int higher = numbers.size();
+    int index = -1;
+    if (higher != 0)
     {
-        int lower = 0;
-        int higher = numbers.size();
-        int index = -1;
-        if (higher != 0)
+        index = (lower+higher)/2;
+        while(numbers[index] != code) // binary search to find the key code
         {
+            int current = numbers[index];
+            if (current < code)
+            {
+                lower = index;
+            }
+            else
+            {
+                higher = index;
+            }
             index = (lower+higher)/2;
-            while(numbers[index] != code) // binary search to find the key code
+            if (current == numbers[index])
             {
-                int current = numbers[index];
-                if (current < code)
-                {
-                    lower = index;
-                }
-                else
-                {
-                    higher = index;
-                }
-                index = (lower+higher)/2;
-                if (current == numbers[index])
-                {
-                    return -1;
-                }
+                return -1;
             }
         }
-        return index;
+    }
+    return index;
 
-    }
-    void NumberManager::removeNumber(double number)
+}
+void NumberManager::removeNumber(double number)
+{
+    int index = findNumber(number);
+    if (index != -1)
     {
-        int index = findNumber(number);
-        if (index != -1)
-        {
-            numbers.erase(numbers.begin() + index);
-        }
+        numbers.erase(numbers.begin() + index);
     }
-    NumberManager::~NumberManager()
-    {
-        numbers.clear();
-    }
+}
+NumberManager::~NumberManager()
+{
+    numbers.clear();
+}
  Rect Polygon::getBoundingRect() const
 {
    Rect r = {minX,minY, maxX - minX, maxY - minY};
@@ -376,3 +378,5 @@ void fastPrint(std::string str)
         putchar(str[i]);
     }
 }
+
+

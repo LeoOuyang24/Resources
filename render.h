@@ -15,7 +15,9 @@
 
 int loadShaders(const GLchar* source, GLenum shaderType );
 double pointDistance(const glm::vec2& v1, const glm::vec2& v2);
+glm::vec2 midpoint(const glm::vec4& v1); //midpoint of a line
 bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2);
+glm::vec4 vecIntersectRegion(const glm::vec4& vec1, const glm::vec4& vec2); //returns the region of two colliding rects
 bool vecContains(glm::vec4 r1, glm::vec4 r2); //returns true if r2 contains r1
 bool pointInVec(const glm::vec4& vec1, double x, double y, double angle = 0); //angle of vec1 is by default 0
 double pointVecDistance(const glm::vec4& vec, float x, float y); //shortest distance from the point to the rectangle
@@ -31,7 +33,7 @@ void drawRectangle(RenderProgram& program, const glm::vec3& color, const glm::ve
 void addPointToBuffer(float buffer[], glm::vec3 point, int index);
 void addPointToBuffer(float buffer[], glm::vec2 point, int index);
 void addPointToBuffer(float buffer[], glm::vec4 point, int index);
-
+void printRect(const glm::vec4& rect);
 
 class RenderProgram
 {
