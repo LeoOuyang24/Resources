@@ -26,9 +26,8 @@ public:
          return pointDistance(point, pos);
      }
     virtual glm::vec2 getPos() const;
-    ~Positional()
+    virtual ~Positional()
     {
-
     }
 };
 class RectPositional : public Positional //anything whose position is represented by a rectangle
@@ -47,32 +46,43 @@ public:
     glm::vec2 getCenter() const;
 };
 
+typedef std::vector<std::shared_ptr<Positional>> pointerVec;
+typedef std::vector<Positional*> positionalVec;
+
 class QuadTree //this is a quadtree of shared_ptr, meaning this quadtree actually owns its objects
 {
-    static const int maxCapacity; //maximum capacity
-    std::vector<std::shared_ptr<Positional>> vec;
+    static constexpr int maxCapacity = 100; //maximum capacity
+    pointerVec vec;
     glm::vec4 region;
     void split();
-    bool contains(Positional& positional);
+    bool contains(Positional& positional); //returns whether or not the quadtree actually contains the positional, not whether or not it should contain the positional
     QuadTree* nodes[4] = {nullptr,nullptr,nullptr,nullptr};
     void move(QuadTree& t1, QuadTree& t2, Positional& obj); //given that obj is in t1, this removes obj and adds it into t2
+    void getNearestHelper(positionalVec& vec, const glm::vec2& center, double radius);
+    void getNearestHelper(positionalVec& vec, const glm::vec4& area );
+    void getNearestHelper(positionalVec& vec, Positional& obj);
 public:
     QuadTree(const glm::vec4& rect);
     void render(const glm::vec2& displacement);
     ~QuadTree();
-    int count ();
-    std::shared_ptr<Positional>* remove(Positional& obj); //removes the shared_ptr of obj. If the ptr is the only ptr, the obj will also be deleted. Returns true if obj is found and removed but not necessarily deleted
+    int count (); //total number of things in this quadtree and its children
+    int size(); //number of things in this quadtree
+    void remove(Positional& obj); //removes the obj. This only removes the pointer; doesn't actually delete the object
     QuadTree* find(Positional& obj); //finds the quadtree obj belongs in. Returns null if the obj doesn't belong. Can return this QuadTree.
-    void getNearest(std::vector<std::shared_ptr<Positional>>& vec, Positional& obj); //get all Positionals that are in the same quadtree as obj
-    void getNearest(std::vector<std::shared_ptr<Positional>>& vec, const glm::vec4& area); //get all Positionals that intersect with area
+    positionalVec getNearest( Positional& obj); //get all Positionals that are in the same quadtree as obj
+    positionalVec getNearest( const glm::vec4& area); //get all Positionals that intersect with area
+    positionalVec getNearest(const glm::vec2& center, double radius); //finds all objects within a certain radius
     void add(Positional& obj);
-    void add(std::shared_ptr<Positional>& ptr);
-    void add(std::shared_ptr<Positional>&& ptr); //adds ptr to vec. This should only be called if it is known that this quadtree should contain ptr
+    void add(const std::shared_ptr<Positional>& obj);
     void clear();
+    void map(void (*fun)(const Positional& pos)); //applies pos to all objects in tree as well as children
     QuadTree* update(Positional& obj, QuadTree& expected); //given an obj and its expected quadtree, checks to see if the obj is where its expected. If it has moved, change and return its new location
+    inline const glm::vec4& getRect()
+    {
+        return region;
+    }
 };
 
-typedef std::vector<Positional*> positionalVec;
 
 class RawQuadTree
 {
@@ -93,7 +103,7 @@ public:
     ~RawQuadTree();
     int count (); //total number of things in this quadtree and its children
     int size(); //number of things in this quadtree
-    Positional* remove(Positional& obj); //removes the shared_ptr of obj. If the ptr is the only ptr, the obj will also be deleted. Returns true if obj is found and removed but not necessarily deleted
+    void remove(Positional& obj); //removes the obj. This only removes the pointer; doesn't actually delete the object
     RawQuadTree* find(Positional& obj); //finds the quadtree obj belongs in. Returns null if the obj doesn't belong. Can return this QuadTree.
     positionalVec getNearest( Positional& obj); //get all Positionals that are in the same quadtree as obj
     positionalVec getNearest( const glm::vec4& area); //get all Positionals that intersect with area

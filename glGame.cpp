@@ -25,6 +25,7 @@ glm::vec2 Positional::getPos() const
     return pos;
 }
 
+
 RectPositional::RectPositional(const glm::vec4& box) : Positional({box.x,box.y}), rect(box)
 {
 
@@ -50,8 +51,6 @@ glm::vec2 RectPositional::getCenter() const
     return {rect.x + rect.z/2, rect.y + rect.a/2};
 }
 
-const int QuadTree::maxCapacity = 100;
-
 QuadTree::QuadTree(const glm::vec4& rect)
 {
     region = rect;
@@ -70,8 +69,8 @@ void QuadTree::clear()
             delete nodes[i];
         }
     }
+   // std::cout << vec.size() << " Deleted!" << std::endl;
     vec.clear();
-    std::cout << "Deleted!" << std::endl;
 }
 
 QuadTree::~QuadTree()
@@ -81,11 +80,11 @@ QuadTree::~QuadTree()
 
 void QuadTree::render(const glm::vec2& displacement)
 {
-
+    //drawRectangle(RenderProgram::lineProgram,{0,0,0},region,0);
     if (nodes[0])
     {
-        drawLine(RenderProgram::lineProgram,{0,0,0},{{region.x-displacement.x,region.y + region.a/2-displacement.y,region.x + region.z-displacement.x, region.y + region.a/2-displacement.y},
-             {region.x + region.z/2-displacement.x, region.y-displacement.y, region.x+region.z/2-displacement.x, region.y + region.a-displacement.y}});
+        PolyRender::requestLine({region.x-displacement.x,region.y + region.a/2-displacement.y,region.x + region.z-displacement.x, region.y + region.a/2-displacement.y},{0,0,0,1});
+        PolyRender::requestLine({region.x + region.z/2-displacement.x, region.y-displacement.y, region.x+region.z/2-displacement.x, region.y + region.a-displacement.y},{0,0,0,1} );
         for (int i = 0; i < 4; i ++)
         {
             nodes[i]->render(displacement);
@@ -93,22 +92,16 @@ void QuadTree::render(const glm::vec2& displacement)
     }
 }
 
-void QuadTree::add(std::shared_ptr<Positional>&& ptr)
+void QuadTree::add(Positional& obj)
 {
-    add(ptr);
+    add(std::shared_ptr<Positional>(&obj));
 }
 
-void QuadTree::add(Positional& ptr)
+void QuadTree::add(const std::shared_ptr<Positional>& obj)
 {
-    add(std::shared_ptr<Positional>(&ptr));
-}
-
-void QuadTree::add(std::shared_ptr<Positional>& obj)
-{
-    Positional* ptr = obj.get();
     if (nodes[0])
     {
-        QuadTree* found = find(*ptr);
+        QuadTree* found = find(*(obj.get()));
         if (found == this)
         {
             vec.push_back(obj);
@@ -119,11 +112,16 @@ void QuadTree::add(std::shared_ptr<Positional>& obj)
             {
                 found->add(obj);
             }
+            else //otherwise, it's in the parent nor its children
+            {
+                throw std::logic_error("QuadTree::add: Couldn't add the obj anywhere!");
+            }
         }
     }
     else
     {
         vec.push_back(obj);
+        //vec.emplace_back((new Positional({1,1})));
         if (vec.size() > maxCapacity)
         {
             split();
@@ -141,46 +139,91 @@ void QuadTree::add(std::shared_ptr<Positional>& obj)
     }
 }
 
-void QuadTree::getNearest(std::vector<std::shared_ptr<Positional>>& vec, Positional& obj)
+void QuadTree::getNearestHelper(positionalVec& vec, Positional& obj)
 {
     if (obj.collides(region))
     {
         int size = this->vec.size();
         for (int i = 0; i < size;i ++)
         {
-            vec.push_back(vec[i]);
+            vec.push_back(this->vec[i].get());
         }
         if (nodes[0])
         {
             for (int i = 0; i < 4; i ++)
             {
-                nodes[i]->getNearest(vec, obj);
+                nodes[i]->getNearestHelper(vec, obj);
             }
         }
     }
 }
 
-void QuadTree::getNearest(std::vector<std::shared_ptr<Positional>>& vec, const glm::vec4& area)
+positionalVec QuadTree::getNearest(Positional& obj)
+{
+    positionalVec vec;
+    getNearestHelper(vec,obj);
+    return vec;
+}
+
+void QuadTree::getNearestHelper(positionalVec& vec, const glm::vec4& area)
 {
     if (vecIntersect(area,region))
     {
         int size = this->vec.size();
+        //std::cout << size << std::endl;
         for (int i = 0; i < size;i ++)
         {
             Positional* ptr = this->vec[i].get();
             if (ptr->collides(area))
             {
-                vec.push_back(vec[i]);
+                vec.push_back(ptr);
             }
         }
         if (nodes[0])
         {
             for (int i = 0; i < 4; i ++)
             {
-                nodes[i]->getNearest(vec, area);
+                nodes[i]->getNearestHelper(vec, area);
             }
         }
     }
+}
+
+positionalVec QuadTree::getNearest(const glm::vec4& area)
+{
+    positionalVec vec;
+    getNearestHelper(vec,area);
+    return vec;
+}
+
+void QuadTree::getNearestHelper(positionalVec& vec, const glm::vec2& center, double radius)
+{
+    if (pointInVec(region, center.x, center.y) || pointVecDistance(region,center.x,center.y) <= radius)
+    {
+        int size = this->vec.size();
+        for (int i = 0; i < size;i ++)
+        {
+            Positional* ptr = this->vec[i].get();
+            if (ptr->distance(center) <= radius)
+            {
+                vec.push_back(ptr);
+            }
+        }
+        if (nodes[0])
+        {
+            for (int i = 0; i < 4; i ++)
+            {
+                nodes[i]->getNearestHelper(vec, center,radius);
+            }
+        }
+    }
+}
+
+positionalVec QuadTree::getNearest(const glm::vec2& center, double radius)
+{
+    positionalVec vec;
+    getNearestHelper(vec,center, radius);
+    return vec;
 }
 
 void QuadTree::split()
@@ -193,7 +236,7 @@ void QuadTree::split()
 
 int QuadTree::count()
 {
-    int answer = vec.size();
+    int answer = size();
     if (nodes[0])
     {
         for (int i = 0; i < 4; i ++)
@@ -202,6 +245,11 @@ int QuadTree::count()
         }
     }
     return answer;
+}
+
+int QuadTree::size()
+{
+    return vec.size();
 }
 
 QuadTree* QuadTree::find(Positional& obj)
@@ -255,47 +303,59 @@ bool QuadTree::contains(Positional& positional)
 void QuadTree::move(QuadTree& t1, QuadTree& t2, Positional& obj)
 {
     int size = t1.vec.size();
-  //  int size2 = t2.vec.size();
     for (int i = 0; i < size; i ++)
     {
-       // glm::vec2 x= t1.vec[i].get()->getPos();
         if (t1.vec[i].get() == &obj)
         {
-            t2.add(t1.vec[i]);
+            t2.add((t1.vec[i]));
             t1.vec.erase(t1.vec.begin() + i);
             return;
         }
     }
 }
 
-std::shared_ptr<Positional>* QuadTree::remove(Positional& obj)
+void QuadTree::remove(Positional& obj)
 {
     if (!obj.collides(region)) //if obj isn't even in the region, don't bother
     {
-        return nullptr;
+        return ;
     }
     int size = vec.size();
     for (int i = 0; i < size; i ++) //see if obj is in this quadtree
     {
         if (vec[i].get() == &obj)
         {
-            std::shared_ptr<Positional> ptr = vec[i];
             vec.erase(vec.begin() + i);
-            return &ptr;
+            return;
         }
     }
     if (nodes[0]) //if not in this quadtree, search children
     {
         for (int i = 0; i < 4; i ++)
         {
-            std::shared_ptr<Positional>* ptr = nodes[i]->remove(obj);
-            if (ptr)
+            nodes[i]->remove(obj);
+        }
+    }
+    return;
+}
+
+void QuadTree::map(void (*fun)(const Positional& pos))
+{
+    if (fun)
+    {
+        int size = vec.size();
+        for (int i = 0; i < size; ++i)
+        {
+            fun(*(vec[i].get()));
+        }
+        if (nodes[0])
+        {
+            for (int i = 0; i < 4; ++i)
             {
-                return ptr;
+                nodes[i]->map(fun);
             }
         }
     }
-    return nullptr;
 }
 
 QuadTree* QuadTree::update(Positional& positional, QuadTree& expected)
@@ -310,8 +370,8 @@ QuadTree* QuadTree::update(Positional& positional, QuadTree& expected)
     }
     else
     {
-        std::cout << positional.getPos().x << " " << positional.getPos().y << " " << region.z << " " << region.a << std::endl;
-        throw new std::invalid_argument("failed to update positional because positional wasn't found");
+        std::cerr << positional.getPos().x << " " << positional.getPos().y << " " << region.x << " " << region.y << " " << region.z << " " << region.a << "\n";
+        throw new std::invalid_argument("");
     }
     return newTree;
 
@@ -581,34 +641,29 @@ void RawQuadTree::move(RawQuadTree& t1, RawQuadTree& t2, Positional& obj)
     }
 }
 
-Positional* RawQuadTree::remove(Positional& obj)
+void RawQuadTree::remove(Positional& obj)
 {
     if (!obj.collides(region)) //if obj isn't even in the region, don't bother
     {
-        return nullptr;
+        return ;
     }
     int size = vec.size();
     for (int i = 0; i < size; i ++) //see if obj is in this quadtree
     {
         if (vec[i] == &obj)
         {
-            Positional* ptr = vec[i];
             vec.erase(vec.begin() + i);
-            return ptr;
+            return;
         }
     }
     if (nodes[0]) //if not in this quadtree, search children
     {
         for (int i = 0; i < 4; i ++)
         {
-            Positional* ptr = nodes[i]->remove(obj);
-            if (ptr)
-            {
-                return ptr;
-            }
+            nodes[i]->remove(obj);
         }
     }
-    return nullptr;
+    return;
 }
 
 RawQuadTree* RawQuadTree::update(Positional& positional, RawQuadTree& expected)

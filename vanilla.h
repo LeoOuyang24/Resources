@@ -333,15 +333,18 @@ class MinHeap //creates a min heap where each node consists of data and an int t
     int getLeftChild(int index);
     int getRightChild(int index);
     void swap(int i1, int i2); //swaps the nodes at indicies i1 i2
-    void sift(int index);
+    void sift(int index); //puts the item at index at the right spot
 public:
     MinHeap();
     ~MinHeap();
     void add(T item, int val);
-    void update(T item, int oldVal, int val);
-    T& peak(); //returns the value of the top most node.
+    int find(T item, int val); //find the index of an item. O(n), but sometimes logarithmic. returns -1 on failure to find
+    int find(T item); //finds the index in O(n) time. -1 on failure;
+    void update(T item, int oldVal, int val); //update an item with oldVal. If it doesn't exist, add it
+    T peak(); //returns the value of the top most node.
     void pop(); //removes the top most node
     void print(); //prints the nodes
+    int size();
 };
 
 template <typename T>
@@ -389,7 +392,6 @@ void MinHeap<T>::sift(int index)
 
     int leftChild = getLeftChild(index);
     int rightChild = getRightChild(index);
-    int size = nodes.size();
     while (valid(leftChild)) //if there are children
     {
         int current = nodes[index]->data.second;
@@ -464,18 +466,31 @@ void MinHeap<T>::add(T item, int val)
 }
 
 template<typename T>
-void MinHeap<T>::update(T item, int oldVal, int val) //finding an element is typically linear but we can slightly shorten the search time if we know the old value
+int MinHeap<T>::find(T item)
+{
+    int size = nodes.size();
+    for (int i = 0; i < size; ++i)
+    {
+        if (nodes[i]->data.first == item)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+template<typename T>
+int MinHeap<T>::find(T item, int val)
 {
     int index = 0;
-    int size = nodes.size();
     std::stack<int> dfs; //stack of indicies we missed and have to search through later.
     while (valid(index) || dfs.size() != 0)
     {
         int current = nodes[index]->data.second;
-        if (current != oldVal)
+        if (current != val || nodes[index]->data.first != item)
         {
             int leftChild = getLeftChild(index);
-            if (current > oldVal || !valid(leftChild))//can't search here. All children will be even larger or there are no more children
+            if (current > val || !valid(leftChild))//can't search here. All children will be even larger or there are no more children
             {
                 if (dfs.size() > 0)
                 {
@@ -498,23 +513,37 @@ void MinHeap<T>::update(T item, int oldVal, int val) //finding an element is typ
                 }
             }
         }
-        else //we found it yay!
+        else //found it!
         {
-            nodes[index]->data.second = val;
-            sift(index);
-            break;
+            return index;
         }
+    }
+    return -1;
+}
+
+template<typename T>
+void MinHeap<T>::update(T item, int oldVal, int val) //finding an element is typically linear but we can slightly shorten the search time if we know the old value
+{
+    int index = find(item, oldVal);
+    if (index != -1)
+    {
+        nodes[index]->data.second = val;
+        sift(index);
+    }
+    else
+    {
+        add(item,val);
     }
 }
 
 template <typename T>
-T& MinHeap<T>::peak() //returns the value of the top most node.
+T MinHeap<T>::peak() //returns the value of the top most node.
 {
     if (nodes.size() == 0)
     {
-        throw std::logic_error ("Can't peak empty MinHeap");
+        throw std::logic_error ("Can't peak at empty MinHeap");
     }
-    return nodes[0].data.first;
+    return nodes[0]->data.first;
 }
 
 template <typename T>
@@ -524,7 +553,6 @@ void MinHeap<T>::pop() //removes the top most node
     delete ptr;
     swap(nodes.size() - 1, 0);
     nodes.pop_back(); //destroy the formerly highest node
-    int i = 0;
     int size = nodes.size();
     sift(0);
 }
@@ -545,5 +573,11 @@ void MinHeap<T>::print()
     }
     stream <<"]\n";
     fastPrint(stream.str());
+}
+
+template<typename T>
+int MinHeap<T>::size()
+{
+    return nodes.size();
 }
 #endif // VANILLA_H_INCLUDED

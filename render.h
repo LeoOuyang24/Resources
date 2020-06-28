@@ -15,15 +15,19 @@
 
 int loadShaders(const GLchar* source, GLenum shaderType );
 double pointDistance(const glm::vec2& v1, const glm::vec2& v2);
-glm::vec2 midpoint(const glm::vec4& v1); //midpoint of a line
+glm::vec2 findMidpoint(const glm::vec4& v1); //midpoint of a line
 bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2);
 glm::vec4 vecIntersectRegion(const glm::vec4& vec1, const glm::vec4& vec2); //returns the region of two colliding rects
+double vecDistance(const glm::vec4& vec1, const glm::vec4& vec2); //gets the distance between two rects. 0 if they are intersecting
 bool vecContains(glm::vec4 r1, glm::vec4 r2); //returns true if r2 contains r1
 bool pointInVec(const glm::vec4& vec1, double x, double y, double angle = 0); //angle of vec1 is by default 0
-double pointVecDistance(const glm::vec4& vec, float x, float y); //shortest distance from the point to the rectangle
+double pointVecDistance(const glm::vec4& vec, float x, float y); //shortest distance from the point to the rectangle. 0 if the point is in the rect
+glm::vec2 closestPointOnVec(const glm::vec4& vec, const glm::vec2& point); //returns the point on vec that is the closest distance to point. Returns point if point is in vec
 double pointLineDistance(const glm::vec4& line, const glm::vec2& point); //rotates line until is is parallel to the x-axis, then computes distance from point to line
-bool lineInVec(const glm::vec2& p1, const glm::vec2& p2, const  glm::vec4& r1, double angle = 0); //angle of r1 is by default 0
 bool lineInLine(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2);
+glm::vec2 lineLineIntersect(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2); //returns the point at which two lines intersect. Returns {0,0} if there is no intersection. Returns a1 if the two lines are the same. The intersection is based on the line segments not the hypothetical infinite lines
+bool lineInVec(const glm::vec2& p1, const glm::vec2& p2, const  glm::vec4& r1, double angle = 0); //angle of r1 is by default 0
+
 class RenderProgram;
 void drawLine(RenderProgram& program,glm::vec3 color,const std::vector<glm::vec4>& points);
 void drawCircle(RenderProgram& program, glm::vec3 color,double x, double y, double radius);

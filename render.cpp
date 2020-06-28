@@ -14,15 +14,11 @@ double pointDistance(const glm::vec2& v1, const glm::vec2& v2)
     return sqrt(pow(v1.x - v2.x,2) + pow(v1.y - v2.y,2));
 }
 
-glm::vec2 midpoint(const glm::vec4& v1)
+glm::vec2 findMidpoint(const glm::vec4& v1)
 {
-    return {v1.x + v1.z/2, v1.y + v1.a/2};
+    return {(v1.x + v1.z)/2, (v1.y + v1.a)/2};
 }
 
-double vecDistance(const glm::vec2& v1, const glm::vec2& v2)
-{
-    return sqrt(pow(v1.x-v2.x,2) + pow(v1.y - v2.y,2));
-}
 bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2)
 {
     if (vec1.z < 0 || vec1.a < 0 || vec2.z < 0 || vec2.a < 0) //if a dimension is negative, we will have to rearrange where the corners are
@@ -71,11 +67,40 @@ glm::vec4 vecIntersectRegion(const glm::vec4& vec1, const glm::vec4& vec2) //ret
 }
 
 
+double vecDistance(const glm::vec4& rect1, const glm::vec4& rect2)
+{
+    glm::vec2 comp = {0,0}; //the horizontal and vertical components of the distance
+    glm::vec4 region = vecIntersectRegion(rect1,rect2);
+    if (region.z == 0) //there is no horizontal overlap. This means that the rect are left and right of each other but with no intersection
+    {
+        double right = std::min(rect1.x + rect1.z, rect2.x + rect2.z);
+        double left =  std::max(rect1.x, rect2.x);
+        comp.x = std::max(right,left) - std::min(right,left);
+    }
+    if (region.a == 0) //same as before but for vertical overlap
+    {
+        double down = std::min(rect1.y + rect1.a, rect2.y + rect2.a);
+        double up =  std::max(rect1.y, rect2.y);
+        comp.y = std::max(up,down) - std::min(up,down);
+    }
+    return sqrt(pow(comp.x,2) + pow(comp.y,2));
+}
+
 bool pointInVec(const glm::vec4& vec1, double x, double y, double angle)
 {
     glm::vec2 center = {vec1.x + vec1.z/2, vec1.y+vec1.a/2};
     glm::vec2 rotated = rotatePoint({x,y},center,-angle);
     return rotated.x >= vec1.x && rotated.x <= vec1.x + vec1.z && rotated.y >= vec1.y && rotated.y <= vec1.y +vec1.a;
+}
+
+double pointVecDistance(const glm::vec4& vec, float x, float y)
+{
+    return sqrt(pow(std::min(vec.x + vec.z,std::max(vec.x, x)) - x,2) + pow(std::min(vec.y + vec.a,std::max(vec.y, y)) - y,2));
+}
+
+glm::vec2 closestPointOnVec(const glm::vec4& vec, const glm::vec2& point) //returns the point on vec that is the closest distance to point. Returns point if point is in vec
+{
+    return {std::min(vec.x + vec.z,std::max(vec.x, point.x)),std::min(vec.y + vec.a,std::max(vec.y, point.y))};
 }
 
 glm::vec2 rotatePoint(const glm::vec2& p, const glm::vec2& rotateAround, double angle)
@@ -112,11 +137,6 @@ double pointLineDistance(const glm::vec4& line, const glm::vec2& point)
 
 }
 
-double pointVecDistance(const glm::vec4& vec, float x, float y)
-{
-    return sqrt(pow(std::min(vec.x + vec.z,std::max(vec.x, x)) - x,2) + pow(std::min(vec.y + vec.a,std::max(vec.y, y)) - y,2));
-}
-
 bool lineInLine(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2)
 {
     glm::vec2 intersect = {0,0};
@@ -130,7 +150,7 @@ bool lineInLine(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, c
     {
         double slope1 = 0;
         double yInt1 = 0;
-        if (a1.x - a2.x != 0)
+        if (a1.x - a2.x != 0) //if not vertical line
         {
             slope1 = (a1.y - a2.y)/(a1.x-a2.x);
             yInt1 = a1.y - slope1*a1.x;
@@ -176,8 +196,51 @@ bool lineInLine(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, c
             intersect.y >= std::min(b1.y, b2.y) -.001 && intersect.y <= std::max(b1.y, b2.y) + .001;
 }
 
-bool lineInVec(const glm::vec2& point1,const glm::vec2& point2, const glm::vec4& r1, double angle) //given points p1 and p2, with p1 having the lesser x value, this draws a line between the 2 points and checks t
-{                                                                                                    //see if that line intersects with any of the sides of r1.
+glm::vec2 lineLineIntersect(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2)
+{
+    glm::vec2 intersect = {0,0};
+    glm::vec2 nonVert = {0,0}; //this equals the slope and yInt of the line that is not vertical, or line b1-b2 if neither are vertical.
+     if (lineInLine(a1,a2,b1,b2))
+     {
+         if (a1.x == a2.x && b1.x == b2.x)
+         {
+             intersect = a1;
+         }
+         else
+         {
+             double slope1 = 0;
+             if (b1.x == b2.x)
+             {
+                 slope1 = (a1.y - a2.y)/(a1.x - a2.x);
+                 intersect.x = b1.x;
+                 intersect.y = slope1*b1.x + a1.y - slope1*a1.x;
+             }
+             else if (a1.x == a2.x)
+             {
+                 slope1 = (b1.y - b2.y)/(b1.x - b2.x);
+                 intersect.x = a1.x;
+                 intersect.y = slope1*a1.x + b1.y - slope1*b1.x;    //if both lines are the same, this should return a1.y
+             }
+             else //neigther is vertical
+             {
+                 slope1 = (a1.y - a2.y)/(a1.x - a2.x);
+                 double slope2 = (b1.y - b2.y)/(b1.x - b2.x);
+                 double yInt1 = a1.y - slope1*a1.x;
+                 double yInt2 = b1.y - slope2*b1.x;
+                 intersect.x = (yInt1 - yInt2)/(slope2 - slope1);
+                 intersect.y = intersect.x*slope1 + yInt1;
+             }
+         }
+     }
+    return intersect;
+}
+
+bool lineInVec(const glm::vec2& point1,const glm::vec2& point2, const glm::vec4& r1, double angle) //given points p1 and p2, with p1 having the lesser x value, this draws a line between the 2 points and checks to
+{                                        //see if that line intersects with any of the sides of r1.
+    if (point1.x > point2.x)
+    {
+        return lineInVec(point2,point1,r1,angle);
+    }
     glm::vec2 center = {r1.x + r1.z/2, r1.y + r1.a/2};
 
     glm::vec2 p1 = rotatePoint(point1,center,-angle);
