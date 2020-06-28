@@ -138,7 +138,7 @@ void Font::write(RenderProgram& p, const FontParameter& param)
 //std::cout << length << std::endl;
     double scale = std::min(param.rect.z/dimen.x,param.rect.a/(maxVert.y + maxVert.x));
    // std::cout << scale << std::endl;
-    double maxHeight = (maxVert.x + maxVert.y);
+   // double maxHeight = (maxVert.x + maxVert.y);
    // PolyRender::requestRect({x,param.rect.y + maxVert.x, param.rect.z,param.rect.a - maxVert.x},{1,0,0,1},true,0,param.z);
     for (c = param.text.begin(); c != param.text.end(); c++)
     {
