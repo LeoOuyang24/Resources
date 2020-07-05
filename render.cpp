@@ -66,6 +66,11 @@ glm::vec4 vecIntersectRegion(const glm::vec4& vec1, const glm::vec4& vec2) //ret
     return answer;
 }
 
+bool vecInside(const glm::vec4& vec1, const glm::vec4& vec2)
+{
+    glm::vec4 region = vecIntersectRegion(vec1,vec2);
+    return region.z > 0 && region.a > 0;
+}
 
 double vecDistance(const glm::vec4& rect1, const glm::vec4& rect2)
 {
@@ -84,6 +89,11 @@ double vecDistance(const glm::vec4& rect1, const glm::vec4& rect2)
         comp.y = std::max(up,down) - std::min(up,down);
     }
     return sqrt(pow(comp.x,2) + pow(comp.y,2));
+}
+
+bool vecContains(glm::vec4 r1, glm::vec4 r2)
+{
+    return (r1.x >= r2.x && r1.x + r1.z <= r2.x + r2.z && r1.y >= r2.y && r1.y + r1.a <= r2.y + r2.a);
 }
 
 bool pointInVec(const glm::vec4& vec1, double x, double y, double angle)
@@ -235,6 +245,45 @@ glm::vec2 lineLineIntersect(const glm::vec2& a1, const glm::vec2& a2, const glm:
     return intersect;
 }
 
+glm::vec2 lineLineIntersectExtend(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2) //returns the point at which two lines intersect. Returns {0,0} if there is no intersection. Returns a1 if the two lines are the same. The intersection is based on the line segments not the hypothetical infinite lines
+{
+    if (a1.x == a2.x && b1.x == b2.x)
+    {
+        if (a1.x != b1.x)
+        {
+            return {0,0};
+        }
+        else
+        {
+            return a1;
+        }
+    }
+    else
+    {
+        if (a1.x == a2.x)
+        {
+            double slope = (b1.y - b2.y)/(b1.x - b2.x);
+            return {a1.x,b1.y + slope*(a1.x - b1.x)};
+        }
+        else if (b1.x == b2.x)
+        {
+            double slope = (a1.y - a2.y)/(a1.x - a2.x);
+            return {b1.x,a1.y + slope*(b1.x - a1.x)};
+        }
+        else
+        {
+            double slope1 = (a1.y - a2.y)/(a1.x - a2.x);
+            double slope2 = (b1.y - b2.y)/(b1.x - b2.x);
+
+            double yInt1 = a1.y - slope1*a1.x;
+            double yInt2 = b1.y - slope2*b1.x;
+
+            double x= (yInt1 - yInt2)/(slope2 - slope1);
+            return {x, slope2*x + yInt2};
+        }
+    }
+}
+
 bool lineInVec(const glm::vec2& point1,const glm::vec2& point2, const glm::vec4& r1, double angle) //given points p1 and p2, with p1 having the lesser x value, this draws a line between the 2 points and checks to
 {                                        //see if that line intersects with any of the sides of r1.
     if (point1.x > point2.x)
@@ -255,9 +304,20 @@ bool lineInVec(const glm::vec2& point1,const glm::vec2& point2, const glm::vec4&
             lineInLine(topLeft, botLeft, p1, p2) || lineInLine(botLeft, botRight, p1, p2);
 }
 
-bool vecContains(glm::vec4 r1, glm::vec4 r2)
+glm::vec4 absoluteValueRect(const glm::vec4& rect) //a better name would be absoluteValueRect or absRect
 {
-    return (r1.x >= r2.x && r1.x + r1.z <= r2.x + r2.z && r1.y >= r2.y && r1.y + r1.a <= r2.y + r2.a);
+    glm::vec4 fixed = rect;
+    if (rect.z < 0 && rect.x > rect.x + rect.z)
+    {
+        fixed.x = rect.x + rect.z;
+        fixed.z = abs(rect.z);
+    }
+    if (rect.a < 0 && rect.y > rect.y + rect.a)
+    {
+        fixed.y = rect.y + rect.a;
+        fixed.a = -1*rect.a;
+    }
+    return fixed;
 }
 
 void drawRectangle(RenderProgram& program, const glm::vec3& color, const glm::vec4& rect, double angle)
@@ -1085,8 +1145,11 @@ void PolyRender::renderLines()
 {
     glBindVertexArray(VAO);
     int size = lines.size();
-    GLfloat verticies[size*3];
-    GLfloat colors[size*4];
+    int vertSize = size*3;
+    int colorSize = size*4;
+    size_t floatSize = sizeof(GLfloat);
+    GLfloat* verticies = new GLfloat[size*3];
+    GLfloat* colors = new GLfloat[size*4];
     for (int i = 0; i < size; i ++)
     {
        addPointToBuffer(verticies,lines[i].first,i*3);
@@ -1095,13 +1158,13 @@ void PolyRender::renderLines()
     }
 //std::cout << glGetError() << std::endl;
     glBindBuffer(GL_ARRAY_BUFFER,lineVBO);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(verticies),verticies,GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,vertSize*floatSize,verticies,GL_STATIC_DRAW);
     glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,(void*)0);
     glEnableVertexAttribArray(0);
     //glVertexAttribDivisor(0,1);
 
     glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(colors), colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,colorSize*floatSize, colors, GL_STATIC_DRAW);
     glVertexAttribPointer(1,4,GL_FLOAT,GL_FALSE,0,(void*)0);
     glEnableVertexAttribArray(1);
     //glVertexAttribDivisor(1,1);
@@ -1112,6 +1175,9 @@ void PolyRender::renderLines()
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER,0);
     lines.clear();
+
+    delete [] verticies;
+    delete [] colors;
 }
 
 void PolyRender::renderPolygons()

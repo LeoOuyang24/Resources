@@ -120,6 +120,7 @@ void QuadTree::add(const std::shared_ptr<Positional>& obj)
     }
     else
     {
+
         vec.push_back(obj);
         //vec.emplace_back((new Positional({1,1})));
         if (vec.size() > maxCapacity)
@@ -137,6 +138,7 @@ void QuadTree::add(const std::shared_ptr<Positional>& obj)
             }
         }
     }
+
 }
 
 void QuadTree::getNearestHelper(positionalVec& vec, Positional& obj)
@@ -314,11 +316,11 @@ void QuadTree::move(QuadTree& t1, QuadTree& t2, Positional& obj)
     }
 }
 
-void QuadTree::remove(Positional& obj)
+bool QuadTree::remove(Positional& obj)
 {
     if (!obj.collides(region)) //if obj isn't even in the region, don't bother
     {
-        return ;
+        return false ;
     }
     int size = vec.size();
     for (int i = 0; i < size; i ++) //see if obj is in this quadtree
@@ -326,17 +328,21 @@ void QuadTree::remove(Positional& obj)
         if (vec[i].get() == &obj)
         {
             vec.erase(vec.begin() + i);
-            return;
+            std::string str;
+            return true;
         }
     }
     if (nodes[0]) //if not in this quadtree, search children
     {
         for (int i = 0; i < 4; i ++)
         {
-            nodes[i]->remove(obj);
+            if (nodes[i]->remove(obj)) //if one of the children found it, remove and we're done!
+            {
+                return true;
+            }
         }
     }
-    return;
+    return false;
 }
 
 void QuadTree::map(void (*fun)(const Positional& pos))
@@ -352,7 +358,9 @@ void QuadTree::map(void (*fun)(const Positional& pos))
         {
             for (int i = 0; i < 4; ++i)
             {
+             //   printRect(nodes[i]->getRect());
                 nodes[i]->map(fun);
+               // printRect(nodes[i]->getRect());
             }
         }
     }

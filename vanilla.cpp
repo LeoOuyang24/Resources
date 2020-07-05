@@ -206,7 +206,6 @@ int convertTo1(double number) // a method that converts a number to 1 or -1 depe
     {
         return 0;
     }
- //   std::cout << number/fabs(number);
     return number/(fabs(number));
 }
 
