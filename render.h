@@ -142,6 +142,8 @@ public:
     void setTint(glm::vec3 color);
     void mirror();
     void flip();
+    static unsigned char* getData(int* w, int* h, int* c);
+    void freeData(unsigned char* data);
    // void map(RenderProgram& program,double width, double height,const glm::vec4& base, const std::vector<glm::vec2>& points);
 };
 
@@ -189,14 +191,15 @@ class SpriteWrapper
 {
 protected:
     Sprite* spr = nullptr;
-    std::vector<SpriteParameter> parameters;
 public:
-    void init(std::string source, bool transparent);
-    void init(Sprite* spr);
+    virtual void init(std::string source, bool transparent);
+    virtual void init(Sprite* spr);
     virtual void reset();
     virtual void render();
     void request(SpriteParameter&& param);
-    ~SpriteWrapper();
+    virtual ~SpriteWrapper();
+        std::vector<SpriteParameter> parameters;
+
 };
 
 class AnimationWrapper : public SpriteWrapper

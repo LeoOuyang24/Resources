@@ -1,15 +1,17 @@
 #version 330 core
 
-in vec2 TexCoords;
-out vec4 color;
+out vec4 fragColor;
+in vec2 texCoord;
+in vec4 shade;
+uniform sampler2D sprite;
 
-uniform sampler2D text;
-uniform vec4 textColor;
 void main()
 {
-    float a = texture(text, TexCoords).r;
-        vec4 sampled = vec4(1.0, 1.0, 1.0,a );
-        color = sampled*textColor;
+    vec4 text = texture(sprite,texCoord);
+    if (text.a < .5)
+    {
+        discard;
+    }
+    fragColor = vec4(text.r)*shade;
 
 }
-

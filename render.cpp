@@ -1247,4 +1247,3 @@ void PolyRender::render()
         renderPolygons();
     }
 }
-
