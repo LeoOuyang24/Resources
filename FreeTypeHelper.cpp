@@ -150,6 +150,7 @@ glm::vec2 Font::getDimen(std::string text, GLfloat hScale, GLfloat vScale)
     std::string::const_iterator c;
     double totalWidth = 0, maxHeight = 0;
     auto end = text.end();
+   // std::cout << hScale << " " << vScale << std::endl;
     for (c = text.begin(); c != end; ++c)
     {
         Character* ch = &(characters[*c].get()->getCharacter());
@@ -162,11 +163,14 @@ glm::vec2 Font::getDimen(std::string text, GLfloat hScale, GLfloat vScale)
 
 void Font::requestWrite(FontParameter&& param)
 {
-    glm::vec2 center = {param.rect.x + param.rect.z/2, param.rect.y + param.rect.a/2};
-    double x = param.rect.x;
+    glm::vec4 absRect = absoluteValueRect(param.rect);
+    glm::vec2 center = {absRect.x + absRect.z/2, absRect.y + absRect.a/2};
+    auto screenDimen = (RenderProgram::getScreenDimen()); //we need to find the dimensions of the screen vs the dimensions of the projection matrix and scale accordingly. We will assume that the ortho and screen dimen start at 0
+
+    double x = absRect.x;
     glm::vec2 dimen = getDimen(param.text,1,1);
     //std::cout << length << std::endl;
-    double scale = std::min(param.rect.z/dimen.x,param.rect.a/(maxVert.y + maxVert.x));
+    double scale = std::min((absRect.z/dimen.x),absRect.a/(maxVert.y + maxVert.x));
       //  std::cout << "Start: " << writeRequests.size() << std::endl;
     int size = param.text.size();
     for (int i = 0; i < size; ++i)
@@ -176,7 +180,7 @@ void Font::requestWrite(FontParameter&& param)
         const glm::vec2* bearing = &ch->getBearing();
         const glm::vec2* chSize = &ch->getSize();
         GLfloat xpos = x +bearing->x*scale;
-        GLfloat ypos = (param.rect.y) + (maxVert.x - bearing->y)*scale;
+        GLfloat ypos = (absRect.y)+ (maxVert.x - bearing->y)*scale;
         glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
         GLfloat w = chSize->x*scale;
         GLfloat h = (chSize->y)*scale;
