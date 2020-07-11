@@ -47,7 +47,7 @@ class RenderProgram
 
     unsigned int program;
     static int screenWidth, screenHeight;
-    static glm::vec2 xRange, yRange, zRange; //represents the smallest and largest values x,y,z can be
+    static glm::vec2 xRange, yRange, zRange; //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
 public:
     static GLuint VBO, VAO;
     static RenderProgram basicProgram, lineProgram; //basic allows for basic sprite rendering. Line program is simpler and renders lines.
@@ -63,7 +63,7 @@ public:
     static void setXRange(float x1, float x2);
     static void setYRange(float y1, float y2);
     static void setZRange(float z1, float z2);
-    static glm::mat4 getOrtho();
+    static glm::mat4 getOrtho(); //gets projection matrix
     static glm::vec2 getScreenDimen();
     void setMatrix4fv(std::string name, const GLfloat* value);
     void setVec3fv(std::string name,glm::vec3 value);
