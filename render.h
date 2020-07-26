@@ -30,6 +30,8 @@ glm::vec2 lineLineIntersect(const glm::vec2& a1, const glm::vec2& a2, const glm:
 glm::vec2 lineLineIntersectExtend(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2); //returns the point at which two lines intersect. Returns {0,0} if there is no intersection. Returns a1 if the two lines are the same. The intersection is based on the hypothetical infinite lines rather than the provided line segments
 bool lineInVec(const glm::vec2& p1, const glm::vec2& p2, const  glm::vec4& r1, double angle = 0); //angle of r1 is by default 0
 glm::vec4 absoluteValueRect(const glm::vec4& rect); //given a rect with at least one negative dimension, converts it into a regular rect with positive dimensions. A rect with already positive dimensions will return itself
+glm::vec2 pairtoVec(const std::pair<double,double>& pear); //converts a pair to a vec2
+
 
 class RenderProgram;
 void drawLine(RenderProgram& program,glm::vec3 color,const std::vector<glm::vec4>& points);
@@ -120,17 +122,17 @@ protected:
     unsigned int VBO=-1,modVBO = -1, VAO=-1;
     static const int floats; //the number of floats we pass everytime we render an instance/spriteParameter
     static const int floatSize; //size of floats in bytes;
-    void load(std::string source,bool transparent);
+    void load(std::string source);
     virtual void loadData(GLfloat* data, const SpriteParameter& parameter, int index);
     void draw( RenderProgram& program, GLfloat* data, int instances); //draws the sprite. Assumes ModVBO has already been loaded
 public:
-    Sprite(std::string source, bool transparent);
+    Sprite(std::string source);
     Sprite()
     {
         texture = -1;
     }
     ~Sprite();
-    void init(std::string source, bool transparent);
+    void init(std::string source);
     void loadVertices();
     void loadVertices(const std::vector<float>& verticies);
     template<class T>void loadBuffer(unsigned int& buffer, int location, T arr[], int size, int dataSize, int divisor = 0); //data size is how much data per entry. Divisor is how for glvertexAttribDivisor. Default 0
@@ -154,17 +156,17 @@ class Sprite9 : public Sprite // This sprite has been split into 9 sections that
     glm::vec2 heights; //heights of the frame on either side;
     void loadData(GLfloat* data, const SpriteParameter& parameter, int index);
 public:
-    Sprite9(std::string source, bool transparent, glm::vec2 W, glm::vec2 H);
+    Sprite9(std::string source, glm::vec2 W, glm::vec2 H);
     Sprite9()
     {
 
     }
     int getFloats();
-    void init(std::string source, bool transparent, glm::vec2 W, glm::vec2 H);
+    void init(std::string source, glm::vec2 W, glm::vec2 H);
 
 };
 
-struct AnimationParameter : public SpriteParameter//the main difference between this class and SpriteParameters is that this one provides the time at which the animation started and the fps
+struct AnimationParameter//the main difference between this class and SpriteParameters is that this one provides the time at which the animation started and the fps
 {
     double start = -1; //the time at which the animation started, -1 if it hasn't started
     double fps = -1; //the fps for the animation. -1 means use the default
@@ -172,19 +174,21 @@ struct AnimationParameter : public SpriteParameter//the main difference between 
 
 };
 
+typedef std::pair<SpriteParameter,AnimationParameter> FullAnimationParameter;
+
 class BaseAnimation : public Sprite //the actual animation object
 {
     double fps = 0;
     glm::vec2 frameDimen; //proportion of the spritesheet of each frame
     glm::vec4 subSection = {0,0,0,0}; //subsection.xy is the origin of the sprite sheet. subsection.za is the framesPerRow and the number of rows wanted. This is a standardized value (0-1).
 public:
-    BaseAnimation(std::string source, bool transparent, double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0});
+    BaseAnimation(std::string source, double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0});
     BaseAnimation()
     {
 
     }
-    void init(std::string source, bool transparent, double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
-    void renderInstanced(RenderProgram& program, const std::vector<AnimationParameter>& parameters);
+    void init(std::string source,double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
+    void renderInstanced(RenderProgram& program, const std::vector<FullAnimationParameter>& parameters);
 };
 
 class SpriteWrapper
@@ -192,24 +196,25 @@ class SpriteWrapper
 protected:
     Sprite* spr = nullptr;
 public:
-    virtual void init(std::string source, bool transparent);
+    virtual void init(std::string source);
     virtual void init(Sprite* spr);
     virtual void reset();
     virtual void render();
     void request(SpriteParameter&& param);
     virtual ~SpriteWrapper();
-        std::vector<SpriteParameter> parameters;
+    std::vector<SpriteParameter> parameters;
 
 };
 
+
 class AnimationWrapper : public SpriteWrapper
 {
-    std::vector<AnimationParameter> aParameters;
+    std::vector<FullAnimationParameter> aParameters;
 public:
     void init(BaseAnimation* a);
     void reset();
     void render();
-    void request(AnimationParameter&& param);
+    void request(const SpriteParameter& sparam,const AnimationParameter& aparam);
     ~AnimationWrapper();
 };
 
@@ -240,9 +245,10 @@ struct PolyRender
     static void requestPolygon(const std::vector<glm::vec3>& points, const glm::vec4& color);
     static void render();
     static void renderMesh(float* mesh, int w, int h);
-private:
-    static void renderLines();
+    static void renderLines(); //renders lines. Can be called from other functions to render all lines currently requested
     static void renderPolygons();
+private:
+
     static unsigned short restart; //restart indice
 };
 

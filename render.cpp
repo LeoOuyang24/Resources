@@ -320,6 +320,11 @@ glm::vec4 absoluteValueRect(const glm::vec4& rect) //a better name would be abso
     return fixed;
 }
 
+glm::vec2 pairtoVec(const std::pair<double,double>& pear)
+{
+    return {pear.first, pear.second};
+}
+
 void drawRectangle(RenderProgram& program, const glm::vec3& color, const glm::vec4& rect, double angle)
 {
     glm::vec2 center = {rect.x+rect.z/2,rect.y+rect.a/2};
@@ -510,11 +515,7 @@ void RenderProgram::init(int screenWidth, int screenHeight)
     RenderProgram::screenWidth = screenWidth;
     RenderProgram::screenHeight = screenHeight;
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,SDL_GL_CONTEXT_PROFILE_CORE); //set version
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 3 );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
+
 
     glewExperimental = true;
 
@@ -529,9 +530,9 @@ void RenderProgram::init(int screenWidth, int screenHeight)
     yRange = {0,screenHeight};
     zRange = {-10,10}; //magic numbers. Can be anything
 
-glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);    glEnable(GL_BLEND);
+glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+    glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
-   // glEnable(GL_CULL_FACE);
     glEnable(GL_PRIMITIVE_RESTART);
     glClearColor(1,1,1,1);
 
@@ -619,7 +620,7 @@ void RenderProgram::setVec2fv(std::string name, glm::vec2 value)
 
 const int Sprite::floats = 26;
 const int Sprite::floatSize = sizeof(float);
-   void Sprite::load(std::string source,bool transparent)
+   void Sprite::load(std::string source)
     {
 
         glGenVertexArrays(1, &VAO);
@@ -639,7 +640,22 @@ const int Sprite::floatSize = sizeof(float);
 
         unsigned char* data = stbi_load(source.c_str(),&width, &height, &channels, 0);
 
-        int rgb = GL_RGB*!transparent + GL_RGBA*transparent;
+        int rgb = 0;// GL_RGB*!transparent + GL_RGBA*transparent;
+        switch (channels)
+        {
+        case 1:
+            rgb = GL_RED;
+            break;
+        case 2:
+            rgb = GL_RG;
+            break;
+        case 3:
+            rgb = GL_RGB;
+            break;
+        case 4:
+            rgb = GL_RGBA;
+            break;
+        }
         if (data)
         {
             glTexImage2D(GL_TEXTURE_2D, 0, rgb,width, height, 0, rgb, GL_UNSIGNED_BYTE, data);
@@ -656,9 +672,9 @@ const int Sprite::floatSize = sizeof(float);
         glBindBuffer(GL_ARRAY_BUFFER,0);
     }
 
-Sprite::Sprite( std::string source, bool transparent)
+Sprite::Sprite( std::string source)
     {
-        init(source,transparent);
+        init(source);
     }
     Sprite::~Sprite()
     {
@@ -669,9 +685,9 @@ void Sprite::setTint(glm::vec3 color)
 {
     tint = color;
 }
-void Sprite::init(std::string source, bool transparent)
+void Sprite::init(std::string source)
     {
-        load(source, transparent);
+        load(source);
     }
 void Sprite::loadVertices()
 {
@@ -734,8 +750,9 @@ void Sprite::loadData(GLfloat* data, const SpriteParameter& parameter, int index
     {
       //  GLsizei stride = (floatSize*floats); //space between everything. We are passing a 4x4 matrix, a vec4, a vec3, and a single float
             const SpriteParameter* current = &parameter;
+          //  std::cout << parameter.rect.x << std::endl;
             glm::mat4 matt = glm::mat4(1.0f);
-            matt = glm::translate(matt,{(int)current->rect.x + (current->rect.z*(current->rect.z != 2))/2,(int)current->rect.y + (current->rect.a*(current->rect.a != 2))/2,0}); //scaling messes with the position of the object. If the object is being rendered to a size of 2x2, there is no reason to counteract the scaling.
+            matt = glm::translate(matt,{current->rect.x + (current->rect.z)/2,current->rect.y + (current->rect.a)/2,0}); //scaling messes with the position of the object. If the object is being rendered to a size of 2x2, there is no reason to counteract the scaling.
             matt = glm::rotate(matt, current->radians, glm::vec3(0,0,1));
             matt = glm::scale(matt, {current->rect.z/2, current->rect.a/2,1});
            const float *pSource = (const float*)glm::value_ptr(matt);
@@ -839,14 +856,14 @@ unsigned int Sprite::getVAO()
     return VAO;
 }
 const int Sprite9::floats9 = Sprite::floats*9;
-Sprite9::Sprite9(std::string source, bool transparent, glm::vec2 W, glm::vec2 H) : Sprite(source, transparent)
+Sprite9::Sprite9(std::string source, glm::vec2 W, glm::vec2 H) : Sprite(source)
 {
     widths = W;
     heights = H;
 }
-void Sprite9::init(std::string source, bool transparent, glm::vec2 W, glm::vec2 H)
+void Sprite9::init(std::string source,glm::vec2 W, glm::vec2 H)
 {
-    Sprite::init(source, transparent);
+    Sprite::init(source);
     widths = W;
     heights = H;
 }
@@ -882,13 +899,13 @@ void Sprite9::loadData(GLfloat* data, const SpriteParameter& parameter, int inde
         }
 }
 
-BaseAnimation::BaseAnimation(std::string source, bool transparent, double speed, int perRow, int rows, const glm::vec4& sub)
+BaseAnimation::BaseAnimation(std::string source, double speed, int perRow, int rows, const glm::vec4& sub)
 {
-    init(source,transparent,speed,perRow,rows,  sub);
+    init(source,speed,perRow,rows,  sub);
 }
-void BaseAnimation::init(std::string source, bool transparent, double speed, int perRow, int rows, const glm::vec4& sub)
+void BaseAnimation::init(std::string source, double speed, int perRow, int rows, const glm::vec4& sub)
 {
-    Sprite::init(source, transparent);
+    Sprite::init(source);
     fps = speed;
     frameDimen.x = 1.0/(perRow);
     frameDimen.y = 1.0/(rows);
@@ -902,28 +919,31 @@ void BaseAnimation::init(std::string source, bool transparent, double speed, int
         subSection.a = rows;
     }
 }
-void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<AnimationParameter>& parameters)
+void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<FullAnimationParameter>& parameters)
 {
     int size = parameters.size();
-    std::vector<SpriteParameter> param;
+    std::vector<SpriteParameter> params;
     int perRow = subSection.z; //frame per rows
     int rows = subSection.a; //number of rows
     double current =  SDL_GetTicks();
     for (int i = 0; i < size; i ++)
     {
-        const AnimationParameter* ptr = &parameters[i];
+        const AnimationParameter* ptr = &parameters[i].second;
+        SpriteParameter param = parameters[i].first;
+
         double timeSince = current - ptr->start;
         int framesSince = ((ptr->fps == -1)*fps + (ptr->fps != -1)*ptr->fps)*timeSince; //frames that have passed
-        param.push_back({ptr->rect,ptr->radians,ptr->effect,ptr->tint,&RenderProgram::basicProgram,ptr->z,{frameDimen.x*(framesSince%(perRow)) + subSection.x,
-                                                            (frameDimen.y*((framesSince/perRow)%rows)) + subSection.y,frameDimen.x, frameDimen.y}});
+        param.portion = {frameDimen.x*(framesSince%(perRow)) + subSection.x,
+        (frameDimen.y*((framesSince/perRow)%rows)) + subSection.y,frameDimen.x, frameDimen.y};
+        params.push_back({param});
     }
-    Sprite::renderInstanced(program, param);
+    Sprite::renderInstanced(program, params);
 }
 
 std::vector<SpriteWrapper*> SpriteManager::sprites;
-void SpriteWrapper::init(std::string source, bool transparent)
+void SpriteWrapper::init(std::string source)
 {
-    spr = new Sprite(source, transparent);
+    spr = new Sprite(source);
     SpriteManager::addSprite(*this);
 }
 
@@ -1001,9 +1021,9 @@ void AnimationWrapper::render()
             ptr->renderInstanced(RenderProgram::basicProgram,aParameters);
     }
 }
-void AnimationWrapper::request(AnimationParameter&& param)
+void AnimationWrapper::request(const SpriteParameter& sparam, const AnimationParameter& aparam)
 {
-    aParameters.push_back(param);
+    aParameters.push_back({sparam,aparam});
 }
 AnimationWrapper::~AnimationWrapper()
 {

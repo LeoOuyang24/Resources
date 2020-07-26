@@ -67,6 +67,7 @@ void QuadTree::clear()
         for (int i = 0; i < 4; i ++)
         {
             delete nodes[i];
+            nodes[i] = nullptr;
         }
     }
    // std::cout << vec.size() << " Deleted!" << std::endl;
@@ -401,6 +402,7 @@ void RawQuadTree::clear()
         for (int i = 0; i < 4; i ++)
         {
             delete nodes[i];
+            nodes[i] = nullptr;
         }
     }
    // std::cout << vec.size() << " Deleted!" << std::endl;
