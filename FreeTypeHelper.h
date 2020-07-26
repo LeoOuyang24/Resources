@@ -20,7 +20,7 @@
 struct FontParameter //Represents all the information  required to call the write function given to a font
 {
     std::string text = "";
-    glm::vec4 rect = {0,0,0,0};
+    glm::vec4 rect = {0,0,0,0}; //if the width is negative, the height is assumed to be the font size
     double angle = 0;
     glm::vec4 color = {0,0,0,1};
     float z = 0;
