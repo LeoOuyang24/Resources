@@ -67,7 +67,7 @@ public:
     ~QuadTree();
     int count (); //total number of things in this quadtree and its children
     int size(); //number of things in this quadtree
-    bool remove(Positional& obj); //removes the obj. This only removes the pointer; doesn't actually delete the object. Returns true if the object was deleted, false otherwise
+    bool remove(Positional& obj); //removes and deletes the obj.
     QuadTree* find(Positional& obj); //finds the quadtree obj belongs in. Returns null if the obj doesn't belong. Can return this QuadTree.
     positionalVec getNearest( Positional& obj); //get all Positionals that are in the same quadtree as obj
     positionalVec getNearest( const glm::vec4& area); //get all Positionals that intersect with area

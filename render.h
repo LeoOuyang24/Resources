@@ -20,7 +20,7 @@ bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2);
 glm::vec4 vecIntersectRegion(const glm::vec4& vec1, const glm::vec4& vec2); //returns the region of two colliding rects. Any given dimension will be 0 if there is no intersection in that direction.
 bool vecInside(const glm::vec4& vec1, const glm::vec4& vec2); //like vecIntersect but doesn't return true if the rect's only overlap is a line.
 double vecDistance(const glm::vec4& vec1, const glm::vec4& vec2); //gets the distance between two rects. 0 if they are intersecting
-bool vecContains(glm::vec4 r1, glm::vec4 r2); //returns true if r2 contains r1
+bool vecContains(glm::vec4 smallerRect, glm::vec4 biggerRect); //returns true if biggerRect contains smallerRect
 bool pointInVec(const glm::vec4& vec1, double x, double y, double angle = 0); //angle of vec1 is by default 0
 double pointVecDistance(const glm::vec4& vec, float x, float y); //shortest distance from the point to the rectangle. 0 if the point is in the rect
 glm::vec2 closestPointOnVec(const glm::vec4& vec, const glm::vec2& point); //returns the point on vec that is the closest distance to point. Returns point if point is in vec
@@ -181,6 +181,7 @@ class BaseAnimation : public Sprite //the actual animation object
     double fps = 0;
     glm::vec2 frameDimen; //proportion of the spritesheet of each frame
     glm::vec4 subSection = {0,0,0,0}; //subsection.xy is the origin of the sprite sheet. subsection.za is the framesPerRow and the number of rows wanted. This is a standardized value (0-1).
+    glm::vec4 getPortion(const AnimationParameter& param); //given animation parameter, returns the portion of the spreadsheet
 public:
     BaseAnimation(std::string source, double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0});
     BaseAnimation()
@@ -188,7 +189,9 @@ public:
 
     }
     void init(std::string source,double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
+    using Sprite::renderInstanced;
     void renderInstanced(RenderProgram& program, const std::vector<FullAnimationParameter>& parameters);
+    void renderInstanced(RenderProgram& program, const std::vector<SpriteParameter>& parameters);
 };
 
 class SpriteWrapper
@@ -214,6 +217,7 @@ public:
     void init(BaseAnimation* a);
     void reset();
     void render();
+    using SpriteWrapper::request;
     void request(const SpriteParameter& sparam,const AnimationParameter& aparam);
     ~AnimationWrapper();
 };
