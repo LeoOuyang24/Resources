@@ -8,9 +8,9 @@
 Button::Button(const glm::vec4& box,  void (*func)(), SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color)
 {
     this->font = font;
-    changeRect(box);
     toDo = func;
     this->paper = param;
+    changeRect(box);
     sprite = spr;
     backgroundColor = color;
 
@@ -44,23 +44,23 @@ void Button::press()
     }
 }
 
-void Button::render(int x, int y)
+void Button::render(float x, float y, float z, float xScale, float yScale)
 {
-    glm::vec4 renderRect = paper.rect;
-    renderRect.x += x;
+   // std::cout << rect.x << " " << rect.y << std::endl;
+    glm::vec4 renderRect = paper.rect*glm::vec4(xScale,yScale,xScale,yScale);
+    renderRect.x += x; //scale our button down first and then move it
     renderRect.y += y;
     if (!sprite && backgroundColor.a > 0) //if the sprite would over lap the background color or the backgroundColor is transparent, don't render it
     {
-        PolyRender::requestRect({renderRect.x, renderRect.y,rect.z, rect.a},backgroundColor,true,0,0);
+        PolyRender::requestRect(renderRect,backgroundColor,true,0,z);
     }
     else if (sprite)
     {
-        sprite->request({{renderRect.x, renderRect.y,rect.z, rect.a}});
+        sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,z});
+
     }
     if (font)
     {
-        FontParameter copyPaper = paper;
-        copyPaper.rect = renderRect;
         font->requestWrite({paper.text,renderRect,paper.angle,paper.color,paper.z});
     }
 }
@@ -109,19 +109,29 @@ void Window::init(const glm::vec4& box, SpriteWrapper* spr, const glm::vec4& bg)
     backgroundColor = bg;
 }
 
+const glm::vec4& Window::getRect()
+{
+    return rect;
+}
+
+int Window::countButtons()
+{
+    return buttons.size();
+}
+
 void Window::addButton(Button& button)
 {
     buttons.emplace_back(&button);
-    const glm::vec4* ptr = &(button.getRect());
-    button.changeRect({ptr->x + rect.x, ptr->y + rect.y, ptr->z, ptr->a});
 }
 
-void Window::update(int x, int y, bool clicked)
+void Window::update(int x, int y, int z, bool clicked,const glm::vec4& blit)
 {
+    x = (x - blit.x)*blit.z/rect.z; //scale the mouse Position
+    y = (y - blit.y)*blit.a/rect.a;
     int size = buttons.size();
     for (int i = 0; i < size; ++i)
     {
-        buttons[i].get()->render();
+        buttons[i].get()->render(blit.x,blit.y,z+.01,blit.z/rect.z,blit.a/rect.a);
         if (clicked && pointInVec(buttons[i].get()->getRect(),x,y,0))
         {
             buttons[i].get()->press();
@@ -129,12 +139,17 @@ void Window::update(int x, int y, bool clicked)
     }
     if (sprite)
     {
-        sprite->request({{rect}});
+        sprite->request({blit,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,z});
     }
     else if (backgroundColor.a > 0)
     {
-        PolyRender::requestRect(rect,backgroundColor,true,0,0);
+        PolyRender::requestRect(blit,backgroundColor,true,0,z);
     }
+}
+
+void Window::update(int x, int y, int z, bool clicked)
+{
+    update(x,y,z,clicked,rect);
 }
 
 void Interface::update()
@@ -143,7 +158,7 @@ void Interface::update()
     {
         int x, y;
         SDL_GetMouseState(&x, &y);
-        current->update(x,y,MouseManager::getJustClicked() == SDL_BUTTON_LEFT);
+        current->update(x,y,0,MouseManager::getJustClicked() == SDL_BUTTON_LEFT);
     }
 }
 

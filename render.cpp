@@ -899,6 +899,17 @@ void Sprite9::loadData(GLfloat* data, const SpriteParameter& parameter, int inde
         }
 }
 
+glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
+{
+        double current =  SDL_GetTicks();
+        int perRow = subSection.z; //frame per rows
+        int rows = subSection.a; //number of rows
+        double timeSince = current - param.start;
+        int framesSince = ((param.fps == -1)*fps + (param.fps != -1)*param.fps)*timeSince; //frames that have passed
+        return {frameDimen.x*(framesSince%(perRow)) + subSection.x,
+        (frameDimen.y*((framesSince/perRow)%rows)) + subSection.y,frameDimen.x, frameDimen.y};
+}
+
 BaseAnimation::BaseAnimation(std::string source, double speed, int perRow, int rows, const glm::vec4& sub)
 {
     init(source,speed,perRow,rows,  sub);
@@ -925,16 +936,31 @@ void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<Fu
     std::vector<SpriteParameter> params;
     int perRow = subSection.z; //frame per rows
     int rows = subSection.a; //number of rows
-    double current =  SDL_GetTicks();
     for (int i = 0; i < size; i ++)
     {
         const AnimationParameter* ptr = &parameters[i].second;
         SpriteParameter param = parameters[i].first;
 
-        double timeSince = current - ptr->start;
-        int framesSince = ((ptr->fps == -1)*fps + (ptr->fps != -1)*ptr->fps)*timeSince; //frames that have passed
-        param.portion = {frameDimen.x*(framesSince%(perRow)) + subSection.x,
-        (frameDimen.y*((framesSince/perRow)%rows)) + subSection.y,frameDimen.x, frameDimen.y};
+        //double timeSince = current - ptr->start;
+       // int framesSince = ((ptr->fps == -1)*fps + (ptr->fps != -1)*ptr->fps)*timeSince; //frames that have passed
+        param.portion = getPortion(*ptr);
+        params.push_back({param});
+    }
+    Sprite::renderInstanced(program, params);
+}
+
+void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<SpriteParameter>& parameters)
+{
+    int size = parameters.size();
+    std::vector<SpriteParameter> params;
+    int perRow = subSection.z; //frame per rows
+    int rows = subSection.a; //number of rows
+    for (int i = 0; i < size; i ++)
+    {
+        SpriteParameter param = parameters[i];
+        //double timeSince = current - ptr->start;
+       // int framesSince = ((ptr->fps == -1)*fps + (ptr->fps != -1)*ptr->fps)*timeSince; //frames that have passed
+        param.portion = getPortion({SDL_GetTicks(),-1});
         params.push_back({param});
     }
     Sprite::renderInstanced(program, params);
@@ -1015,10 +1041,14 @@ void AnimationWrapper::reset()
 }
 void AnimationWrapper::render()
 {
+    BaseAnimation* ptr = static_cast<BaseAnimation*>(spr);
     if (aParameters.size() > 0)
     {
-          BaseAnimation* ptr = static_cast<BaseAnimation*>(spr);
             ptr->renderInstanced(RenderProgram::basicProgram,aParameters);
+    }
+    if (parameters.size() > 0)
+    {
+            ptr->renderInstanced(RenderProgram::basicProgram,parameters); //it's possible we also have sprite parameters to render
     }
 }
 void AnimationWrapper::request(const SpriteParameter& sparam, const AnimationParameter& aparam)

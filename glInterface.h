@@ -20,7 +20,7 @@ public:
     Button(const glm::vec4& box, void (*func)(), SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color);
     Button(Button&& button);
     virtual void press();
-    virtual void render(int x = 0, int y = 0); //x and y are the offset if we want to render the button relative to something
+    virtual void render(float x = 0.0f, float y = 0.0f, float z = 0.0f, float xScale = 1, float yScale= 1); //x and y are the offset if we want to render the button relative to something
     const glm::vec4& getRect();
     void changeRect(const glm::vec4& rect);
 
@@ -49,8 +49,11 @@ protected:
 public:
     Window(const glm::vec2& dimen, SpriteWrapper* spr, const glm::vec4& bg); //if window is supposed to be centered
     Window(const glm::vec4& box, SpriteWrapper* spr, const glm::vec4& bg); //if window doesn't need to be centered
+    const glm::vec4& getRect();
+    int countButtons();
     void addButton(Button& button); //Adds button relative to top right corner
-    virtual void update(int x, int y, bool clicked);//this function also renders the window. x,y, and clicked are where the mouse is and whether or not it clicked
+    virtual void update(int x, int y, int z, bool clicked, const glm::vec4& rect);//this function also renders the window. x,y, and clicked are where the mouse is and whether or not it clicked
+    virtual void update(int x, int y, int z, bool clicked); //renders with the class's rect
 };
 
 class Interface //class that controls what windows are open;

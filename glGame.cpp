@@ -25,7 +25,6 @@ glm::vec2 Positional::getPos() const
     return pos;
 }
 
-
 RectPositional::RectPositional(const glm::vec4& box) : Positional({box.x,box.y}), rect(box)
 {
 
@@ -329,7 +328,6 @@ bool QuadTree::remove(Positional& obj)
         if (vec[i].get() == &obj)
         {
             vec.erase(vec.begin() + i);
-            std::string str;
             return true;
         }
     }

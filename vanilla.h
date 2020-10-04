@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <memory>
 #include <stack>
+#include <unordered_map>
 
 class Named
 {
@@ -322,12 +323,12 @@ void fastPrint(std::string str);
 template <typename T>
 class MinHeap //creates a min heap where each node consists of data and an int that is used to compare nodes
 {
+    typedef bool(*Comparer)(T& obj1, T& obj2); //given 2 objects, returns if they are equal or not
     struct MinHeapNode
     {
         std::pair<T,int> data;
     };
     std::vector<MinHeapNode*> nodes;
-
     bool valid(int index); //returns true if index is a valid index
     int getParent(int index);
     int getLeftChild(int index);
@@ -338,9 +339,9 @@ public:
     MinHeap();
     ~MinHeap();
     void add(T item, int val);
-    int find(T item, int val); //find the index of an item. O(n), but sometimes logarithmic. returns -1 on failure to find
+    int find(T item, int val, Comparer comp = nullptr); //find the index of an item based on its value. O(n), but sometimes logarithmic. returns -1 on failure to find
     int find(T item); //finds the index in O(n) time. -1 on failure;
-    void update(T item, int oldVal, int val); //update an item with oldVal. If it doesn't exist, add it
+    void update(T item, int oldVal, int val, Comparer comp = nullptr); //update an item with oldVal. If it doesn't exist, add it
     T peak(); //returns the value of the top most node.
     void pop(); //removes the top most node
     void print(); //prints the nodes
@@ -465,7 +466,7 @@ void MinHeap<T>::add(T item, int val)
 
 }
 
-template<typename T>
+template <typename T>
 int MinHeap<T>::find(T item)
 {
     int size = nodes.size();
@@ -479,15 +480,15 @@ int MinHeap<T>::find(T item)
     return -1;
 }
 
-template<typename T>
-int MinHeap<T>::find(T item, int val)
+template <typename T>
+int MinHeap<T>::find(T item, int val, Comparer equals)
 {
     int index = 0;
     std::stack<int> dfs; //stack of indicies we missed and have to search through later.
     while (valid(index) || dfs.size() != 0)
     {
         int current = nodes[index]->data.second;
-        if (current != val || nodes[index]->data.first != item)
+        if (current != val || (!equals && nodes[index]->data.first != item) || (equals && !equals(nodes[index]->data.first,item)))
         {
             int leftChild = getLeftChild(index);
             if (current > val || !valid(leftChild))//can't search here. All children will be even larger or there are no more children
@@ -499,7 +500,7 @@ int MinHeap<T>::find(T item, int val)
                 }
                 else
                 {
-                    break;
+                    break; //can't find the object
                 }
 
             }
@@ -521,10 +522,10 @@ int MinHeap<T>::find(T item, int val)
     return -1;
 }
 
-template<typename T>
-void MinHeap<T>::update(T item, int oldVal, int val) //finding an element is typically linear but we can slightly shorten the search time if we know the old value
+template <typename T>
+void MinHeap<T>::update(T item, int oldVal, int val, Comparer equals) //finding an element is typically linear but we can slightly shorten the search time if we know the old value
 {
-    int index = find(item, oldVal);
+    int index = find(item, oldVal,equals);
     if (index != -1)
     {
         nodes[index]->data.second = val;
@@ -557,7 +558,7 @@ void MinHeap<T>::pop() //removes the top most node
     sift(0);
 }
 
-template<typename T>
+template <typename T>
 void MinHeap<T>::print()
 {
     int size = nodes.size();
@@ -575,7 +576,7 @@ void MinHeap<T>::print()
     fastPrint(stream.str());
 }
 
-template<typename T>
+template <typename T>
 int MinHeap<T>::size()
 {
     return nodes.size();
