@@ -316,7 +316,7 @@ void QuadTree::move(QuadTree& t1, QuadTree& t2, Positional& obj)
     }
 }
 
-bool QuadTree::remove(Positional& obj)
+bool QuadTree::remove(Positional& obj, PositionalCompare func)
 {
     if (!obj.collides(region)) //if obj isn't even in the region, don't bother
     {
@@ -325,8 +325,9 @@ bool QuadTree::remove(Positional& obj)
     int size = vec.size();
     for (int i = 0; i < size; i ++) //see if obj is in this quadtree
     {
-        if (vec[i].get() == &obj)
+        if ((func && func(obj,*vec[i].get())) || vec[i].get() == &obj)
         {
+            std::cout << vec[i].get() << " " << &obj << std::endl;
             vec.erase(vec.begin() + i);
             return true;
         }
@@ -335,7 +336,7 @@ bool QuadTree::remove(Positional& obj)
     {
         for (int i = 0; i < 4; i ++)
         {
-            if (nodes[i]->remove(obj)) //if one of the children found it, remove and we're done!
+            if (nodes[i]->remove(obj, func)) //if one of the children found it, remove and we're done!
             {
                 return true;
             }
@@ -649,7 +650,7 @@ void RawQuadTree::move(RawQuadTree& t1, RawQuadTree& t2, Positional& obj)
     }
 }
 
-void RawQuadTree::remove(Positional& obj)
+void RawQuadTree::remove(Positional& obj, PositionalCompare func)
 {
     if (!obj.collides(region)) //if obj isn't even in the region, don't bother
     {
@@ -658,7 +659,7 @@ void RawQuadTree::remove(Positional& obj)
     int size = vec.size();
     for (int i = 0; i < size; i ++) //see if obj is in this quadtree
     {
-        if (vec[i] == &obj)
+        if ((func && func(*vec[i],obj)) || vec[i] == &obj)
         {
             vec.erase(vec.begin() + i);
             return;
@@ -668,7 +669,7 @@ void RawQuadTree::remove(Positional& obj)
     {
         for (int i = 0; i < 4; i ++)
         {
-            nodes[i]->remove(obj);
+            nodes[i]->remove(obj,func);
         }
     }
     return;
