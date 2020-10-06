@@ -49,6 +49,8 @@ public:
 typedef std::vector<std::shared_ptr<Positional>> pointerVec;
 typedef std::vector<Positional*> positionalVec;
 
+typedef  bool (*PositionalCompare) (const Positional& pos1, const Positional& pos2);
+
 class QuadTree //this is a quadtree of shared_ptr, meaning this quadtree actually owns its objects
 {
     static constexpr int maxCapacity = 100; //maximum capacity
@@ -67,7 +69,7 @@ public:
     ~QuadTree();
     int count (); //total number of things in this quadtree and its children
     int size(); //number of things in this quadtree
-    bool remove(Positional& obj); //removes and deletes the obj.
+    bool remove(Positional& obj, PositionalCompare func = nullptr); //removes and deletes the obj. Optionally, the user can pass in a function that tells us how we know we've found the right positional
     QuadTree* find(Positional& obj); //finds the quadtree obj belongs in. Returns null if the obj doesn't belong. Can return this QuadTree.
     positionalVec getNearest( Positional& obj); //get all Positionals that are in the same quadtree as obj
     positionalVec getNearest( const glm::vec4& area); //get all Positionals that intersect with area
@@ -103,7 +105,7 @@ public:
     ~RawQuadTree();
     int count (); //total number of things in this quadtree and its children
     int size(); //number of things in this quadtree
-    void remove(Positional& obj); //removes the obj. This only removes the pointer; doesn't actually delete the object
+    void remove(Positional& obj, PositionalCompare func = nullptr); //removes the obj. This only removes the pointer; doesn't actually delete the object
     RawQuadTree* find(Positional& obj); //finds the quadtree obj belongs in. Returns null if the obj doesn't belong. Can return this QuadTree.
     positionalVec getNearest( Positional& obj); //get all Positionals that are in the same quadtree as obj
     positionalVec getNearest( const glm::vec4& area); //get all Positionals that intersect with area

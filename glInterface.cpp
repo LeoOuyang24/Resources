@@ -126,8 +126,8 @@ void Window::addButton(Button& button)
 
 void Window::update(int x, int y, int z, bool clicked,const glm::vec4& blit)
 {
-    x = (x - blit.x)*blit.z/rect.z; //scale the mouse Position
-    y = (y - blit.y)*blit.a/rect.a;
+    x = x*blit.z/rect.z - blit.x; //scale the mouse Position
+    y = y*blit.a/rect.a - blit.y;
     int size = buttons.size();
     for (int i = 0; i < size; ++i)
     {
