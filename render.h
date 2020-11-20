@@ -44,12 +44,32 @@ void addPointToBuffer(float buffer[], glm::vec2 point, int index);
 void addPointToBuffer(float buffer[], glm::vec4 point, int index);
 void printRect(const glm::vec4& rect);
 
+struct ViewRange
+{
+    static getXRange(const ViewRange& range)
+    {
+        return abs(range.xRange[1] - range.xRange[0]);
+    }
+    static getYRange(const ViewRange& range)
+    {
+        return abs(range.yRange[1] - range.yRange[0]);
+    }
+    static getZRange(const ViewRange& range)
+    {
+        return abs(range.zRange[1] - range.zRange[0]);
+    }
+    glm::vec2 xRange = {0,0};
+    glm::vec2 yRange = {0,0};
+    glm::vec2 zRange = {0,0};
+};
+
 class RenderProgram
 {
 
     unsigned int program;
     static int screenWidth, screenHeight;
-    static glm::vec2 xRange, yRange, zRange; //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
+    static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
+    static ViewRange currentRange; //represents the current range for x,y, and z
 public:
     static GLuint VBO, VAO;
     static RenderProgram basicProgram, lineProgram; //basic allows for basic sprite rendering. Line program is simpler and renders lines.
@@ -59,12 +79,17 @@ public:
     {
 
     }
+    void init(std::string vertexPath, std::string fragmentPath);
+    static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
+    static glm::vec2 toAbsolute(const glm::vec2& point);
+    static glm::vec4 toAbsolute(const glm::vec4& rect);
     static const glm::vec2& getXRange();
     static const glm::vec2& getYRange();
     static const glm::vec2& getZRange();
     static void setXRange(float x1, float x2);
     static void setYRange(float y1, float y2);
     static void setZRange(float z1, float z2);
+    static void resetRange();
     static glm::mat4 getOrtho(); //gets projection matrix
     static glm::vec2 getScreenDimen();
     void setMatrix4fv(std::string name, const GLfloat* value);
@@ -72,8 +97,7 @@ public:
     void setVec4fv(std::string name, glm::vec4 value);
     void setVec2fv(std::string name, glm::vec2 value);
     void use();
-    void init(std::string vertexPath, std::string fragmentPath);
-    static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
+
 
 };
 

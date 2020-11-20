@@ -490,9 +490,8 @@ int RenderProgram::screenHeight = 0;
 RenderProgram RenderProgram::basicProgram;
 RenderProgram RenderProgram::lineProgram;
 RenderProgram RenderProgram::paintProgram;
-glm::vec2 RenderProgram::xRange = {0,0};
-glm::vec2 RenderProgram::yRange = {0,0};
-glm::vec2 RenderProgram::zRange = {0,0};
+ViewRange RenderProgram::baseRange;
+ViewRange RenderProgram::currentRange;
 RenderProgram::RenderProgram(std::string vertexPath, std::string fragmentPath)
 {
     init(vertexPath,fragmentPath);
@@ -525,10 +524,13 @@ void RenderProgram::init(int screenWidth, int screenHeight)
         std::cout << "glewInit failed: " << glewGetErrorString(err) << std::endl;
       }
 
-
-    xRange = {0,screenWidth};
-    yRange = {0,screenHeight};
-    zRange = {-10,10}; //magic numbers. Can be anything
+    baseRange =
+    {
+        {0,screenWidth},
+        {0,screenHeight},
+        {-10,10}     //magic numbers. Can be anything
+    };
+    currentRange = baseRange;
 
 glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     glEnable(GL_BLEND);
@@ -549,37 +551,52 @@ glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
 
 }
 
+glm::vec2 RenderProgram::toAbsolute(const glm::vec2& point)
+{
+    double ratio = ViewRange::getXRange(currentRange)/ViewRange::getXRange(baseRange);
+    return {point.x*ViewRange::getXRange(currentRange)/ViewRange::getXRange(baseRange),point.y*ViewRange::getYRange(currentRange)/ViewRange::getYRange(baseRange)};
+}
+glm::vec4 RenderProgram::toAbsolute(const glm::vec4& rect)
+{
+    return glm::vec4(toAbsolute({rect.x,rect.y}),toAbsolute({rect.z,rect.a}));
+}
+
 const glm::vec2& RenderProgram::getXRange()
 {
-    return xRange;
+    return currentRange.xRange;
 }
 const glm::vec2& RenderProgram::getYRange()
 {
-    return yRange;
+    return currentRange.yRange;
 }
 const glm::vec2& RenderProgram::getZRange()
 {
-    return zRange;
+    return currentRange.zRange;
 }
 void RenderProgram::setXRange(float x1, float x2)
 {
-    xRange.x = x1;
-    xRange.y = x2;
+    currentRange.xRange.x = x1;
+    currentRange.xRange.y = x2;
 }
 void RenderProgram::setYRange(float y1, float y2)
 {
-    yRange.x = y1;
-    yRange.y = y2;
+    currentRange.yRange.x = y1;
+    currentRange.yRange.y = y2;
 }
 void RenderProgram::setZRange(float z1, float z2)
 {
-    zRange.x = z1;
-    zRange.y = z2;
+    currentRange.zRange.x = z1;
+    currentRange.zRange.y = z2;
+}
+
+void RenderProgram::resetRange()
+{
+    currentRange = baseRange;
 }
 
 glm::mat4 RenderProgram::getOrtho()
 {
-    return (glm::ortho(xRange.x, xRange.y, yRange.y, yRange.x, zRange.x, zRange.y));
+    return (glm::ortho(currentRange.xRange.x, currentRange.xRange.y, currentRange.yRange.y, currentRange.yRange.x, currentRange.zRange.x, currentRange.zRange.y));
 }
 
 glm::vec2 RenderProgram::getScreenDimen()
