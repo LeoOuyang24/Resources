@@ -13,7 +13,7 @@ glm::vec4 Panel::scale(const glm::vec4& scaleRect)
     return renderRect;
 
 }
-Panel::Panel(const glm::vec4& rect_, const glm::vec4& bColor, SpriteWrapper* spr) : rect(rect_), backgroundColor(bColor), sprite(spr)
+Panel::Panel(const glm::vec4& rect_, const glm::vec4& bColor, SpriteWrapper* spr, double z_ ) : rect(rect_), backgroundColor(bColor), sprite(spr), baseZ(z_)
 {
 
 }
@@ -31,19 +31,19 @@ void Panel::update(float mouseX,float mouseY, float z, const glm::vec4& scale)
 }
 void Panel::update(float mouseX, float mouseY, float z)
 {
-    update(mouseX,mouseY,z,{0,0,1,1});
+    update(mouseX,mouseY,z + baseZ,{0,0,1,1});
 }
 void Panel::updateBlit(float z, const glm::vec4& blit)
 {
     glm::vec4 scale = {blit.x - rect.x*blit.z/rect.z,blit.y - rect.y*blit.a/rect.a,blit.z/rect.z,blit.a/rect.a};
-
-    update(MouseManager::getMousePos().first,MouseManager::getMousePos().second,z,scale);
+    glm::vec2 mousePos = RenderProgram::toAbsolute(pairtoVec(MouseManager::getMousePos()));
+    update(mousePos.x,mousePos.y,z,scale);
 }
 
 
 Button::Button(const glm::vec4& box,  void (*func)(), SpriteWrapper* spr,
-               const FontParameter& param, Font* font, const glm::vec4& color) :
-               Panel( box,color,spr), font(font), toDo(func), paper(param), original(param), baseColor(color)
+               const FontParameter& param, Font* font, const glm::vec4& color, double z_ ) :
+               Panel( box,color,spr, z_), font(font), toDo(func), paper(param), original(param), baseColor(color)
 {
 
 }
@@ -101,15 +101,15 @@ void Button::update(float mouseX, float mouseY, float z, const glm::vec4& scaleR
     }
     if (!sprite && backgroundColor.a > 0) //if the sprite would over lap the background color or the backgroundColor is transparent, don't render it
     {
-        PolyRender::requestRect(renderRect,backgroundColor,true,0,z);
+        PolyRender::requestRect(renderRect,backgroundColor,true,0,baseZ + z);
     }
     else if (sprite)
     {
-        sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,z});
+        sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,baseZ + z});
     }
     if (font)
     {
-        font->requestWrite({paper.text,renderRect,paper.angle,paper.color,z + .1});
+        font->requestWrite({paper.text,renderRect,paper.angle,paper.color,baseZ + z + .1});
     }
     paper = original;
     backgroundColor = baseColor;
@@ -129,13 +129,13 @@ void WindowSwitchButton::press()
     }
 }
 
-Window::Window(const glm::vec2& dimen, SpriteWrapper* spr, const glm::vec4& bg) : Panel({ dimen.x/2, dimen.y/2,dimen.x,dimen.y},bg,spr)
+Window::Window(const glm::vec2& dimen, SpriteWrapper* spr, const glm::vec4& bg, double z_) : Panel({ dimen.x/2, dimen.y/2,dimen.x,dimen.y},bg,spr,z_)
 {
     rect.z += (rect.z == 0) * RenderProgram::getScreenDimen().x; //set dimensions that are 0 to that of the full screen size
     rect.a += (rect.a == 0) * RenderProgram::getScreenDimen().y;
 }
 
-Window::Window( const glm::vec4& box, SpriteWrapper* spr, const glm::vec4& bg) : Panel( box,bg,spr)
+Window::Window( const glm::vec4& box, SpriteWrapper* spr, const glm::vec4& bg, double z_) : Panel( box,bg,spr, z_)
 {
     rect.z += (rect.z == 0) * RenderProgram::getScreenDimen().x; //set dimensions that are 0 to that of the full screen size
     rect.a += (rect.a == 0) * RenderProgram::getScreenDimen().y;
@@ -171,7 +171,7 @@ void Window::update(float x, float y, float z, const glm::vec4& blit)
         for (int i = 0; i < size; ++i)
         {
             bool hover = pointInVec(panels[i].get()->getRect(),x,y,0);
-            panels[i].get()->update(x,y,z + 0.1,blit);
+            panels[i].get()->update(x,y,baseZ + z + 0.1,blit);
             /*if (clicked && hover)
             {
                 panels[i].get()->press();
@@ -179,11 +179,11 @@ void Window::update(float x, float y, float z, const glm::vec4& blit)
         }
         if (sprite)
         {
-            sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,z});
+            sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,z + baseZ});
         }
         else if (backgroundColor.a > 0)
         {
-            PolyRender::requestRect(renderRect,backgroundColor,true,0,z);
+            PolyRender::requestRect(renderRect,backgroundColor,true,0,z + baseZ);
         }
     }
 }
