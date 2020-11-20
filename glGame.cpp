@@ -327,7 +327,6 @@ bool QuadTree::remove(Positional& obj, PositionalCompare func)
     {
         if ((func && func(obj,*vec[i].get())) || vec[i].get() == &obj)
         {
-            std::cout << vec[i].get() << " " << &obj << std::endl;
             vec.erase(vec.begin() + i);
             return true;
         }
