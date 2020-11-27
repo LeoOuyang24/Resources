@@ -40,10 +40,39 @@ void Panel::updateBlit(float z, const glm::vec4& blit)
     update(mousePos.x,mousePos.y,z,scale);
 }
 
+Message::Message(const glm::vec4& box, SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc)(), double z_ ) :
+                Panel(box,color,spr,z_), font(font), paper(param), dynamicString(strFunc)
+{
+
+}
+
+void Message::update(float mouseX, float mouseY, float z, const glm::vec4& scaleRect)
+{
+    glm::vec4 renderRect = scale(scaleRect);
+   // std::cout << rect.x << " " << rect.y << std::endl;
+    if (!sprite && backgroundColor.a > 0) //if the sprite would over lap the background color or the backgroundColor is transparent, don't render it
+    {
+        PolyRender::requestRect(renderRect,backgroundColor,true,0,baseZ + z);
+    }
+    else if (sprite)
+    {
+        sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,baseZ + z});
+    }
+    if (font)
+    {
+        std::string print = paper.text;
+        if (dynamicString)
+        {
+            print = dynamicString();
+        }
+        font->requestWrite({print,renderRect,paper.angle,paper.color,baseZ + z + .1});
+    }
+}
+
 
 Button::Button(const glm::vec4& box,  void (*func)(), SpriteWrapper* spr,
-               const FontParameter& param, Font* font, const glm::vec4& color, double z_ ) :
-               Panel( box,color,spr, z_), font(font), toDo(func), paper(param), original(param), baseColor(color)
+               const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc) (), double z_ ) :
+               Message( box,spr,param,font,color,strFunc,z_), toDo(func), baseColor(color), original(param)
 {
 
 }
@@ -99,18 +128,7 @@ void Button::update(float mouseX, float mouseY, float z, const glm::vec4& scaleR
             press();
         }
     }
-    if (!sprite && backgroundColor.a > 0) //if the sprite would over lap the background color or the backgroundColor is transparent, don't render it
-    {
-        PolyRender::requestRect(renderRect,backgroundColor,true,0,baseZ + z);
-    }
-    else if (sprite)
-    {
-        sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,baseZ + z});
-    }
-    if (font)
-    {
-        font->requestWrite({paper.text,renderRect,paper.angle,paper.color,baseZ + z + .1});
-    }
+    Message::update(mouseX,mouseY,z, scaleRect);
     paper = original;
     backgroundColor = baseColor;
 }
