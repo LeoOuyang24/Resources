@@ -26,18 +26,28 @@ public:
     void updateBlit(float z, const glm::vec4& blit); //blits to a rect and updates
 };
 
-class Button : public Panel
+class Message : public Panel //a very simple rect that displays messages and sprites
+{
+protected:
+    Font* font = nullptr;
+    FontParameter paper;
+    std::string (*dynamicString) () = nullptr; //sometimes, we want to print a variable that changes. This function allows us to do that
+public:
+    Message(const glm::vec4& box, SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc)(), double z_ = 0);
+    virtual void update(float mouseX, float mouseY, float z, const glm::vec4& scaleRect);
+};
+
+class Button : public Message
 {
 protected:
     const glm::vec4 baseColor; //base background color. Allows us to use backgroundColor to temporarily set the button color; good for changing color when the mouse is hovering.
-    Font* font = nullptr;
-    FontParameter paper;
+
     const FontParameter original; // original is the original font settings. We set paper back to original every iteration
     void (*toDo) () = nullptr;
 public:
     using Panel::update;
 
-    Button(const glm::vec4& box, void (*func)(), SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color, double z_ = 0);
+    Button(const glm::vec4& box, void (*func)(), SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc)() = nullptr, double z_ = 0);
     virtual void press();
     virtual void hover(); //what to do if the mouse hovers over this button
     virtual void render(bool mouseHover,float x = 0.0f, float y = 0.0f, float z = 0.0f, float xScale = 1, float yScale= 1); //x and y are the offset if we want to render the button relative to something
