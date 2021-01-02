@@ -90,28 +90,9 @@ void Button::hover()
     backgroundColor *= .5;
 }
 
-void Button::render(bool hover, float x, float y, float z, float xScale, float yScale)
+void Button::render(float x, float y, float z, const glm::vec4& scaleRect)
 {
-   // std::cout << rect.x << " " << rect.y << std::endl;
-    glm::vec4 renderRect = scale({x,y,xScale,yScale});
-    if (!sprite && backgroundColor.a > 0) //if the sprite would over lap the background color or the backgroundColor is transparent, don't render it
-    {
-        glm::vec4 color = backgroundColor;
-        if (hover)
-        {
-            color *= .5;
-        }
-        PolyRender::requestRect(renderRect,backgroundColor,true,0,z);
-    }
-    else if (sprite)
-    {
-        sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,z});
-
-    }
-    if (font)
-    {
-        font->requestWrite({paper.text,renderRect,paper.angle,paper.color,z + .1});
-    }
+    Message::update(x,y,z, scaleRect);
 }
 
 void Button::update(float mouseX, float mouseY, float z, const glm::vec4& scaleRect)
@@ -128,7 +109,7 @@ void Button::update(float mouseX, float mouseY, float z, const glm::vec4& scaleR
             press();
         }
     }
-    Message::update(mouseX,mouseY,z, scaleRect);
+    render(mouseX,mouseY,z, scaleRect);
     paper = original;
     backgroundColor = baseColor;
 }
@@ -144,6 +125,34 @@ void WindowSwitchButton::press()
     if (interface && switchTo)
     {
         interface->switchCurrent(switchTo);
+    }
+}
+
+CondSwitchButton::CondSwitchButton(const glm::vec4& box,SpriteWrapper* spr, Interface& face, Window& to, const FontParameter& param, Font* font, const glm::vec4& color,
+                     bool (*condFunc)()) : WindowSwitchButton(box,spr,face,to,param,font,color), cond(condFunc)
+{
+
+}
+
+void CondSwitchButton::render(float x, float y, float z, const glm::vec4& scaleRect)
+{
+    if (!doSwitch())
+    {
+        backgroundColor *= .5;
+    }
+    Button::render(x,y,z,scaleRect);
+}
+
+bool CondSwitchButton::doSwitch()
+{
+    return cond && cond();
+}
+
+void CondSwitchButton::press()
+{
+    if (doSwitch())
+    {
+        WindowSwitchButton::press();
     }
 }
 
@@ -229,24 +238,19 @@ void Window::onSwitch(Window& previous)
 
 }
 
-OnOffButton::OnOffButton(OnOffMode mode, Window& window, const glm::vec4& rect, SpriteWrapper* spr, const FontParameter& param, Font* font,
-                         const glm::vec4& color) : Button(rect,nullptr,spr,param,font,color), mode(mode), target(&window)
+OnOffButton::OnOffButton(Window& window1, Window& window2, const glm::vec4& rect, SpriteWrapper* spr, const FontParameter& param, Font* font,
+                         const glm::vec4& color) : Button(rect,nullptr,spr,param,font,color), target1(&window1), target2(&window2)
 {
 
 }
 
 void OnOffButton::press()
 {
-    if (target)
+    if (target1 && target2)
     {
-        if (mode == OnOffMode::DYNAMIC)
-        {
-            target->setDoUpdate(!target->getDoUpdate());
-        }
-        else
-        {
-            target->setDoUpdate((int)(mode)-1);
-        }
+        bool onOne = target1->getDoUpdate();
+        target2->setDoUpdate(onOne); //turn one off/on and turn 2 on/off
+        target1->setDoUpdate(!onOne);
     }
 }
 

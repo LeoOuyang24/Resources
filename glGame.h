@@ -10,7 +10,7 @@
 #include <vector>
 #include <memory>
 
-#include "render.h"
+#include "geometry.h"
 
 bool rectPathIntersect(const glm::vec4& oldRect, const glm::vec4& newRect, const glm::vec4& collide); //returns true if oldRect collided with collide on its path to newRect
 

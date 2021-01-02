@@ -50,7 +50,7 @@ public:
     Button(const glm::vec4& box, void (*func)(), SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc)() = nullptr, double z_ = 0);
     virtual void press();
     virtual void hover(); //what to do if the mouse hovers over this button
-    virtual void render(bool mouseHover,float x = 0.0f, float y = 0.0f, float z = 0.0f, float xScale = 1, float yScale= 1); //x and y are the offset if we want to render the button relative to something
+    virtual void render(float x, float y, float z, const glm::vec4& scaleRect); // just calls Message::update() by default. Can be modified for more flexibility
     virtual void update(float mouseX, float mouseY, float z, const glm::vec4& blit);
 };
 
@@ -64,6 +64,18 @@ public:
     WindowSwitchButton(const glm::vec4& box,SpriteWrapper* spr, Interface& face, Window& to, const FontParameter& param, Font* font, const glm::vec4& color);
     void press();
 };
+
+class CondSwitchButton : public WindowSwitchButton // a Window Switch Button that i sonly active under certain conditions
+{
+    bool (*cond) () = nullptr;
+public:
+    CondSwitchButton(const glm::vec4& box,SpriteWrapper* spr, Interface& face, Window& to, const FontParameter& param, Font* font, const glm::vec4& color,
+                     bool (*condFunc)());
+    void render(float x, float y, float z, const glm::vec4& scaleRect);
+    virtual bool doSwitch(); //whether to switch or not
+    void press();
+};
+
 
 class Window : public Panel
 {
@@ -91,15 +103,14 @@ enum class OnOffMode
     ON //set doUpdate to true
 };
 
-class OnOffButton : public Button //sets a window's DoUpdate to a certain value.
+class OnOffButton : public Button //alternates between two windows
 {
 public:
-
-    OnOffButton(OnOffMode mode, Window& window, const glm::vec4& rect, SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color);
+    OnOffButton(Window& window1,Window& window2, const glm::vec4& rect, SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color);
     void press();
 private:
-    OnOffMode mode = OnOffMode::DYNAMIC;
-    Window* target = nullptr;
+    Window* target1 = nullptr;
+    Window* target2 = nullptr;
 };
 
 class Interface //class that controls what windows are open;
