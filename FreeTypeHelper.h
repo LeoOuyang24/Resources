@@ -1,17 +1,13 @@
 #ifndef FREETYPEHELPER_H_INCLUDED
 #define FREETYPEHELPER_H_INCLUDED
 
-#include "glew.h"
-#include "glm.hpp"
-#include "gtc/matrix_transform.hpp"
-#include "gtc/type_ptr.hpp"
-
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
 #include <unordered_map>
 #include <memory>
 
+#include "geometry.h"
 #include "render.h"
 
 
