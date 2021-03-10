@@ -20,6 +20,7 @@ bool vecInside(const glm::vec4& vec1, const glm::vec4& vec2); //like vecIntersec
 double vecDistance(const glm::vec4& vec1, const glm::vec4& vec2); //gets the distance between two rects. 0 if they are intersecting
 bool vecContains(glm::vec4 smallerRect, glm::vec4 biggerRect); //returns true if biggerRect contains smallerRect
 bool pointInVec(const glm::vec4& vec1, double x, double y, double angle = 0); //angle of vec1 is by default 0
+bool pointInVec(const glm::vec4& vec1, const glm::vec2& point, double angle = 0);
 double pointVecDistance(const glm::vec4& vec, float x, float y); //shortest distance from the point to the rectangle. 0 if the point is in the rect
 glm::vec2 closestPointOnVec(const glm::vec4& vec, const glm::vec2& point); //returns the point on vec that is the closest distance to point. Returns point if point is in vec
 double pointLineDistance(const glm::vec4& line, const glm::vec2& point); //rotates line until is is parallel to the x-axis, then computes distance from point to line

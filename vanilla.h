@@ -299,8 +299,7 @@ public:
 
 };
 
-int randWithGaps(std::vector<std::pair<int,int>> ranges);
-
+bool angleRange(float rad1, float rad2, float range); //returns true if angle rad1 is within range of rad2 (inclusive)
 double randomDecimal(int places); //generates a random decimal between 0 and 1, not including 1. places is the number of decimal places
 int findIntLength(int x);
 std::string convert(double input);
