@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "FreeTypeHelper.h"
+#include "geometry.h"
 
 RenderProgram Font::wordProgram;
 Font Font::tnr;

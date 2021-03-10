@@ -4,32 +4,40 @@
 #include <memory>
 
 #include "FreeTypeHelper.h"
+#include "SDLhelper.h"
 
 #include "render.h"
 
 class Panel //parent class of anything that goes on a window, including other windows and buttons
 {
 protected:
+    float baseZ = 0; //z of the panel. Added to param.z
     glm::vec4 scale(const glm::vec4& scaleRect);
     glm::vec4 rect, backgroundColor;
     SpriteWrapper* sprite = nullptr;
-    double baseZ = 0; //will be added to the z passed in the update functions. In Windows, also added to child panels
+    SpriteParameter param; //used to modify the spriteParameter. rect is effected by the Panel.Rect, rather than the param.rect
+    const SpriteParameter originalSprite;
+    bool dead = false;
 
 public:
     Panel(const glm::vec4& rect_, const glm::vec4& bColor, SpriteWrapper* spr, double z_ = 0);
     const glm::vec4& getRect();
+    bool getDead();
     void changeRect(const glm::vec4& rect);
     virtual void update(float mouseX,float mouseY, float z, const glm::vec4& scale); //mouseX and mouseY are the coordinates of the mouse and should
                                             //already be scaled and not have to be modified, z is the z coordinate to render to,
                                             //scale is NOT the rect that we want to project to; the x,y is the x-y increment to render to, and the z and a are the x and yscale respectively
     void update(float mouseX, float mouseY, float z); //same as other update function except we don't worry about scaling
     void updateBlit(float z, const glm::vec4& blit); //blits to a rect and updates
+    void updateBlit(float z, RenderCamera& camera, bool absolute);
+    void updateBlit(float z, RenderCamera& camera, bool absolute, const glm::vec4& blit); //renders at blit location
 };
 
 class Message : public Panel //a very simple rect that displays messages and sprites
 {
 protected:
     Font* font = nullptr;
+    const FontParameter originalPaper; // original is the original font settings. We set paper back to original every iteration
     FontParameter paper;
     std::string (*dynamicString) () = nullptr; //sometimes, we want to print a variable that changes. This function allows us to do that
 public:
@@ -37,12 +45,20 @@ public:
     virtual void update(float mouseX, float mouseY, float z, const glm::vec4& scaleRect);
 };
 
+class Ticker : public Message
+{
+    int milliseconds;
+    DeltaTime time;
+    float baseY = 0;
+public:
+    Ticker(int duration,const glm::vec4& box, SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc)(), double z_ = 0);
+    virtual void update(float mouseX, float mouseY, float z, const glm::vec4& scaleRect);
+};
+
 class Button : public Message
 {
 protected:
-    const glm::vec4 baseColor; //base background color. Allows us to use backgroundColor to temporarily set the button color; good for changing color when the mouse is hovering.
-
-    const FontParameter original; // original is the original font settings. We set paper back to original every iteration
+    const glm::vec4 baseColor;
     void (*toDo) () = nullptr;
 public:
     using Panel::update;
@@ -79,16 +95,19 @@ public:
 
 class Window : public Panel
 {
+    typedef std::pair<std::unique_ptr<Panel>,bool> PanelPair; //panel and whether to render it absoltue or not
 protected:
-    std::vector<std::unique_ptr<Panel>> panels;
+    std::list<PanelPair> panels;
     bool doUpdate = true; //whether to update this window or not
+    RenderCamera* camera = nullptr;
 public:
     Window( const glm::vec2& dimen, SpriteWrapper* spr, const glm::vec4& bg, double z_ = 0); //if window is supposed to be centered
     Window( const glm::vec4& box, SpriteWrapper* spr, const glm::vec4& bg, double z_ = 0); //if window doesn't need to be centered
     void setDoUpdate(bool val);
     bool getDoUpdate();
     int countPanels();
-    void addPanel(Panel& button); //Adds button relative to top right corner
+    void addPanel(Panel& button, bool absolute = false); //Adds button relative to top right corner
+    void setCamera(RenderCamera* cam);
     virtual void update(float x, float y, float z, const glm::vec4& scale);//this function also renders the window. x,y, and clicked are where the mouse is and whether or not it clicked
     virtual void updateTop(float z, const glm::vec4& blit); //given a rect, calculates the scaling rect. Useful for windows that have no parent windows
     virtual void updateTop(float z); //same as other updateTop except blit is our own rect. Basically no scaling

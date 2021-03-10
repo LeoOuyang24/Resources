@@ -17,31 +17,60 @@ Panel::Panel(const glm::vec4& rect_, const glm::vec4& bColor, SpriteWrapper* spr
 {
 
 }
+
 const glm::vec4& Panel::getRect()
 {
     return rect;
 }
+bool Panel::getDead()
+{
+    return dead;
+}
+
 void Panel::changeRect(const glm::vec4& rect)
 {
     this->rect = rect;
 }
 void Panel::update(float mouseX,float mouseY, float z, const glm::vec4& scale)
 {
-
+    param = originalSprite;
 }
 void Panel::update(float mouseX, float mouseY, float z)
 {
-    update(mouseX,mouseY,z + baseZ,{0,0,1,1});
+    update(mouseX,mouseY,z,{0,0,1,1});
 }
 void Panel::updateBlit(float z, const glm::vec4& blit)
 {
     glm::vec4 scale = {blit.x - rect.x*blit.z/rect.z,blit.y - rect.y*blit.a/rect.a,blit.z/rect.z,blit.a/rect.a};
-    glm::vec2 mousePos = RenderProgram::toAbsolute(pairtoVec(MouseManager::getMousePos()));
+    auto mousePos = MouseManager::getMousePos();
+    update(mousePos.first,mousePos.second,z,scale);
+}
+
+void Panel::updateBlit(float z, RenderCamera& camera, bool absolute)
+{
+    updateBlit(z,camera,absolute,rect);
+}
+
+void Panel::updateBlit(float z, RenderCamera& camera, bool absolute, const glm::vec4& blit)
+{
+    glm::vec4 renderRect, scale;
+    glm::vec2 mousePos;
+    if (absolute)
+    {
+       mousePos = camera.toAbsolute(pairtoVec(MouseManager::getMousePos()));
+        renderRect =     camera.toAbsolute(blit);
+    }
+    else
+    {
+       mousePos = camera.toScreen(camera.toWorld(pairtoVec(MouseManager::getMousePos()))); //we have to convert to toScreen because buttons make checks based on their rect in the screenSpace after scaling
+        renderRect =     camera.toScreen(blit);
+    }
+       scale = {renderRect.x - rect.x*renderRect.z/rect.z,renderRect.y - rect.y*renderRect.a/rect.a,renderRect.z/rect.z,renderRect.a/rect.a};
     update(mousePos.x,mousePos.y,z,scale);
 }
 
 Message::Message(const glm::vec4& box, SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc)(), double z_ ) :
-                Panel(box,color,spr,z_), font(font), paper(param), dynamicString(strFunc)
+                Panel(box,color,spr,z_), font(font), paper(param), originalPaper(param),dynamicString(strFunc)
 {
 
 }
@@ -52,11 +81,11 @@ void Message::update(float mouseX, float mouseY, float z, const glm::vec4& scale
    // std::cout << rect.x << " " << rect.y << std::endl;
     if (!sprite && backgroundColor.a > 0) //if the sprite would over lap the background color or the backgroundColor is transparent, don't render it
     {
-        PolyRender::requestRect(renderRect,backgroundColor,true,0,baseZ + z);
+        PolyRender::requestRect(renderRect,backgroundColor,true,0,baseZ + param.z + z);
     }
     else if (sprite)
     {
-        sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,baseZ + z});
+        sprite->request({renderRect,param.radians,param.effect,param.tint,param.program,baseZ + param.z+ z});
     }
     if (font)
     {
@@ -65,14 +94,37 @@ void Message::update(float mouseX, float mouseY, float z, const glm::vec4& scale
         {
             print = dynamicString();
         }
-        font->requestWrite({print,renderRect,paper.angle,paper.color,baseZ + z + .1});
+        font->requestWrite({print,renderRect,paper.angle,paper.color,baseZ + param.z + z + .1});
     }
+    paper = originalPaper;
+
+    Panel::update(mouseX,mouseY,z,scaleRect);
 }
 
+Ticker::Ticker(int duration, const glm::vec4& box, SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc)(), double z_ ) :
+    Message(box,spr,param,font,color,strFunc,z_), milliseconds(duration)
+{
+   time.set();
+   baseY = box.y;
+}
+
+void Ticker::update(float mouseX, float mouseY, float z, const glm::vec4& scaleRect)
+{
+    if (time.timePassed(milliseconds))
+    {
+        dead = true;
+    }
+    float seconds = time.getTimePassed()/1000.0;
+    rect.y = baseY - log(time.getTimePassed())*10;
+
+    paper.color.a = 1.0/(seconds);
+    param.tint.a = 1.0/(seconds);
+    Message::update(mouseX,mouseY,z,scaleRect);
+}
 
 Button::Button(const glm::vec4& box,  void (*func)(), SpriteWrapper* spr,
                const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc) (), double z_ ) :
-               Message( box,spr,param,font,color,strFunc,z_), toDo(func), baseColor(color), original(param)
+               Message( box,spr,param,font,color,strFunc,z_), toDo(func), baseColor(color)
 {
 
 }
@@ -110,7 +162,6 @@ void Button::update(float mouseX, float mouseY, float z, const glm::vec4& scaleR
         }
     }
     render(mouseX,mouseY,z, scaleRect);
-    paper = original;
     backgroundColor = baseColor;
 }
 
@@ -138,7 +189,7 @@ void CondSwitchButton::render(float x, float y, float z, const glm::vec4& scaleR
 {
     if (!doSwitch())
     {
-        backgroundColor *= .5;
+        backgroundColor *= glm::vec4(glm::vec3(.5),1);
     }
     Button::render(x,y,z,scaleRect);
 }
@@ -183,10 +234,15 @@ int Window::countPanels()
     return panels.size();
 }
 
-void Window::addPanel(Panel& button)
+void Window::addPanel(Panel& button, bool absolute)
 {
-    panels.emplace_back(&button);
+    panels.push_back({std::unique_ptr<Panel>(&button),absolute});
     button.changeRect(button.getRect() + glm::vec4({rect.x,rect.y,0,0}));
+}
+
+void Window::setCamera(RenderCamera* cam)
+{
+    camera = cam;
 }
 
 void Window::update(float x, float y, float z, const glm::vec4& blit)
@@ -194,24 +250,51 @@ void Window::update(float x, float y, float z, const glm::vec4& blit)
     if (doUpdate)
     {
         glm::vec4 renderRect = scale(blit);
-        int size = panels.size();
-        for (int i = 0; i < size; ++i)
+        if (sprite)
         {
-            bool hover = pointInVec(panels[i].get()->getRect(),x,y,0);
-            panels[i].get()->update(x,y,baseZ + z + 0.1,blit);
+            sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,z + param.z});
+        }
+        else if (backgroundColor.a > 0)
+        {
+            PolyRender::requestRect(renderRect,backgroundColor,true,0,z + param.z);
+        }
+        auto end = panels.end();
+        for (auto i = panels.begin(); i != end;)
+        {
+            bool hover = pointInVec(i->first.get()->getRect(),x,y,0);
+            if (camera)
+            {
+               /* if (i->second)
+                {
+                    glm::vec2 moved = camera->toAbsolute({x,y});
+                    i->first.get()->update(moved.x,moved.y,baseZ + z + 0.1,camera->toAbsolute(blit));
+                }
+                else
+                {
+                    glm::vec2 moved = camera->toScreen(camera->toWorld({x,y}));
+                    i->first.get()->update(moved.x,moved.y,baseZ + z + 0.1,camera->toScreen(blit));
+                   // i->first.get()->updateBlit(baseZ + z + .1,*camera, i->second)
+                }*/
+                i->first.get()->updateBlit(baseZ + param.z + z + .1,*camera, i->second);
+            }
+            else
+            {
+                i->first.get()->update(x,y,baseZ + param.z+ z + 0.1,blit);
+            }
+            if (i->first->getDead())
+            {
+                i = panels.erase(i);
+            }
+            else
+            {
+                ++i;
+            }
             /*if (clicked && hover)
             {
                 panels[i].get()->press();
             }*/
         }
-        if (sprite)
-        {
-            sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,z + baseZ});
-        }
-        else if (backgroundColor.a > 0)
-        {
-            PolyRender::requestRect(renderRect,backgroundColor,true,0,z + baseZ);
-        }
+
     }
 }
 

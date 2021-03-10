@@ -316,6 +316,58 @@ void RenderProgram::setVec2fv(std::string name, glm::vec2 value)
     glUseProgram(0);
 }
 
+void RenderCamera::init(int w, int h)
+{
+    rect.z = w;
+    rect.a = h;
+}
+
+const glm::vec4& RenderCamera::getRect() const
+{
+    return rect;
+}
+
+
+glm::vec4 RenderCamera::toScreen(const glm::vec4& change) const
+{
+    glm::vec2 point = toScreen({change.x,change.y});
+    return {point.x,point.y,change.z, change.a};
+}
+
+glm::vec2 RenderCamera::toScreen(const glm::vec2& point) const
+{
+
+    return {(point.x - rect.x), (point.y - rect.y)};
+}
+
+glm::vec4 RenderCamera::toWorld(const glm::vec4& change) const
+{
+
+    glm::vec2 point = toWorld({change.x,change.y});
+    return {point.x,point.y , change.z, change.a};
+}
+
+glm::vec2 RenderCamera::toWorld(const glm::vec2& point) const
+{
+     glm::vec2 screenDimen = RenderProgram::getScreenDimen();
+    return {(point.x/screenDimen.x*rect.z + rect.x), (point.y/screenDimen.y*rect.a + rect.y)};
+}
+
+glm::vec4 RenderCamera::toAbsolute(const glm::vec4& rect) const
+{
+    return glm::vec4(toAbsolute({rect.x,rect.y}),toAbsolute({rect.z,rect.a}));
+}
+glm::vec2 RenderCamera::toAbsolute(const glm::vec2& point) const
+{
+     //glm::vec2 screenDimen = RenderProgram::getScreenDimen();
+     //double horiz = (RenderProgram::getXRange().y - RenderProgram::getXRange().x);
+  //   std::cout << horiz << " " << rect.z << std::endl;
+     //double vert = ViewRange::getYRange(RenderProgram::getYRange());
+    //return {point.x*horiz/screenDimen.x,point.y*rect.a/screenDimen.y};
+    return RenderProgram::toAbsolute(point);
+}
+
+
 const int Sprite::floats = 26;
 const int Sprite::floatSize = sizeof(float);
    void Sprite::load(std::string source)
@@ -335,7 +387,7 @@ const int Sprite::floatSize = sizeof(float);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         int channels;
-
+        //auto imageData = cv::imread(source);
         unsigned char* data = stbi_load(source.c_str(),&width, &height, &channels, 0);
 
         int rgb = 0;// GL_RGB*!transparent + GL_RGBA*transparent;
@@ -354,6 +406,7 @@ const int Sprite::floatSize = sizeof(float);
             rgb = GL_RGBA;
             break;
         }
+
         if (data)
         {
             glTexImage2D(GL_TEXTURE_2D, 0, rgb,width, height, 0, rgb, GL_UNSIGNED_BYTE, data);
@@ -363,6 +416,7 @@ const int Sprite::floatSize = sizeof(float);
         {
             std::cout << "Error loading texture: " << source << std::endl;
         }
+
         stbi_image_free(data);
         loadVertices();
 
@@ -543,16 +597,27 @@ void Sprite::renderInstanced(RenderProgram& program, const std::vector<SpritePar
     {
         std::cout << "Haven't loaded a texture yet!" << std::endl;
     }*/
+unsigned int Sprite::getVAO()
+{
+    return VAO;
+}
+
+int Sprite::getWidth()
+{
+    return width;
+}
+
+int Sprite::getHeight()
+{
+    return height;
+}
 
 int Sprite::getFloats()
 {
     return floats;
 }
 
-unsigned int Sprite::getVAO()
-{
-    return VAO;
-}
+
 const int Sprite9::floats9 = Sprite::floats*9;
 Sprite9::Sprite9(std::string source, glm::vec2 W, glm::vec2 H) : Sprite(source)
 {
@@ -597,9 +662,15 @@ void Sprite9::loadData(GLfloat* data, const SpriteParameter& parameter, int inde
         }
 }
 
+
+BaseAnimation::BaseAnimation(std::string source, double speed, int perRow, int rows, const glm::vec4& sub)
+{
+    init(source,speed,perRow,rows,  sub);
+}
+
 glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
 {
-        double current =  SDL_GetTicks();
+        double current =  DeltaTime::getCurrentFrame();
         int perRow = subSection.z; //frame per rows
         int rows = subSection.a; //number of rows
         double timeSince = current - param.start;
@@ -608,10 +679,6 @@ glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
         (frameDimen.y*((framesSince/perRow)%rows)) + subSection.y,frameDimen.x, frameDimen.y};
 }
 
-BaseAnimation::BaseAnimation(std::string source, double speed, int perRow, int rows, const glm::vec4& sub)
-{
-    init(source,speed,perRow,rows,  sub);
-}
 void BaseAnimation::init(std::string source, double speed, int perRow, int rows, const glm::vec4& sub)
 {
     Sprite::init(source);
@@ -628,17 +695,20 @@ void BaseAnimation::init(std::string source, double speed, int perRow, int rows,
         subSection.a = rows;
     }
 }
-void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<FullAnimationParameter>& parameters)
+void BaseAnimation::renderInstanced(RenderProgram& program, const std::list<FullAnimationParameter>& parameters)
 {
-    int size = parameters.size();
+    auto size = parameters.end();
     std::vector<SpriteParameter> params;
     int perRow = subSection.z; //frame per rows
     int rows = subSection.a; //number of rows
-    for (int i = 0; i < size; i ++)
+    for (auto i = parameters.begin(); i != size; ++i)
     {
-        const AnimationParameter* ptr = &parameters[i].second;
-        SpriteParameter param = parameters[i].first;
-
+        const AnimationParameter* ptr = &i->second;
+        SpriteParameter param = i->first;
+        if (ptr->transform && ptr->camera)
+        {
+            param.rect = ((ptr->camera)->*(ptr->transform))(param.rect);
+        }
         //double timeSince = current - ptr->start;
        // int framesSince = ((ptr->fps == -1)*fps + (ptr->fps != -1)*ptr->fps)*timeSince; //frames that have passed
         param.portion = getPortion(*ptr);
@@ -734,7 +804,23 @@ void AnimationWrapper::init(BaseAnimation* a)
 }
 void AnimationWrapper::reset()
 {
-    aParameters.clear();
+    auto end = aParameters.end();
+    for (auto i = aParameters.begin(); i != end;)
+    {
+        if (i->second.repeat <= 0)
+        {
+           i= aParameters.erase(i);
+        }
+        else
+        {
+            glm::vec4 portion = static_cast<BaseAnimation*>(spr)->getPortion(i->second);
+            if (portion.x + portion.z == 1 && portion.y + portion.a == 1)
+            {
+                i->second.repeat --;
+            }
+            ++i;
+        }
+    }
     SpriteWrapper::reset();
 }
 void AnimationWrapper::render()

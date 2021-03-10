@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <map>
+#include <list>
 #include "glew.h"
 
 #include "glm.hpp"
@@ -62,8 +63,10 @@ public:
     }
     void init(std::string vertexPath, std::string fragmentPath);
     static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
-    static glm::vec2 toAbsolute(const glm::vec2& point);
+
+    static glm::vec2 toAbsolute(const glm::vec2& point);//given a screen coordinate, renders it to that point on the screen regardless of zoom
     static glm::vec4 toAbsolute(const glm::vec4& rect);
+
     static const glm::vec2& getXRange();
     static const glm::vec2& getYRange();
     static const glm::vec2& getZRange();
@@ -80,6 +83,25 @@ public:
     void use();
 
 
+};
+
+class RenderCamera
+{
+protected:
+    glm::vec4 rect = {0,0,0,0};
+
+public:
+    virtual void init(int w, int h); //we use an init instead of constructor since we don't always know what the dimensions are when creating the object.
+    const glm::vec4& getRect() const;
+
+    glm::vec2 toScreen(const glm::vec2& point) const; //converts a rect from the world coordinate to the screen coordinate
+    glm::vec4 toScreen(const glm::vec4& rect) const;
+
+    glm::vec2 toWorld(const glm::vec2& point) const; //converts a rect from the screen coordinate to the world coordinate
+    glm::vec4 toWorld(const glm::vec4& rect) const;
+
+    glm::vec2 toAbsolute(const glm::vec2& point) const;//given a screen coordinate, renders it to that point on the screen regardless of zoom
+    glm::vec4 toAbsolute(const glm::vec4& rect) const;
 };
 
 //extern RenderProgram RenderProgram::basicProgram;
@@ -144,6 +166,8 @@ public:
   //  virtual void render(RenderProgram& program, SpriteParameter parameter);
     virtual void renderInstanced(RenderProgram& program, const std::vector<SpriteParameter>& parameters);
     unsigned int getVAO();
+    int getWidth();
+    int getHeight();
     virtual int getFloats(); //# of floats per SpriteParameter is different for each class, so this function just returns the version for each child of Sprite
     void reset(); //clears all buffers and resets modified back to values
     void setTint(glm::vec3 color);
@@ -175,8 +199,9 @@ struct AnimationParameter//the main difference between this class and SpritePara
 {
     double start = -1; //the time at which the animation started, -1 if it hasn't started
     double fps = -1; //the fps for the animation. -1 means use the default
-
-
+    unsigned int repeat = 0; //repeats the animation "repeat" times. 0 instantly ends the animation after one frame.
+    glm::vec4 (RenderCamera::*transform) (const glm::vec4&) const = nullptr; // a transform function for the render location
+    RenderCamera* camera = nullptr; //the camera to use with the transform
 };
 
 typedef std::pair<SpriteParameter,AnimationParameter> FullAnimationParameter;
@@ -186,16 +211,16 @@ class BaseAnimation : public Sprite //the actual animation object
     double fps = 0;
     glm::vec2 frameDimen; //proportion of the spritesheet of each frame
     glm::vec4 subSection = {0,0,0,0}; //subsection.xy is the origin of the sprite sheet. subsection.za is the framesPerRow and the number of rows wanted. This is a standardized value (0-1).
-    glm::vec4 getPortion(const AnimationParameter& param); //given animation parameter, returns the portion of the spreadsheet
 public:
     BaseAnimation(std::string source, double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0});
     BaseAnimation()
     {
 
     }
+    glm::vec4 getPortion(const AnimationParameter& param); //given animation parameter, returns the portion of the spreadsheet
     void init(std::string source,double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
     using Sprite::renderInstanced;
-    void renderInstanced(RenderProgram& program, const std::vector<FullAnimationParameter>& parameters);
+    void renderInstanced(RenderProgram& program, const std::list<FullAnimationParameter>& parameters);
     void renderInstanced(RenderProgram& program, const std::vector<SpriteParameter>& parameters);
 };
 
@@ -217,7 +242,7 @@ public:
 
 class AnimationWrapper : public SpriteWrapper
 {
-    std::vector<FullAnimationParameter> aParameters;
+    std::list<FullAnimationParameter> aParameters; //we use a linkedList for this because we often times only want to remove some Animation Parameters. We could use forward_list for slight efficiency but I'm too lazy to deal with erase_after :)
 public:
     void init(BaseAnimation* a);
     void reset();

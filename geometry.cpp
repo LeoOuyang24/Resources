@@ -105,6 +105,11 @@ bool pointInVec(const glm::vec4& vec1, double x, double y, double angle)
     return rotated.x >= vec1.x && rotated.x <= vec1.x + vec1.z && rotated.y >= vec1.y && rotated.y <= vec1.y +vec1.a;
 }
 
+bool pointInVec(const glm::vec4& vec1, const glm::vec2& point, double angle)
+{
+    return pointInVec(vec1,point.x,point.y,angle);
+}
+
 double pointVecDistance(const glm::vec4& vec, float x, float y)
 {
     return sqrt(pow(std::min(vec.x + vec.z,std::max(vec.x, x)) - x,2) + pow(std::min(vec.y + vec.a,std::max(vec.y, y)) - y,2));

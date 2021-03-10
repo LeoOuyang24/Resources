@@ -1,8 +1,8 @@
 #include "SDLhelper.h"
 #include <iostream>
 
-double DeltaTime::deltaTime;
-double DeltaTime::lastTime = 0;
+int DeltaTime::deltaTime;
+int DeltaTime::lastTime = 0;
 gameFrame DeltaTime::currentFrame = 0;
 
 void DeltaTime::update()
@@ -12,15 +12,17 @@ void DeltaTime::update()
     currentFrame ++;
 }
 
+gameFrame DeltaTime::getCurrentFrame()
+{
+    return currentFrame;
+}
+
 void DeltaTime::set()
 {
     setTime = SDL_GetTicks();
     setFrame = currentFrame;
 }
-double DeltaTime::getTime()
-{
-    return setTime;
-}
+
 void DeltaTime::reset()
 {
     setTime = -1;
@@ -40,6 +42,15 @@ bool DeltaTime::timePassed(double passed)
 {
     return isSet() && SDL_GetTicks() - setTime >= passed;
 }
+int DeltaTime::getTime()
+{
+    return setTime;
+}
+int DeltaTime::getTimePassed()
+{
+    return setTime == -1 ? -1 : SDL_GetTicks() - setTime;
+}
+
 
 SDL_Keycode KeyManager::justPressed = -1;
 std::list<SDL_Keycode> KeyManager::numbers;

@@ -1,5 +1,8 @@
 #include <limits.h>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include "vanilla.h"
 
 Named::Named(std::string nameTag)
@@ -238,6 +241,19 @@ std::string convert(int input) //takes an int and returns the int in string form
     std::ostringstream os;
     os << input;
     return os.str();
+}
+
+bool angleRange(float rad1, float rad2, float range)
+{
+    float clamped =remainder(rad1,2*M_PI);
+    float clampedMax =remainder(rad2 + range,2*M_PI);
+    float clampedMin = remainder(rad2 - range,2*M_PI);
+    if (clampedMin > clampedMax)
+    {
+        clampedMax += 2*M_PI;
+        clamped += 2*M_PI*(clamped < 0);
+    }
+    return clamped <=  clampedMax && clamped >= clampedMin;
 }
 
 double randomDecimal(int places)

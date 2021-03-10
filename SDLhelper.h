@@ -9,19 +9,21 @@ typedef unsigned long long gameFrame;
 
 class DeltaTime //represents a timer that times how much time/frames has passed. deltaTime member variable milliseconds since last frame
 {
-    static double lastTime; //used to calculate deltaTime;
-    double setTime= -1; //-1 means not set
+    static int lastTime; //used to calculate deltaTime;
+    int setTime= -1; //-1 means not set
     gameFrame setFrame = 0;
     static gameFrame currentFrame; //the current frame. Incremented every time update is called
 public:
-    static double deltaTime;
+    static int deltaTime;
     static void update();
+    static gameFrame getCurrentFrame();
     void set(); //sets the time to SDL_GetTicks and setFrame to the currentFrame
     virtual void reset(); //sets time to -1
     bool isSet(); //returns whether or not the alarm is set
     bool timePassed(double passed); //returns whether or not the passed time is greater than or equal to passed in milliseconds
     bool framesPassed(gameFrame passed); //returns whether or not the passed frames have passed
-    double getTime(); //gets setTime
+    int getTime(); //gets setTime
+    int getTimePassed(); //gets the time since sent. -1 if not sent
 };
 
 class KeyManager //the keymanager stores numbers pressed in order based on the most recent key pressed.
