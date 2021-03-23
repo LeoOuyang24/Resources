@@ -384,12 +384,11 @@ const int Sprite::floatSize = sizeof(float);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         int channels;
         //auto imageData = cv::imread(source);
         unsigned char* data = stbi_load(source.c_str(),&width, &height, &channels, 0);
-
         int rgb = 0;// GL_RGB*!transparent + GL_RGBA*transparent;
         switch (channels)
         {
@@ -592,24 +591,16 @@ void Sprite::renderInstanced(RenderProgram& program, const std::vector<SpritePar
     }
     draw(program,data, size);
     delete data;
-    }
-  /*  else
-    {
-        std::cout << "Haven't loaded a texture yet!" << std::endl;
-    }*/
+}
+
 unsigned int Sprite::getVAO()
 {
     return VAO;
 }
 
-int Sprite::getWidth()
+glm::vec2 Sprite::getDimen()
 {
-    return width;
-}
-
-int Sprite::getHeight()
-{
-    return height;
+    return {width,height};
 }
 
 int Sprite::getFloats()
@@ -668,13 +659,18 @@ BaseAnimation::BaseAnimation(std::string source, double speed, int perRow, int r
     init(source,speed,perRow,rows,  sub);
 }
 
+glm::vec2 BaseAnimation::getDimen()
+{
+    return {frameDimen.x*width,frameDimen.y*height};
+}
+
 glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
 {
-        double current =  DeltaTime::getCurrentFrame();
+        double current =  SDL_GetTicks();
         int perRow = subSection.z; //frame per rows
         int rows = subSection.a; //number of rows
         double timeSince = current - param.start;
-        int framesSince = ((param.fps == -1)*fps + (param.fps != -1)*param.fps)*timeSince; //frames that have passed
+        int framesSince = ((param.fps == -1)*fps + (param.fps != -1)*param.fps)*timeSince/1000; //frames that have passed
         return {frameDimen.x*(framesSince%(perRow)) + subSection.x,
         (frameDimen.y*((framesSince/perRow)%rows)) + subSection.y,frameDimen.x, frameDimen.y};
 }
@@ -711,6 +707,7 @@ void BaseAnimation::renderInstanced(RenderProgram& program, const std::list<Full
         }
         //double timeSince = current - ptr->start;
        // int framesSince = ((ptr->fps == -1)*fps + (ptr->fps != -1)*ptr->fps)*timeSince; //frames that have passed
+
         param.portion = getPortion(*ptr);
         params.push_back({param});
     }
@@ -747,7 +744,7 @@ void SpriteWrapper::init(Sprite* sprite)
     SpriteManager::addSprite(*this);
 }
 
-void SpriteWrapper::request(SpriteParameter&& param)
+void SpriteWrapper::request(const SpriteParameter& param)
 {
     parameters.push_back({param});
 }
@@ -755,12 +752,6 @@ void SpriteWrapper::request(SpriteParameter&& param)
 void SpriteWrapper::reset()
 {
     parameters.clear();
-}
-
-SpriteWrapper::~SpriteWrapper()
-{
-    reset();
-    delete spr;
 }
 
 void SpriteWrapper::render()
@@ -798,6 +789,27 @@ void SpriteWrapper::render()
         spr->reset();
     }
 }
+
+glm::vec2 SpriteWrapper::getDimen()
+{
+    if (!isReady())
+    {
+        throw std::logic_error("Tried to get dimensions of uninitialized SpriteWrapper!");
+    }
+    return spr->getDimen();
+}
+
+bool SpriteWrapper::isReady()
+{
+    return spr;
+}
+
+SpriteWrapper::~SpriteWrapper()
+{
+    reset();
+    delete spr;
+}
+
 void AnimationWrapper::init(BaseAnimation* a)
 {
     SpriteWrapper::init(a);

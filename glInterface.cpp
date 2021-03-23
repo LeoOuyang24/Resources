@@ -66,6 +66,7 @@ void Panel::updateBlit(float z, RenderCamera& camera, bool absolute, const glm::
         renderRect =     camera.toScreen(blit);
     }
        scale = {renderRect.x - rect.x*renderRect.z/rect.z,renderRect.y - rect.y*renderRect.a/rect.a,renderRect.z/rect.z,renderRect.a/rect.a};
+       PolyRender::requestNGon(10,mousePos,10,{1,0,0,1},0,true,1);
     update(mousePos.x,mousePos.y,z,scale);
 }
 

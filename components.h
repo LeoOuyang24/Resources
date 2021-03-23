@@ -113,7 +113,7 @@ public:
 class MoveComponent : public RectComponent, public ComponentContainer<MoveComponent>
 {
     static constexpr float distThreshold = .001; //max distance an entity can be away from a point and still be considered to be on that point
-    double angle = 0; //Direction we are moving in. This would be calculated every update call if this wasn't a member variable
+    float angle = 0; //Direction we are moving in. This would be calculated every update call if this wasn't a member variable
 protected:
     double baseSpeed = 0;
     double speed = 0;
@@ -128,6 +128,7 @@ public:
     bool atTarget(); //returns atPoint(target);
     virtual void setTarget(const glm::vec2& point);
     virtual const glm::vec2& getTarget();
+    float getAngle();
     double getVelocity();
     double getBaseSpeed();
     double getCurSpeed();

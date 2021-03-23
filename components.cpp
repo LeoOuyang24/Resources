@@ -122,6 +122,10 @@ void MoveComponent::setTarget(const glm::vec2& point)
     target = point;
 }
 
+float MoveComponent::getAngle()
+{
+    return angle;
+}
 
 double MoveComponent::getVelocity()
 {
