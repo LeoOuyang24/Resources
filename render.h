@@ -133,11 +133,12 @@ class Sprite
 protected:
     int width = 0, height = 0;
     unsigned int texture = -1;
+    float texCoord = 1;
     float values[16] = {
-    -1, 1, 0, 1,
-    1, 1, 1, 1,
+    -1, 1, 0, texCoord,
+    1, 1, texCoord, texCoord,
     -1, -1, 0, 0,
-    1, -1, 1, 0
+    1, -1, texCoord, 0
 
     };
     int indices[6] = {
@@ -166,8 +167,7 @@ public:
   //  virtual void render(RenderProgram& program, SpriteParameter parameter);
     virtual void renderInstanced(RenderProgram& program, const std::vector<SpriteParameter>& parameters);
     unsigned int getVAO();
-    int getWidth();
-    int getHeight();
+    virtual glm::vec2 getDimen();
     virtual int getFloats(); //# of floats per SpriteParameter is different for each class, so this function just returns the version for each child of Sprite
     void reset(); //clears all buffers and resets modified back to values
     void setTint(glm::vec3 color);
@@ -197,7 +197,7 @@ public:
 
 struct AnimationParameter//the main difference between this class and SpriteParameters is that this one provides the time at which the animation started and the fps
 {
-    double start = -1; //the time at which the animation started, -1 if it hasn't started
+    double start = -1; //the time (SDL_GetTicks) at which the animation started, -1 if it hasn't started
     double fps = -1; //the fps for the animation. -1 means use the default
     unsigned int repeat = 0; //repeats the animation "repeat" times. 0 instantly ends the animation after one frame.
     glm::vec4 (RenderCamera::*transform) (const glm::vec4&) const = nullptr; // a transform function for the render location
@@ -217,6 +217,7 @@ public:
     {
 
     }
+    glm::vec2 getDimen(); //does not return the dimensions of the whole spritesheet but rather the size of the portion to be rendered.
     glm::vec4 getPortion(const AnimationParameter& param); //given animation parameter, returns the portion of the spreadsheet
     void init(std::string source,double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
     using Sprite::renderInstanced;
@@ -233,7 +234,9 @@ public:
     virtual void init(Sprite* spr);
     virtual void reset();
     virtual void render();
-    void request(SpriteParameter&& param);
+    glm::vec2 getDimen();
+    bool isReady(); //returns whether or not spr is null
+    void request(const SpriteParameter& param);
     virtual ~SpriteWrapper();
     std::vector<SpriteParameter> parameters;
 

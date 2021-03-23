@@ -687,7 +687,7 @@ RawQuadTree* RawQuadTree::update(Positional& positional, RawQuadTree& expected)
     else
     {
         std::cerr << positional.getPos().x << " " << positional.getPos().y << " " << region.x << " " << region.y << " " << region.z << " " << region.a << "\n";
-        throw new std::invalid_argument("");
+        throw new std::invalid_argument("Can't find positional!");
     }
     return newTree;
 

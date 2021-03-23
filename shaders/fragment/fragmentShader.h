@@ -8,10 +8,6 @@ uniform sampler2D sprite;
 void main()
 {
     vec4 text = texture(sprite,texCoord);
-    if (text.a < .5)
-    {
-      //  discard;
-    }
     fragColor = vec4(text*shade);
 
 }
