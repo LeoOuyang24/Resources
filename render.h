@@ -219,6 +219,7 @@ public:
     }
     glm::vec2 getDimen(); //does not return the dimensions of the whole spritesheet but rather the size of the portion to be rendered.
     glm::vec4 getPortion(const AnimationParameter& param); //given animation parameter, returns the portion of the spreadsheet
+    SpriteParameter processParam(const SpriteParameter& sParam,const AnimationParameter& aParam);
     void init(std::string source,double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
     using Sprite::renderInstanced;
     void renderInstanced(RenderProgram& program, const std::list<FullAnimationParameter>& parameters);
@@ -227,39 +228,64 @@ public:
 
 class SpriteWrapper
 {
+
 protected:
     Sprite* spr = nullptr;
 public:
     virtual void init(std::string source);
     virtual void init(Sprite* spr);
     virtual void reset();
-    virtual void render();
+    virtual void render(const std::list<SpriteParameter>& parameters);
     glm::vec2 getDimen();
     bool isReady(); //returns whether or not spr is null
     void request(const SpriteParameter& param);
     virtual ~SpriteWrapper();
-    std::vector<SpriteParameter> parameters;
 
 };
 
 
-class AnimationWrapper : public SpriteWrapper
+class AnimationWrapper : public SpriteWrapper //this class actually doesn't call BaseAnimation::renderInstanced, but rather converts FullAnimationParameters into SpriteParameters
 {
     std::list<FullAnimationParameter> aParameters; //we use a linkedList for this because we often times only want to remove some Animation Parameters. We could use forward_list for slight efficiency but I'm too lazy to deal with erase_after :)
 public:
     void init(BaseAnimation* a);
     void reset();
-    void render();
     using SpriteWrapper::request;
     void request(const SpriteParameter& sparam,const AnimationParameter& aparam);
     ~AnimationWrapper();
 };
 
+typedef std::pair<float,SpriteWrapper*> zWrapper; //used to sort spriteWrappers
+
 class SpriteManager
 {
+    struct ZWrapperComparator
+    {
+        bool operator ()(const zWrapper& a, const zWrapper& b) const
+        {
+            if (a.first == b.first)
+            {
+                return a.second < b.second;
+            }
+            return a.first < b.first;
+        }
+    };
+    struct ZWrapperHash
+    {
+        size_t operator()(zWrapper& a) const//stolen from stack overflow to combine the hashes of z and SpriteWrapper*
+        {
+            std::hash<SpriteParameter*> pHash;
+            std::hash<float> fHash;
+            size_t seed = std::hash<SpriteWrapper*>()(a.second);
+            seed ^= std::hash<float>()(a.first) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+            return seed;
+        }
+    };
     static std::vector<SpriteWrapper*> sprites;
+    static std::map<zWrapper,std::list<SpriteParameter>,ZWrapperComparator> params;
 public:
     static void addSprite(SpriteWrapper& spr);
+    static void request(SpriteWrapper& wrapper,const SpriteParameter& param);
     static void render();
 
 };

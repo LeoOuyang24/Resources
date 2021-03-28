@@ -39,7 +39,7 @@ class Font
 
     };
 
-    class FontWrapper : public SpriteWrapper //FontWrapper is distinct from SpriteWrapper because it isn't under the Sprite Manager's control
+    class FontWrapper : public SpriteWrapper
     {
     public:
         FontWrapper(Character& sprite);
