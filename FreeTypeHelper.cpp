@@ -93,8 +93,6 @@ int Font::writeLength(std::string str)
         wordProgram.setMatrix4fv("projection", glm::value_ptr(RenderProgram::getOrtho()));
 
         tnr.init("../../resources/tnr.ttf");
-
-        FontManager::addFont(tnr);
     }
     Font::Font(std::string source)
     {
@@ -133,7 +131,9 @@ int Font::writeLength(std::string str)
             }
            // character.bearing.x /= 64;
            // character.bearing.y /=64;
-            characters.insert(std::pair<GLchar,std::unique_ptr<FontWrapper> >(c,std::unique_ptr<FontWrapper>(new FontWrapper(*character))));
+           FontWrapper* fontWrapper = new FontWrapper(*character);
+           SpriteManager::addSprite(*fontWrapper);
+            characters[c] = std::unique_ptr<FontWrapper>(fontWrapper);
         }
 
 
@@ -206,12 +206,12 @@ void Font::requestWrite(FontParameter&& param)
 }
 void Font::write()
 {
-    auto end = characters.end();
+    /*auto end = characters.end();
     for (auto it = characters.begin(); it != end; ++it)
     {
-        it->second.get()->render();
-        it->second.get()->reset();
-    }
+   //     it->second.get()->render();
+    //    it->second.get()->reset();
+    }*/
 
 }
 

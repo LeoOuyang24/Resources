@@ -736,7 +736,6 @@ void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<Sp
 }
 
 std::vector<SpriteWrapper*> SpriteManager::sprites;
-std::map<zWrapper,std::list<SpriteParameter>,SpriteManager::ZWrapperComparator> SpriteManager::params;
 void SpriteWrapper::init(std::string source)
 {
     spr = new Sprite(source);
