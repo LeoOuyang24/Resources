@@ -654,9 +654,23 @@ void Sprite9::loadData(GLfloat* data, const SpriteParameter& parameter, int inde
 }
 
 
-BaseAnimation::BaseAnimation(std::string source, double speed, int perRow, int rows, const glm::vec4& sub)
+BaseAnimation::BaseAnimation(std::string source, int speed, int perRow, int rows, const glm::vec4& sub)
 {
     init(source,speed,perRow,rows,  sub);
+}
+
+int BaseAnimation::getFrames()
+{
+    return subSection.z*subSection.a;
+}
+
+int BaseAnimation::getDuration(int speed)
+{
+    if (speed == -1)
+    {
+        speed = fps;
+    }
+    return 1000/speed*subSection.z*subSection.a;
 }
 
 glm::vec2 BaseAnimation::getDimen()
@@ -666,13 +680,31 @@ glm::vec2 BaseAnimation::getDimen()
 
 glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
 {
-        double current =  SDL_GetTicks();
+        //int current =  SDL_GetTicks();
+        glm::vec4 backup = subSection;
+        if (param.subSection.z != 0 || param.subSection.a != 0)
+        {
+            subSection = param.subSection;
+        }
         int perRow = subSection.z; //frame per rows
         int rows = subSection.a; //number of rows
-        double timeSince = current - param.start;
-        int framesSince = ((param.fps == -1)*fps + (param.fps != -1)*param.fps)*timeSince/1000; //frames that have passed
-        return {frameDimen.x*(framesSince%(perRow)) + subSection.x,
+        int framesSince = param.start;
+        if (param.start < 0 )
+        {
+            framesSince = ((param.fps == -1)*fps + (param.fps != -1)*param.fps)*(SDL_GetTicks() + param.start)/1000.0; //frames that have passed
+            if (param.fps == 4)
+            {
+           std::cout << " " << framesSince%perRow << "\n";
+                //switch (framesSince%perRow)
+            }
+        }
+
+        glm::vec4 answer = {frameDimen.x*(framesSince%(perRow)) + subSection.x,
         (frameDimen.y*((framesSince/perRow)%rows)) + subSection.y,frameDimen.x, frameDimen.y};
+
+        subSection = backup;
+
+        return answer;
 }
 
 SpriteParameter BaseAnimation::processParam(const SpriteParameter& sParam,const AnimationParameter& aParam)
@@ -689,7 +721,7 @@ SpriteParameter BaseAnimation::processParam(const SpriteParameter& sParam,const 
     return param;
 }
 
-void BaseAnimation::init(std::string source, double speed, int perRow, int rows, const glm::vec4& sub)
+void BaseAnimation::init(std::string source, int speed, int perRow, int rows, const glm::vec4& sub)
 {
     Sprite::init(source);
     fps = speed;
@@ -798,6 +830,11 @@ void SpriteWrapper::render(const std::list<SpriteParameter>& parameters)
     }
 }
 
+Sprite* SpriteWrapper::getSprite()
+{
+    return spr;
+}
+
 glm::vec2 SpriteWrapper::getDimen()
 {
     if (!isReady())
@@ -816,6 +853,11 @@ SpriteWrapper::~SpriteWrapper()
 {
     reset();
     delete spr;
+}
+
+BaseAnimation* AnimationWrapper::getAnimation()
+{
+    return static_cast<BaseAnimation*>(spr);
 }
 
 void AnimationWrapper::init(BaseAnimation* a)

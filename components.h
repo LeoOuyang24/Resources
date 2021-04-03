@@ -145,6 +145,7 @@ struct ForceVector
 
 class ForcesComponent : public Component, public ComponentContainer<ForcesComponent> //component that pushes MoveComponent based on what forces are currently being applied
 {
+protected:
     glm::vec2 finalForce; //after applying all forces, this is the final x and y displacement to move
     std::list<ForceVector> forces;
     MoveComponent* move = nullptr; //forcesComponent will only work if there is a moveComponent on the entity
