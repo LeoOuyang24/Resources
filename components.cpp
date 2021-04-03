@@ -97,7 +97,7 @@ void MoveComponent::update()
         rect.x += nextPoint.x - center.x;
         rect.y += nextPoint.y - center.y;
     }
-    velocity = pointDistance({rect.x + rect.z/2, rect.y + rect.a/2}, center);
+    velocity = pointDistance({rect.x + rect.z/2, rect.y + rect.a/2}, center); //distance between new center vs old center
     speed = baseSpeed;
 }
 
@@ -167,6 +167,7 @@ void ForcesComponent::addForce(ForceVector force)
 
     finalForce.x += x;
     finalForce.y += y;
+
     forces.push_back(force);
 }
 
@@ -174,13 +175,13 @@ void ForcesComponent::update()
 {
     if ((finalForce.x != 0 || finalForce.y != 0) && move)
     {
-        if (abs(finalForce.x) > 10 || abs(finalForce.y) > 10)
+       /* if (abs(finalForce.x) > 10 || abs(finalForce.y) > 10)
         {
             for (auto it = forces.begin(); it != forces.end(); ++it)
             {
                 std::cout << it->angle << " " << it->magnitude << "\n";
             }
-        }
+        }*/
       //  glm::vec2 finalPoint = glm::vec2(move->getPos() + finalForce);
         move->setPos(move->getPos() + finalForce);
         finalForce = glm::vec2(0);

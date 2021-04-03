@@ -197,9 +197,10 @@ public:
 
 struct AnimationParameter//the main difference between this class and SpriteParameters is that this one provides the time at which the animation started and the fps
 {
-    double start = -1; //the time (SDL_GetTicks) at which the animation started, -1 if it hasn't started
-    double fps = -1; //the fps for the animation. -1 means use the default
+    int start = -1; //the frame we start at, with the first frame being 0. -1 to use SDL_Ticks to calculate the start
+    float fps = -1; //the fps for the animation. -1 means use the default
     unsigned int repeat = 0; //repeats the animation "repeat" times. 0 instantly ends the animation after one frame.
+    glm::vec4 subSection = glm::vec4(0);
     glm::vec4 (RenderCamera::*transform) (const glm::vec4&) const = nullptr; // a transform function for the render location
     RenderCamera* camera = nullptr; //the camera to use with the transform
 };
@@ -208,19 +209,21 @@ typedef std::pair<SpriteParameter,AnimationParameter> FullAnimationParameter;
 
 class BaseAnimation : public Sprite //the actual animation object
 {
-    double fps = 0;
+    int fps = 0;
     glm::vec2 frameDimen; //proportion of the spritesheet of each frame
     glm::vec4 subSection = {0,0,0,0}; //subsection.xy is the origin of the sprite sheet. subsection.za is the framesPerRow and the number of rows wanted. This is a standardized value (0-1).
 public:
-    BaseAnimation(std::string source, double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0});
+    BaseAnimation(std::string source, int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0});
     BaseAnimation()
     {
 
     }
+    int getFrames();
     glm::vec2 getDimen(); //does not return the dimensions of the whole spritesheet but rather the size of the portion to be rendered.
+    int getDuration(int speed = -1); //returns the duration of the full animation in milliseconds
     glm::vec4 getPortion(const AnimationParameter& param); //given animation parameter, returns the portion of the spreadsheet
     SpriteParameter processParam(const SpriteParameter& sParam,const AnimationParameter& aParam);
-    void init(std::string source,double speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
+    void init(std::string source,int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
     using Sprite::renderInstanced;
     void renderInstanced(RenderProgram& program, const std::list<FullAnimationParameter>& parameters);
     void renderInstanced(RenderProgram& program, const std::vector<SpriteParameter>& parameters);
@@ -236,6 +239,7 @@ public:
     virtual void init(Sprite* spr);
     virtual void reset();
     virtual void render(const std::list<SpriteParameter>& parameters);
+    Sprite* getSprite();
     glm::vec2 getDimen();
     bool isReady(); //returns whether or not spr is null
     void request(const SpriteParameter& param);
@@ -248,6 +252,7 @@ class AnimationWrapper : public SpriteWrapper //this class actually doesn't call
 {
     std::list<FullAnimationParameter> aParameters; //we use a linkedList for this because we often times only want to remove some Animation Parameters. We could use forward_list for slight efficiency but I'm too lazy to deal with erase_after :)
 public:
+    BaseAnimation* getAnimation();
     void init(BaseAnimation* a);
     void reset();
     using SpriteWrapper::request;
