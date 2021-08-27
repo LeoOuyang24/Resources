@@ -51,6 +51,22 @@ bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2)
     return (vec1.x <= vec2.x + vec2.z && vec1.x + vec1.z>= vec2.x && vec1.y <= vec2.y + vec2.a && vec1.y + vec1.a >= vec2.y);
 }
 
+bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2, float angle1, float angle2)
+{
+    glm::vec2 center = {vec2.x + vec2.z/2, vec2.y + vec2.a/2};
+    glm::vec2 topLeft = rotatePoint({vec2.x, vec2.y}, center, angle2);
+    glm::vec2 topRight = rotatePoint({vec2.x + vec2.z, vec2.y}, center, angle2);
+    glm::vec2 botLeft = rotatePoint({vec2.x, vec2.y + vec2.a}, center, angle2);
+    glm::vec2 botRight = rotatePoint({vec2.x + vec2.z, vec2.y + vec2.a}, center,angle2);
+
+    //Basically just see if any sides intersect
+
+    return (lineInVec(topLeft, topRight, vec1, angle1) || //top side
+            lineInVec(topLeft, botLeft, vec1, angle1) || //left side
+            lineInVec(botLeft, botRight, vec1, angle1) || //bot side
+            lineInVec(topRight, botRight, vec1, angle1));  //right side
+}
+
 glm::vec4 vecIntersectRegion(const glm::vec4& vec1, const glm::vec4& vec2) //returns the region of two colliding rects
 {
     glm::vec4 answer= {0,0,0,0};
@@ -300,7 +316,8 @@ glm::vec2 lineLineIntersectExtend(const glm::vec2& a1, const glm::vec2& a2, cons
     }
 }
 
-bool lineInVec(const glm::vec2& point1,const glm::vec2& point2, const glm::vec4& r1, double angle) //given points p1 and p2, with p1 having the lesser x value, this draws a line between the 2 points and checks to
+bool lineInVec(const glm::vec2& point1,const glm::vec2& point2, const glm::vec4& r1, double angle)
+                                        //given points p1 and p2, with p1 having the lesser x value, this draws a line between the 2 points and checks to
 {                                        //see if that line intersects with any of the sides of r1.
     if (point1.x > point2.x)
     {
@@ -319,7 +336,8 @@ bool lineInVec(const glm::vec2& point1,const glm::vec2& point2, const glm::vec4&
     return lineInLine(topLeft,topRight,p1,p2) ||
             lineInLine(topLeft,botLeft,p1,p2) ||
             lineInLine(topRight,botRight,p1,p2) ||
-            lineInLine(botLeft,botRight,p1,p2);
+            lineInLine(botLeft,botRight,p1,p2) ||
+            pointInVec(r1,p1,0) || pointInVec(r1,p2,0);
 }
 
 bool pointInTriangle (const glm::vec2 a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& p)
@@ -358,4 +376,34 @@ glm::vec2 rotatePoint(const glm::vec2& p, const glm::vec2& rotateAround, double 
 {
     glm::vec2 point = {p.x - rotateAround.x,p.y-rotateAround.y};//distances between target and pivot point
     return {point.x*cos(angle)-point.y*sin(angle)+rotateAround.x, point.x*sin(angle) + point.y*cos(angle)+rotateAround.y};
+}
+
+glm::vec4 moveRect(const glm::vec4& rect, const glm::vec4& wall, const glm::vec2& move)
+{
+    glm::vec4 finalRect = rect + glm::vec4(move.x,move.y,0,0);
+    glm::vec4 vertRect = {rect.x, rect.y + move.y, rect.z, rect.a};
+    if (vecIntersect(vertRect, wall)) //result if rect only moved vertically.
+    {
+        if (rect.y + rect.a < wall.y)
+        {
+            finalRect.y = wall.y - rect.a - 1;
+        }
+        else
+        {
+            finalRect.y = wall.y + wall.a+ 1;
+        }
+    }
+    glm::vec4 horizRect = {rect.x + move.x, rect.y, rect.z,rect.a};
+    if (vecIntersect(horizRect,wall)) //result if rect only moved horizontally.
+        {
+            if (rect.x + rect.z < wall.x)
+            {
+                finalRect.x = wall.x - rect.z - 1;
+            }
+            else
+            {
+                finalRect.x = wall.x + wall.z + 1;
+            }
+        }
+    return finalRect;
 }

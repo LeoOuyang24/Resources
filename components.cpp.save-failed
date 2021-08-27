@@ -6,7 +6,9 @@
 
 #include "components.h"
 
-Component::Component(Entity& entity) : ComponentContainer<Component>(nullptr),  entity(&entity)
+
+
+Component::Component(Entity& entity) : entity(&entity), ComponentContainer<Component>(nullptr)
 {
 
 }
@@ -66,27 +68,12 @@ glm::vec2 RectComponent::getCenter()
     return {rect.x + rect.z/2, rect.y + rect.a/2};
 }
 
-
-float RectComponent::getTilt()
-{
-    return tilt;
-}
-
-void RectComponent::setTilt(float newTilt) //clamp to -M_PI - +M_PI, just like C++ trig functions
-{
-    tilt = fmod(newTilt,2*M_PI) + 2*M_PI*(newTilt < 0);
-    if (tilt >M_PI)
-    {
-        tilt -= 2*M_PI;
-    }
-}
-
 RectComponent::~RectComponent()
 {
 
 }
 
-MoveComponent::MoveComponent(float speed, const glm::vec4& rect, Entity& entity) : RectComponent(rect, entity), ComponentContainer<MoveComponent>(&entity),
+MoveComponent::MoveComponent(double speed, const glm::vec4& rect, Entity& entity) : RectComponent(rect, entity), ComponentContainer<MoveComponent>(&entity),
                                                                                     baseSpeed(speed),speed(speed)
 {
     target = {rect.x + rect.z/2, rect.y + rect.a/2};
@@ -107,22 +94,14 @@ void MoveComponent::teleport(const glm::vec2& point)
 glm::vec2 MoveComponent::getNextPoint()
 {
     glm::vec2 center = {rect.x + rect.z/2, rect.y + rect.a/2};
-    if (!ignoreTarget)
-    {
-        angle = atan2((target.y - (center.y)),(target.x - (center.x)));
-    }
-    glm::vec2 increment = {cos(angle)*speed*DeltaTime::deltaTime,sin(angle)*speed*DeltaTime::deltaTime};
-    if (ignoreTarget)
-    {
-        return getCenter() + increment;
-    }
-    return getCenter() + glm::vec2(absMin(increment.x,target.x - center.x),absMin(increment.y, target.y - center.y));
+    angle = atan2((target.y - (center.y)),(target.x - (center.x)));
+    return getCenter() + glm::vec2(absMin(cos(angle)*speed*DeltaTime::deltaTime,target.x - center.x),absMin(sin(angle)*speed*DeltaTime::deltaTime, target.y - center.y));
 }
 
 void MoveComponent::update()
 {
     glm::vec2 center = getCenter();
-    if (!atTarget() || ignoreTarget)
+    if (!atTarget())
     {
         glm::vec2 nextPoint = getNextPoint();
         rect.x += nextPoint.x - center.x;
@@ -153,104 +132,44 @@ void MoveComponent::setTarget(const glm::vec2& point)
     target = point;
 }
 
-void MoveComponent::setAngle(float val)
-{
-    angle = val;
-}
-
-
 float MoveComponent::getAngle()
 {
     return angle;
 }
 
-float MoveComponent::getVelocity()
+float MoveComponent::getTilt()
+{
+    return tilt;
+}
+
+void MoveComponent::setTilt(float newTilt)
+{
+    tilt = newTilt;
+}
+
+double MoveComponent::getVelocity()
 {
     return velocity;
 }
 
-float MoveComponent::getBaseSpeed()
+double MoveComponent::getBaseSpeed()
 {
     return baseSpeed;
 }
 
-float MoveComponent::getCurSpeed()
+double MoveComponent::getCurSpeed()
 {
     return speed;
 }
 
-void MoveComponent::setSpeed(float newspeed)
+void MoveComponent::setSpeed(double newspeed)
 {
     speed = newspeed;
-}
-
-void MoveComponent::setIgnoreTarget(bool val)
-{
-    ignoreTarget = val;
 }
 
 MoveComponent::~MoveComponent()
 {
 
-}
-
-void RealMoveComponent::accelerate()
-{
-    speed = std::max(0.0f,std::min(speed + accel*DeltaTime::deltaTime,baseSpeed)); //accelerate
-}
-
-void RealMoveComponent::decelerate()
-{
-    speed = std::max(0.0f,std::min(speed - decel*DeltaTime::deltaTime,baseSpeed));
-}
-
-RealMoveComponent::RealMoveComponent(float accel_, float deccel_, float speed, const glm::vec4& rect, Entity& entity) : MoveComponent(speed, rect, entity),
-                                                                                                                            ComponentContainer<RealMoveComponent>(entity),
-                                                                                                                            accel(accel_),
-                                                                                                                            decel(deccel_)
-{
-    speed = 0;
-}
-
-void RealMoveComponent::setTarget(const glm::vec2& point)
-{
-    if (point != target)
-    {
-        speed =0;
-          maxSpeed = std::min(baseSpeed,(float)sqrt(2*pointDistance(point,getCenter())*accel*decel/(accel + decel)));
-    }
-    MoveComponent::setTarget(point);
-}
-
-float RealMoveComponent::getAccel()
-{
-    return accel;
-}
-
-float RealMoveComponent::getDecel()
-{
-    return decel;
-}
-
-void RealMoveComponent::update()
-{
-    if (!atTarget())
-    {
-       // float dist = pointDistance(getCenter(),target);
-        float decelDist = maxSpeed/decel*maxSpeed/2.0; //Distance traveled while decelerating; integral of speed vs time with a constant deceleration rate.
-        if (pointDistance(getCenter(),target) > decelDist)
-        {
-            accelerate();
-        }
-        else
-        {
-            decelerate();
-        }
-    }
-  //  std::cout << speed << "\n";
-    float oldSpeed = speed;
-    MoveComponent::update(); //we want to use every part of MoveComponent::update except the part where it overrides our speed
-    speed = oldSpeed;
 }
 
 void ForcesComponent::applyForce(ForceVector force)
@@ -355,39 +274,36 @@ void SpriteComponent::setParam(const SpriteParameter& param, const AnimationPara
 {
     this->sParam = param;
     this->aParam = animeParam;
-    modified = true;
 }
 
 void SpriteComponent::update()
 {
     if (sprite)
     {
-            if (!modified) //if sParam.rect was not modified at all, attempt to render at the entity's position, if possible
+        if (sParam == SpriteParameter()) //if sParam was not modified at all, attempt to render at the entity's position, if possible
+        {
+            RectComponent* rect = entity->getComponent<RectComponent>();
+            if (rect)
             {
-                RectComponent* rect = entity->getComponent<RectComponent>();
-                if (rect)
+                if (camera)
                 {
-                    if (camera)
-                    {
-                        sParam.rect = camera->toScreen(rect->getRect());
-                    }
-                    else
-                    {
-                        sParam.rect = rect->getRect();
-                    }
-                    sParam.radians = rect->getTilt();
+                    sParam.rect = camera->toScreen(rect->getRect());
+                }
+                else
+                {
+                    sParam.rect = rect->getRect();
                 }
             }
-            if (animated)
-            {
-                static_cast<AnimationWrapper*>(sprite)->request(sParam,aParam);
-            }
-            else
-            {
-                sprite->request(sParam);
-            }
+        }
+        if (animated)
+        {
+            static_cast<AnimationWrapper*>(sprite)->request(sParam,aParam);
+        }
+        else
+        {
+            sprite->request(sParam,aParam);
+        }
         setParam(SpriteParameter(),AnimationParameter()); //reset params
-        modified = false;
     }
 }
 
@@ -399,37 +315,30 @@ Entity::Entity()
 
 void Entity::addComponent(Component& comp)
 {
-    if (components.find(&comp) == components.end())
-    {
-        components[&comp] = std::shared_ptr<Component>(&comp);
-
-    }
+    components.emplace_back(&comp);
 }
 
 void Entity::update()
 {
-    auto end = components.end();
-    for (auto i = components.begin(); i != end; ++i)
+    for (int i = components.size() - 1; i >= 0; --i)
     {
-        i->first->update();
+        components[i]->update();
     }
 }
 
 void Entity::collide(Entity& entity)
 {
-    auto end = components.end();
-    for (auto i = components.begin();i != end; ++i)
+    for (int i= components.size() - 1; i >= 0; --i)
     {
-        i->first->collide(entity);
+        components[i]->collide(entity);
     }
 }
 
 void Entity::onDeath()
 {
-    auto end = components.end();
-    for (auto i = components.begin();i != end; ++i)
+    for (int i = components.size() - 1; i >= 0; --i)
     {
-        i->first->onDeath();
+        components[i]->onDeath();
     }
 }
 

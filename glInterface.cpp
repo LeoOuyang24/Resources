@@ -18,6 +18,17 @@ Panel::Panel(const glm::vec4& rect_, const glm::vec4& bColor, SpriteWrapper* spr
 
 }
 
+
+void Panel::setDoUpdate(bool val)
+{
+    doUpdate = val;
+}
+
+bool Panel::getDoUpdate()
+{
+    return doUpdate;
+}
+
 const glm::vec4& Panel::getRect()
 {
     return rect;
@@ -31,6 +42,12 @@ void Panel::changeRect(const glm::vec4& rect)
 {
     this->rect = rect;
 }
+
+void Panel::setSprite(SpriteWrapper* sprite)
+{
+    this->sprite = sprite;
+}
+
 void Panel::update(float mouseX,float mouseY, float z, const glm::vec4& scale)
 {
     param = originalSprite;
@@ -66,7 +83,7 @@ void Panel::updateBlit(float z, RenderCamera& camera, bool absolute, const glm::
         renderRect =     camera.toScreen(blit);
     }
        scale = {renderRect.x - rect.x*renderRect.z/rect.z,renderRect.y - rect.y*renderRect.a/rect.a,renderRect.z/rect.z,renderRect.a/rect.a};
-       PolyRender::requestNGon(10,mousePos,10,{1,0,0,1},0,true,1);
+     //  PolyRender::requestNGon(10,mousePos,10,{1,0,0,1},0,true,1);
     update(mousePos.x,mousePos.y,z,scale);
 }
 
@@ -86,7 +103,7 @@ void Message::update(float mouseX, float mouseY, float z, const glm::vec4& scale
     }
     else if (sprite)
     {
-        sprite->request({renderRect,param.radians,param.effect,param.tint,param.program,baseZ + param.z+ z});
+        sprite->request({renderRect,param.radians,param.effect,param.tint,param.program,baseZ + param.z+ z,param.portion});
     }
     if (font)
     {
@@ -208,10 +225,13 @@ void CondSwitchButton::press()
     }
 }
 
-Window::Window(const glm::vec2& dimen, SpriteWrapper* spr, const glm::vec4& bg, double z_) : Panel({ dimen.x/2, dimen.y/2,dimen.x,dimen.y},bg,spr,z_)
+Window::Window(const glm::vec2& dimen, SpriteWrapper* spr, const glm::vec4& bg, double z_) : Panel({ 0,0,dimen.x,dimen.y},bg,spr,z_)
 {
-    rect.z += (rect.z == 0) * RenderProgram::getScreenDimen().x; //set dimensions that are 0 to that of the full screen size
-    rect.a += (rect.a == 0) * RenderProgram::getScreenDimen().y;
+    glm::vec2 screenDimen = RenderProgram::getScreenDimen();
+    rect.z += (rect.z == 0) * screenDimen.x; //set dimensions that are 0 to that of the full screen size
+    rect.a += (rect.a == 0) * screenDimen.y;
+    rect.x = screenDimen.x/2 - rect.z/2;
+    rect.y = screenDimen.y/2 - rect.a/2;
 }
 
 Window::Window( const glm::vec4& box, SpriteWrapper* spr, const glm::vec4& bg, double z_) : Panel( box,bg,spr, z_)
@@ -220,19 +240,22 @@ Window::Window( const glm::vec4& box, SpriteWrapper* spr, const glm::vec4& bg, d
     rect.a += (rect.a == 0) * RenderProgram::getScreenDimen().y;
 }
 
-void Window::setDoUpdate(bool val)
-{
-    doUpdate = val;
-}
-
-bool Window::getDoUpdate()
-{
-    return doUpdate;
-}
-
 int Window::countPanels()
 {
     return panels.size();
+}
+
+void Window::removePanel(Panel& button)
+{
+    auto end = panels.end();
+    for (auto it = panels.begin(); it != end; ++it)
+    {
+        if ((*it).first.get() == &button)
+        {
+            panels.erase(it);
+            break;
+        }
+    }
 }
 
 void Window::addPanel(Panel& button, bool absolute)
@@ -262,38 +285,31 @@ void Window::update(float x, float y, float z, const glm::vec4& blit)
         auto end = panels.end();
         for (auto i = panels.begin(); i != end;)
         {
-            bool hover = pointInVec(i->first.get()->getRect(),x,y,0);
-            if (camera)
+            if (i->first.get()->getDoUpdate())
             {
-               /* if (i->second)
+                bool hover = pointInVec(i->first.get()->getRect(),x,y,0);
+                if (camera)
                 {
-                    glm::vec2 moved = camera->toAbsolute({x,y});
-                    i->first.get()->update(moved.x,moved.y,baseZ + z + 0.1,camera->toAbsolute(blit));
+                    i->first.get()->updateBlit(baseZ + param.z + z + .1,*camera, i->second);
                 }
                 else
                 {
-                    glm::vec2 moved = camera->toScreen(camera->toWorld({x,y}));
-                    i->first.get()->update(moved.x,moved.y,baseZ + z + 0.1,camera->toScreen(blit));
-                   // i->first.get()->updateBlit(baseZ + z + .1,*camera, i->second)
-                }*/
-                i->first.get()->updateBlit(baseZ + param.z + z + .1,*camera, i->second);
-            }
-            else
-            {
-                i->first.get()->update(x,y,baseZ + param.z+ z + 0.1,blit);
-            }
-            if (i->first->getDead())
-            {
-                i = panels.erase(i);
+                    i->first.get()->update(x,y,baseZ + param.z+ z + .1,blit);
+                }
+                if (i->first->getDead())
+                {
+                    i = panels.erase(i);
+                }
+                else
+                {
+                    ++i;
+                }
             }
             else
             {
                 ++i;
             }
-            /*if (clicked && hover)
-            {
-                panels[i].get()->press();
-            }*/
+
         }
 
     }
@@ -320,6 +336,25 @@ void Window::switchTo(Window& other)
 void Window::onSwitch(Window& previous)
 {
 
+}
+
+void Window::requestNGon(int n,const glm::vec2& center,double side,const glm::vec4& color,double angle,bool filled,float z)
+{
+    glm::vec2 newCenter = camera ? camera->toScreen(center) : center;
+    PolyRender::requestNGon(n,newCenter,side,color,angle,filled,z);
+}
+
+void Window::requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z)
+{
+    glm::vec4 newRect = camera ? camera->toScreen(rect) : rect;
+    PolyRender::requestRect(newRect, color, filled, angle, z);
+}
+
+void Window::requestLine(const glm::vec4& line, const glm::vec4& color, float z)
+{
+
+    glm::vec4 newLine = camera ? glm::vec4(camera->toScreen({line.x,line.y}),camera->toScreen({line.z,line.a})) : line;
+    PolyRender::requestLine(newLine,color,z);
 }
 
 OnOffButton::OnOffButton(Window& window1, Window& window2, const glm::vec4& rect, SpriteWrapper* spr, const FontParameter& param, Font* font,

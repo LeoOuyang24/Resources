@@ -316,6 +316,8 @@ void RenderProgram::setVec2fv(std::string name, glm::vec2 value)
     glUseProgram(0);
 }
 
+RenderCamera* RenderCamera::currentCamera = nullptr;
+
 void RenderCamera::init(int w, int h)
 {
     rect.z = w;
@@ -325,6 +327,12 @@ void RenderCamera::init(int w, int h)
 const glm::vec4& RenderCamera::getRect() const
 {
     return rect;
+}
+
+void RenderCamera::recenter(const glm::vec2& point)
+{
+    rect.x = point.x - rect.z/2;
+    rect.y = point.y - rect.a/2;
 }
 
 
@@ -692,11 +700,6 @@ glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
         if (param.start < 0 )
         {
             framesSince = ((param.fps == -1)*fps + (param.fps != -1)*param.fps)*(SDL_GetTicks() + param.start)/1000.0; //frames that have passed
-            if (param.fps == 4)
-            {
-           std::cout << " " << framesSince%perRow << "\n";
-                //switch (framesSince%perRow)
-            }
         }
 
         glm::vec4 answer = {frameDimen.x*(framesSince%(perRow)) + subSection.x,
@@ -709,6 +712,7 @@ glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
 
 SpriteParameter BaseAnimation::processParam(const SpriteParameter& sParam,const AnimationParameter& aParam)
 {
+    /*Returns a SpriteParameter that represents what to render. sParam.portion is interpreted as the portion of the sprite sheet to render*/
     SpriteParameter param = sParam;
     if (aParam.transform && aParam.camera)
     {
@@ -717,7 +721,8 @@ SpriteParameter BaseAnimation::processParam(const SpriteParameter& sParam,const 
     //double timeSince = current - ptr->start;
    // int framesSince = ((ptr->fps == -1)*fps + (ptr->fps != -1)*ptr->fps)*timeSince; //frames that have passed
 
-    param.portion = getPortion(aParam);
+    glm::vec4 portion = getPortion(aParam);
+    param.portion = {param.portion.x + portion.x, param.portion.y + portion.y, param.portion.z*portion.z, param.portion.a*portion.a};
     return param;
 }
 
@@ -791,7 +796,7 @@ void SpriteWrapper::reset()
   //  parameters.clear();
 }
 
-void SpriteWrapper::render(const std::list<SpriteParameter>& parameters)
+void SpriteWrapper::render(const std::list<SpriteParameter>& parameters, float zMod)
 {
     if (spr)
     {
@@ -806,14 +811,16 @@ void SpriteWrapper::render(const std::list<SpriteParameter>& parameters)
         int index = 0;
         int i = 0;
        // bool deleted = false;
+       SpriteParameter current;
         for (auto it = parameters.begin(); it != end; ++it)
         {
-            const SpriteParameter* current = &*it;
-            spr->loadData(data, *current, index*floats);
+            current = *it;
+            current.z += zMod;
+            spr->loadData(data, current, index*floats);
             index ++;
-            if (i == size - 1 || ((std::next(it))->program != current->program ) )
+            if (i == size - 1 || ((std::next(it))->program != current.program ) )
             {
-                spr->draw(*(current->program),data,(index)*floats/spr->floats); //floats/spr->floats = # of sprite Parameters per sprite Parameter. This is most relevant for Sprite9, where each SpriteParameter passed results in 8 more Sprite Parameters
+                spr->draw(*(current.program),data,(index)*floats/spr->floats); //floats/spr->floats = # of sprite Parameters per sprite Parameter. This is most relevant for Sprite9, where each SpriteParameter passed results in 8 more Sprite Parameters
                 index = 0;
                 delete[] data;
                 if (i != size - 1)
@@ -886,6 +893,11 @@ void AnimationWrapper::reset()
     SpriteWrapper::reset();
 }
 
+void AnimationWrapper::request(const SpriteParameter& param)
+{
+    request(param,{});
+}
+
 void AnimationWrapper::request(const SpriteParameter& sParam, const AnimationParameter& aParam)
 {
    SpriteWrapper::request(static_cast<BaseAnimation*>(spr)->processParam(sParam,aParam));
@@ -907,9 +919,11 @@ void SpriteManager::request(SpriteWrapper& wrapper, const SpriteParameter& param
 
 void SpriteManager::render()
 {
+    int i= 0;
     for (auto it = params.begin(); it != params.end(); ++it)
     {
-       it->first.second->render(it->second);
+       it->first.second->render(it->second,.0001*i);
+       ++i;
     }
     params.clear();
     /*int size = sprites.size();
@@ -1138,3 +1152,68 @@ void PolyRender::render()
         renderPolygons();
     }
 }
+
+int AnimationSequencer::getStateIndex(int frameStart,int* timeSince_)
+{
+    int timeSince = (SDL_GetTicks() - frameStart)%fullDuration; //normalize our time since our animation started
+    int index = infoSize - 1;
+    for (int i = 0; i < infoSize; ++i)
+    {
+      //  std::cout << info[index].x << " " << timeSince << "\n";
+        if (timeSince - info[i].x <= 0)
+        {
+            index = std::max(i,0);
+            break;
+        }
+        timeSince -= info[i].x;
+    }
+    if (timeSince_)
+    {
+        *timeSince_ = timeSince;
+    }
+    return index;
+}
+
+AnimationSequencer::AnimationSequencer(const std::vector<glm::vec2>& baseInfo)
+{
+    info = new glm::vec3[baseInfo.size()];
+    infoSize = baseInfo.size();
+    for (int i = 0; i < infoSize; ++i)
+    {
+        info[i] = {baseInfo[i].x,baseInfo[i].y,totalFrames};
+        fullDuration += baseInfo[i].x;
+        totalFrames += baseInfo[i].y;
+    }
+}
+
+AnimationParameter AnimationSequencer::process(int frameStart)
+{
+    //std::cout << (SDL_GetTicks() - frameStart) << "\n";
+    int timeSince = 0;
+    int index = getStateIndex(frameStart,&timeSince);
+    AnimationParameter param;
+    param.fps = 1000.0*info[index].y/info[index].x;
+    param.start = fmod((timeSince*info[index].y/info[index].x + info[index].z),totalFrames);
+    //std::cout << timeSince << " " << param.start << " " << index << "\n";
+    return param;
+}
+
+int AnimationSequencer::getStateIndex(int frameStart)
+{
+    if (isDone(frameStart))
+    {
+        return -1;
+    }
+    return getStateIndex(frameStart,nullptr);
+}
+
+bool AnimationSequencer::isDone(int frameStart)
+{
+    return SDL_GetTicks() - frameStart >= fullDuration;
+}
+
+AnimationSequencer::~AnimationSequencer()
+{
+
+}
+

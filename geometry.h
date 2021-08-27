@@ -15,6 +15,7 @@ int loadShaders(const GLchar* source, GLenum shaderType );
 double pointDistance(const glm::vec2& v1, const glm::vec2& v2);
 glm::vec2 findMidpoint(const glm::vec4& v1); //midpoint of a line
 bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2);
+bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2, float angle1, float angle2); //vec1 and vec2 are rotated at the respective angles
 glm::vec4 vecIntersectRegion(const glm::vec4& vec1, const glm::vec4& vec2); //returns the region of two colliding rects. Any given dimension will be 0 if there is no intersection in that direction.
 bool vecInside(const glm::vec4& vec1, const glm::vec4& vec2); //like vecIntersect but doesn't return true if the rect's only overlap is a line.
 double vecDistance(const glm::vec4& vec1, const glm::vec4& vec2); //gets the distance between two rects. 0 if they are intersecting
@@ -32,6 +33,7 @@ bool pointInTriangle (const glm::vec2 a, const glm::vec2& b, const glm::vec2& c,
 glm::vec4 absoluteValueRect(const glm::vec4& rect); //given a rect with at least one negative dimension, converts it into a regular rect with positive dimensions. A rect with already positive dimensions will return itself
 glm::vec2 pairtoVec(const std::pair<double,double>& pear); //converts a pair to a vec2
 glm::vec2 rotatePoint(const glm::vec2& p, const glm::vec2& rotateAround, double angle); //angle in radians
-
+glm::vec4 moveRect(const glm::vec4& rect, const glm::vec4& wall, const glm::vec2& move); //handles collision detection between a rect moving with the vector move against a wall.
+                                                                                            //rects inside the wall will be pushed out
 
 #endif // GEOMETRY_H_INCLUDED

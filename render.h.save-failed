@@ -91,10 +91,8 @@ protected:
     glm::vec4 rect = {0,0,0,0};
 
 public:
-    static RenderCamera* currentCamera; //a pointer to the current camera in use.
     virtual void init(int w, int h); //we use an init instead of constructor since we don't always know what the dimensions are when creating the object.
     const glm::vec4& getRect() const;
-    void recenter(const glm::vec2& point);
 
     glm::vec2 toScreen(const glm::vec2& point) const; //converts a rect from the world coordinate to the screen coordinate
     glm::vec4 toScreen(const glm::vec4& rect) const;
@@ -124,13 +122,6 @@ struct SpriteParameter //stores a bunch of information regarding how to render t
     RenderProgram* program = &RenderProgram::basicProgram;
     float z = 0;
     glm::vec4 portion = {0,0,1,1};
-    bool operator ==(const SpriteParameter& p2)
-    {
-        return this->rect == p2.rect && this->radians == p2.radians &&
-        this->effect == p2.effect && this->tint == p2.tint &&
-        this->program == p2.program && this->z == p2.z &&
-        this->portion == p2.portion;
-    }
    // std::vector<float> vertices = {};
     //std::vector<int> indices = {};
 };
@@ -231,7 +222,7 @@ public:
     glm::vec2 getDimen(); //does not return the dimensions of the whole spritesheet but rather the size of the portion to be rendered.
     int getDuration(int speed = -1); //returns the duration of the full animation in milliseconds
     glm::vec4 getPortion(const AnimationParameter& param); //given animation parameter, returns the portion of the spreadsheet
-    SpriteParameter processParam(const SpriteParameter& sParam,const AnimationParameter& aParam); //returns a spriteparameter that represents what to render
+    SpriteParameter processParam(const SpriteParameter& sParam,const AnimationParameter& aParam);
     void init(std::string source,int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
     using Sprite::renderInstanced;
     void renderInstanced(RenderProgram& program, const std::list<FullAnimationParameter>& parameters);
@@ -289,8 +280,8 @@ class SpriteManager
     {
         size_t operator()(zWrapper& a) const//stolen from stack overflow to combine the hashes of z and SpriteWrapper*
         {
-          //  std::hash<SpriteParameter*> pHash;
-           // std::hash<float> fHash;
+            std::hash<SpriteParameter*> pHash;
+            std::hash<float> fHash;
             size_t seed = std::hash<SpriteWrapper*>()(a.second);
             seed ^= std::hash<float>()(a.first) + 0x9e3779b9 + (seed<<6) + (seed>>2);
             return seed;
