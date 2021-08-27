@@ -11,6 +11,7 @@
 #include <memory>
 
 #include "geometry.h"
+#include "render.h"
 
 bool rectPathIntersect(const glm::vec4& oldRect, const glm::vec4& newRect, const glm::vec4& collide); //returns true if oldRect collided with collide on its path to newRect
 
@@ -21,6 +22,7 @@ protected:
 public:
     Positional(const glm::vec2& point);
     virtual bool collides(const glm::vec4& box); //how to determine whether or not this thing collides with a rect (used in quadtree)
+    virtual bool collidesLine(const glm::vec4& line); //returns if this collides with a line
     virtual double distance(const glm::vec2& point) //finds how far this positional is from a point (used in to find all objects within a distance
      {
          return pointDistance(point, pos);
@@ -37,6 +39,7 @@ protected:
 public:
     RectPositional(const glm::vec4& box);
     virtual bool collides(const glm::vec4& box);
+    virtual bool collidesLine(const glm::vec4& line);
     virtual double distance(const glm::vec2& point)
     {
         return pointVecDistance(rect, point.x, point.y);
@@ -44,6 +47,15 @@ public:
     virtual glm::vec2 getPos() const;
     const glm::vec4& getRect() const;
     glm::vec2 getCenter() const;
+};
+
+class RectPosCamera : public RenderCamera  //a camera that follows a RectPositional
+{
+    std::weak_ptr<RectPositional> followee;
+public:
+    void init(const std::shared_ptr<RectPositional>& followee_, int w, int h);
+    void setFollowee(const std::shared_ptr<RectPositional>& followee_);
+    void update();
 };
 
 typedef std::vector<std::shared_ptr<Positional>> pointerVec;

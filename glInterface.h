@@ -8,7 +8,7 @@
 
 #include "render.h"
 
-class Panel //parent class of anything that goes on a window, including other windows and buttons
+class Panel //parent class of anything that goes on a window, including other windows and buttons. DOES NOT RENDER ANYTHING; create children for functionality
 {
 protected:
     float baseZ = 0; //z of the panel. Added to param.z
@@ -18,12 +18,16 @@ protected:
     SpriteParameter param; //used to modify the spriteParameter. rect is effected by the Panel.Rect, rather than the param.rect
     const SpriteParameter originalSprite;
     bool dead = false;
+    bool doUpdate = true; //whether to update this window or not
 
 public:
     Panel(const glm::vec4& rect_, const glm::vec4& bColor, SpriteWrapper* spr, double z_ = 0);
+    void setDoUpdate(bool val);
+    bool getDoUpdate();
     const glm::vec4& getRect();
     bool getDead();
     void changeRect(const glm::vec4& rect);
+    void setSprite(SpriteWrapper* sprite);
     virtual void update(float mouseX,float mouseY, float z, const glm::vec4& scale); //mouseX and mouseY are the coordinates of the mouse and should
                                             //already be scaled and not have to be modified, z is the z coordinate to render to,
                                             //scale is NOT the rect that we want to project to; the x,y is the x-y increment to render to, and the z and a are the x and yscale respectively
@@ -67,7 +71,7 @@ public:
     virtual void press();
     virtual void hover(); //what to do if the mouse hovers over this button
     virtual void render(float x, float y, float z, const glm::vec4& scaleRect); // just calls Message::update() by default. Can be modified for more flexibility
-    virtual void update(float mouseX, float mouseY, float z, const glm::vec4& blit);
+    virtual void update(float mouseX, float mouseY, float z, const glm::vec4& scaleRect);
 };
 
 class Interface;
@@ -95,17 +99,15 @@ public:
 
 class Window : public Panel
 {
-    typedef std::pair<std::unique_ptr<Panel>,bool> PanelPair; //panel and whether to render it absoltue or not
+    typedef std::pair<std::unique_ptr<Panel>,bool> PanelPair; //panel and whether to render it absoltue or not. Unique ptr because panels should only be owned by the Window, nothing else
 protected:
     std::list<PanelPair> panels;
-    bool doUpdate = true; //whether to update this window or not
     RenderCamera* camera = nullptr;
 public:
     Window( const glm::vec2& dimen, SpriteWrapper* spr, const glm::vec4& bg, double z_ = 0); //if window is supposed to be centered
     Window( const glm::vec4& box, SpriteWrapper* spr, const glm::vec4& bg, double z_ = 0); //if window doesn't need to be centered
-    void setDoUpdate(bool val);
-    bool getDoUpdate();
     int countPanels();
+    void removePanel(Panel& button);
     void addPanel(Panel& button, bool absolute = false); //Adds button relative to top right corner
     void setCamera(RenderCamera* cam);
     virtual void update(float x, float y, float z, const glm::vec4& scale);//this function also renders the window. x,y, and clicked are where the mouse is and whether or not it clicked
@@ -113,6 +115,9 @@ public:
     virtual void updateTop(float z); //same as other updateTop except blit is our own rect. Basically no scaling
     virtual void switchTo(Window& swapTo); //called when swapping away from this window. swapTo is the new window
     virtual void onSwitch(Window& previous); //called when swapping to this window. previous is the previous window
+    virtual void requestNGon(int n,const glm::vec2& center,double side,const glm::vec4& color,double angle,bool filled,float z);
+    virtual void requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z);
+    virtual void requestLine(const glm::vec4& line, const glm::vec4& color, float z);
 };
 
 enum class OnOffMode

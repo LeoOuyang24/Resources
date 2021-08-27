@@ -20,6 +20,11 @@ bool Positional::collides(const glm::vec4& box)
     return pointInVec(box,pos.x,pos.y,0);
 }
 
+bool Positional::collidesLine(const glm::vec4& line)
+{
+    return pointLineDistance(line,pos)==0;
+}
+
 glm::vec2 Positional::getPos() const
 {
     return pos;
@@ -40,6 +45,11 @@ const glm::vec4& RectPositional::getRect() const
     return rect;
 }
 
+bool RectPositional::collidesLine(const glm::vec4& line)
+{
+    return lineInVec({line.x,line.y},{line.z,line.a},rect);
+}
+
 bool RectPositional::collides(const glm::vec4& box)
 {
     return vecIntersect(box,rect);
@@ -48,6 +58,25 @@ bool RectPositional::collides(const glm::vec4& box)
 glm::vec2 RectPositional::getCenter() const
 {
     return {rect.x + rect.z/2, rect.y + rect.a/2};
+}
+
+void RectPosCamera::init(const std::shared_ptr<RectPositional>& followee_, int w, int h)
+{
+    RenderCamera::init(w,h);
+    setFollowee(followee_);
+}
+
+void RectPosCamera::setFollowee(const std::shared_ptr<RectPositional>& followee_)
+{
+    followee = followee_;
+}
+
+void RectPosCamera::update()
+{
+    if (followee.lock().get())
+    {
+        recenter(followee.lock().get()->getCenter());
+    }
 }
 
 QuadTree::QuadTree(const glm::vec4& rect)
