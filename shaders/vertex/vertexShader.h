@@ -16,15 +16,25 @@ out vec4 shade;
 void main()
 {
     float z = values.z;
+    float a = values.a;
     float portionX = portion.x;
+    float portionY = portion.y;
     if (effect == 1)
     {
         z*=-1;
         portionX += portion.z;
     }
+    else
+    {
+        if (effect == 2)
+        {
+            a*=-1;
+            portionY += portion.a;
+        }
+    }
     gl_Position = projection*transform*vec4(values.xy,depth,1);
    // gl_Position.z = depth;
-    texCoord = vec2( portionX + z*portion.z,portion.y + values.a*portion.a);
+    texCoord = vec2( portionX + z*portion.z,portionY + a*portion.a);
     shade = color;
 
 }
