@@ -112,7 +112,8 @@ public:
 enum RenderEffect
 {
     NONE,
-    MIRROR
+    MIRROR,
+    HORIZMIRROR
 };
 
 struct SpriteParameter //stores a bunch of information regarding how to render the sprite

@@ -11,7 +11,7 @@ void printRect(const glm::vec4& rect)
 }
 
 
-double pointDistance(const glm::vec2& v1, const glm::vec2& v2)
+float pointDistance(const glm::vec2& v1, const glm::vec2& v2)
 {
     return sqrt(pow(v1.x - v2.x,2) + pow(v1.y - v2.y,2));
 }

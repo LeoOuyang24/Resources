@@ -216,8 +216,10 @@ void RealMoveComponent::setTarget(const glm::vec2& point)
 {
     if (point != target)
     {
+        glm::vec2 center= getCenter();
         speed =0;
-          maxSpeed = std::min(baseSpeed,(float)sqrt(2*pointDistance(point,getCenter())*accel*decel/(accel + decel)));
+          maxSpeed = std::min(baseSpeed,(float)sqrt(2*pointDistance(point,center)*accel*decel/(accel + decel)));
+          tilt = atan2(point.y - center.y ,point.x - center.x);
     }
     MoveComponent::setTarget(point);
 }
@@ -245,6 +247,7 @@ void RealMoveComponent::update()
         else
         {
             decelerate();
+            speed = std::max(MoveComponent::distThreshold,speed);
         }
     }
   //  std::cout << speed << "\n";
@@ -335,6 +338,25 @@ RenderComponent::~RenderComponent()
 
 }
 
+SpriteParameter SpriteComponent::defaultRender()
+{
+    SpriteParameter param;
+    RectComponent* rect = entity->getComponent<RectComponent>();
+    if (rect)
+    {
+        if (camera)
+        {
+            param.rect = camera->toScreen(rect->getRect());
+        }
+        else
+        {
+            param.rect = rect->getRect();
+        }
+        param.radians = rect->getTilt();
+    }
+    return param;
+}
+
 SpriteComponent::SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity, RenderCamera* camera) : RenderComponent(entity, camera),
                                                                                                                 ComponentContainer<SpriteComponent>(entity),
                                                                                                                         sprite(&sprite_),
@@ -362,30 +384,18 @@ void SpriteComponent::update()
 {
     if (sprite)
     {
-            if (!modified) //if sParam.rect was not modified at all, attempt to render at the entity's position, if possible
-            {
-                RectComponent* rect = entity->getComponent<RectComponent>();
-                if (rect)
-                {
-                    if (camera)
-                    {
-                        sParam.rect = camera->toScreen(rect->getRect());
-                    }
-                    else
-                    {
-                        sParam.rect = rect->getRect();
-                    }
-                    sParam.radians = rect->getTilt();
-                }
-            }
-            if (animated)
-            {
-                static_cast<AnimationWrapper*>(sprite)->request(sParam,aParam);
-            }
-            else
-            {
-                sprite->request(sParam);
-            }
+        if (!modified) //if sParam.rect was not modified at all, attempt to render at the entity's position, if possible
+        {
+            sParam = defaultRender();
+        }
+        if (animated)
+        {
+            static_cast<AnimationWrapper*>(sprite)->request(sParam,aParam);
+        }
+        else
+        {
+            sprite->request(sParam);
+        }
         setParam(SpriteParameter(),AnimationParameter()); //reset params
         modified = false;
     }
@@ -441,4 +451,27 @@ Entity::~Entity()
 Entity* EntityAssembler::assemble()
 {
     return nullptr;
+}
+
+void EntityManager::addEntity(Entity& entity)
+{
+    std::shared_ptr<Entity> ptr(&entity);
+    addEntity(ptr);
+}
+
+void EntityManager::addEntity(std::shared_ptr<Entity>& entity)
+{
+    if (entities.find(entity.get()) == entities.end() && entity.get())
+    {
+        entities[entity.get()] = entity;
+    }
+}
+
+void EntityManager::update()
+{
+    auto end = entities.end();
+    for (auto it = entities.begin(); it != end; ++it)
+    {
+        it->first->update();
+    }
 }

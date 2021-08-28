@@ -120,9 +120,9 @@ public:
 
 class MoveComponent : public RectComponent, public ComponentContainer<MoveComponent>
 {
-    static constexpr float distThreshold = .001; //max distance an entity can be away from a point and still be considered to be on that point
     float angle = 0; //Direction we are moving in. This would be calculated every update call if this wasn't a member variable
 protected:
+    static constexpr float distThreshold = .001; //max distance an entity can be away from a point and still be considered to be on that point
     float baseSpeed = 0;
     float speed = 0;
     float velocity = 0; //the actual amount moved this frame.
@@ -213,6 +213,8 @@ class SpriteComponent : public RenderComponent, public ComponentContainer<Sprite
     bool animated = false; //whether it's an animation or sprite
     bool modified = false; //by default, the SpriteComponent will attempt to render at the entity's position. If either sParam or aParam are modified, this
                             //component will render according to sParam and aParam
+protected:
+    virtual SpriteParameter defaultRender(); //returns the sprite parameter used if modified is false
 public:
     SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity, RenderCamera* camera = RenderCamera::currentCamera); //loads a sprite or animation
     virtual void render(const SpriteParameter& param);
@@ -265,13 +267,20 @@ public:
 
 };
 
-
 class EntityAssembler //returns an entity with certain components attached. Unique to different entities
 {
 public:
     virtual Entity* assemble(); //returns an entity with components attached on the heap. Does not clean up the memory!
 };
 
+class EntityManager //convenient class for storing and updating each entity
+{
+    std::unordered_map<Entity*,std::shared_ptr<Entity>> entities;
+public:
+    void addEntity(Entity& entity);
+    void addEntity(std::shared_ptr<Entity>& entity);
+    void update();
+};
 
 
 #endif // COMPONENTS_H_INCLUDED
