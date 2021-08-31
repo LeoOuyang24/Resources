@@ -59,12 +59,15 @@ bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2, float angle1, flo
     glm::vec2 botLeft = rotatePoint({vec2.x, vec2.y + vec2.a}, center, angle2);
     glm::vec2 botRight = rotatePoint({vec2.x + vec2.z, vec2.y + vec2.a}, center,angle2);
 
-    //Basically just see if any sides intersect
 
+
+    //Basically just see if any sides intersect
     return (lineInVec(topLeft, topRight, vec1, angle1) || //top side
             lineInVec(topLeft, botLeft, vec1, angle1) || //left side
             lineInVec(botLeft, botRight, vec1, angle1) || //bot side
-            lineInVec(topRight, botRight, vec1, angle1));  //right side
+            lineInVec(topRight, botRight, vec1, angle1)) || //right side
+            pointInVec(vec1,topLeft,angle1) || //if there are no sides intersecting, it's possible for one rect to be within another
+            pointInVec(vec2,{vec1.x,vec1.y},angle2); //we only have to check one point for each rect because if all 4 points have to be in for intersection if there are no side intersections
 }
 
 glm::vec4 vecIntersectRegion(const glm::vec4& vec1, const glm::vec4& vec2) //returns the region of two colliding rects

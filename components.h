@@ -108,6 +108,7 @@ protected:
     float tilt = 0; //angle the rect is tilted at. Used for hit box detection
 public:
     RectComponent(const glm::vec4& rect, Entity& entity);
+    bool collides(const glm::vec4& rect);
     void setRect(const glm::vec4& rect);
     virtual void setPos(const glm::vec2& pos);
     void setCenter(const glm::vec2& center);
@@ -131,7 +132,6 @@ protected:
     glm::vec2 target; //point to move towards
 public:
     MoveComponent(float speed, const glm::vec4& rect, Entity& entity);
-    bool collides(const glm::vec4& rect);
     void teleport(const glm::vec2& point); //centers the entity at the point and sets it as the new target
     glm::vec2 getNextPoint(); //gets the projected center to move towards
     virtual void update();
@@ -273,13 +273,34 @@ public:
     virtual Entity* assemble(); //returns an entity with components attached on the heap. Does not clean up the memory!
 };
 
+class IDComponent : public Component, public ComponentContainer<IDComponent> //helps with storing ID info about entity
+{
+public:
+    const std::weak_ptr<EntityAssembler> assembler;
+    const std::string name;
+    const int id;
+    IDComponent(Entity& entity, const std::shared_ptr<EntityAssembler>& assembler_, std::string name_ = "", int id_ = -1);
+    IDComponent(Entity& entity, std::string name_ = "", int id_ = -1); //used if you don't care about assembler
+};
+
 class EntityManager //convenient class for storing and updating each entity
 {
+protected:
     std::unordered_map<Entity*,std::shared_ptr<Entity>> entities;
 public:
-    void addEntity(Entity& entity);
-    void addEntity(std::shared_ptr<Entity>& entity);
-    void update();
+    virtual void addEntity(Entity& entity);
+    virtual void addEntity(const std::shared_ptr<Entity>& entity);
+    virtual void update();
+};
+
+class EntityPosManager : public EntityManager//Entity Manager that also keeps a quadtree to track entity position
+{
+    std::unique_ptr<QuadTree> quadtree;
+public:
+    void init(const glm::vec4& rect);
+    using EntityManager::addEntity;
+    virtual void addEntity(const std::shared_ptr<Entity>& ptr);
+    virtual void update();
 };
 
 

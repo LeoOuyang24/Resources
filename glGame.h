@@ -58,10 +58,61 @@ public:
     void update();
 };
 
-typedef std::vector<std::shared_ptr<Positional>> pointerVec;
-typedef std::vector<Positional*> positionalVec;
+
 
 typedef  bool (*PositionalCompare) (const Positional& pos1, const Positional& pos2);
+
+class PosWrapper
+{
+    //once upon a time, Quadtree was a quadtree that only held shared pointers. As a result, RawQuadTree was created to hold raw pointers. The problem is,
+    //there code is nearly identical, just one handles raw pointers instead of smart ones. A generic way of handling both was needed. PosWrapper is that
+    //solution: it is a very simple parent class with a single function that returns a pointer to a Positional. This is all we need to generalize raw and
+    //smart pointers
+public:
+    virtual Positional* get() const = 0 ;
+};
+
+struct SharedWrapper : public PosWrapper
+{
+    std::shared_ptr<Positional> ptr;
+    SharedWrapper(Positional* ptr_) : ptr(ptr_)
+    {
+
+    }
+    Positional* get() const
+    {
+        return ptr.get();
+    }
+};
+
+struct WeakWrapper : public PosWrapper
+{
+    std::weak_ptr<Positional> ptr;
+    WeakWrapper(const std::shared_ptr<Positional>& ptr_) : ptr(ptr_)
+    {
+
+    }
+    Positional* get() const
+    {
+        return ptr.lock().get();
+    }
+};
+
+struct RawWrapper : public PosWrapper
+{
+    Positional* ptr;
+    RawWrapper(Positional* ptr_) : ptr(ptr_)
+    {
+
+    }
+    Positional* get() const
+    {
+        return ptr;
+    }
+};
+
+typedef std::vector<std::unique_ptr<PosWrapper>> pointerVec;
+typedef std::vector<Positional*> positionalVec;
 
 class QuadTree //this is a quadtree of shared_ptr, meaning this quadtree actually owns its objects
 {
@@ -86,8 +137,7 @@ public:
     positionalVec getNearest( Positional& obj); //get all Positionals that are in the same quadtree as obj
     positionalVec getNearest( const glm::vec4& area); //get all Positionals that intersect with area
     positionalVec getNearest(const glm::vec2& center, double radius); //finds all objects within a certain radius
-    void add(Positional& obj);
-    void add(const std::shared_ptr<Positional>& obj);
+    void add(PosWrapper& obj);
     void clear();
     void map(void (*fun)(const Positional& pos)); //applies pos to all objects in tree as well as children
     QuadTree* update(Positional& obj, QuadTree& expected); //given an obj and its expected quadtree, checks to see if the obj is where its expected. If it has moved, change and return its new location
@@ -130,5 +180,6 @@ public:
         return region;
     }
 };
+
 
 #endif // GLGAME_H_INCLUDED

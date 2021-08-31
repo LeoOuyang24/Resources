@@ -580,4 +580,28 @@ int MinHeap<T>::size()
 {
     return nodes.size();
 }
+
+template <typename T>
+class GlobalMount //if you have a class you want a single global copy of and that class has a constructor with 0 arguments, this class can make it
+                //easier to mount the class to global scope without having to explicitly declaring the class
+{
+    static std::shared_ptr<T> ptr;
+public:
+    static std::shared_ptr<T> getSharedPtr()
+    {
+        if (!ptr.get())
+        {
+            ptr.reset(new T);
+        }
+        return ptr;
+    }
+    static T* getPtr()
+    {
+        return getSharedPtr().get();
+    }
+};
+
+template <typename T>
+std::shared_ptr<T> GlobalMount<T>::ptr;
+
 #endif // VANILLA_H_INCLUDED
