@@ -39,6 +39,12 @@ RectComponent::RectComponent(const glm::vec4& rect, Entity& entity) : Component(
 
 }
 
+
+bool RectComponent::collides(const glm::vec4& target)
+{
+    return vecIntersect(target,rect,0,tilt);
+}
+
 void RectComponent::setRect(const glm::vec4& rect)
 {
     this->rect = rect;
@@ -90,11 +96,6 @@ MoveComponent::MoveComponent(float speed, const glm::vec4& rect, Entity& entity)
                                                                                     baseSpeed(speed),speed(speed)
 {
     target = {rect.x + rect.z/2, rect.y + rect.a/2};
-}
-
-bool MoveComponent::collides(const glm::vec4& target)
-{
-    return vecIntersect(target,rect,tilt,0);
 }
 
 void MoveComponent::teleport(const glm::vec2& point)
@@ -453,13 +454,31 @@ Entity* EntityAssembler::assemble()
     return nullptr;
 }
 
+IDComponent::IDComponent(Entity& entity, const std::shared_ptr<EntityAssembler>& assembler_, std::string name_, int id_) :
+                                                                                                Component(entity),
+                                                                                                ComponentContainer<IDComponent>(entity),
+                                                                                                assembler(assembler_),
+                                                                                                name(name_),
+                                                                                                id(id_)
+{
+
+}
+
+IDComponent::IDComponent(Entity& entity, std::string name_, int id_) : Component(entity),
+                                                                        ComponentContainer<IDComponent>(entity),
+                                                                        name(name_),
+                                                                        id(id_)
+{
+
+}
+
 void EntityManager::addEntity(Entity& entity)
 {
     std::shared_ptr<Entity> ptr(&entity);
     addEntity(ptr);
 }
 
-void EntityManager::addEntity(std::shared_ptr<Entity>& entity)
+void EntityManager::addEntity(const std::shared_ptr<Entity>& entity)
 {
     if (entities.find(entity.get()) == entities.end() && entity.get())
     {
@@ -473,5 +492,38 @@ void EntityManager::update()
     for (auto it = entities.begin(); it != end; ++it)
     {
         it->first->update();
+    }
+}
+
+void EntityPosManager::init(const glm::vec4& rect)
+{
+    quadtree.reset(new QuadTree(rect));
+}
+
+void EntityPosManager::addEntity(const std::shared_ptr<Entity>& entity)
+{
+    std::shared_ptr<RectComponent> rect = entity->getComponentPtr<RectComponent>();
+    if (rect.get())
+    {
+        quadtree->add(*(new WeakWrapper(rect)));
+    }
+    EntityManager::addEntity(entity);
+}
+
+void EntityPosManager::update()
+{
+    auto end = entities.end();
+    for (auto it = entities.begin(); it != end; ++it)
+    {
+        if (RectComponent* rect = it->first->getComponent<RectComponent>())
+        {
+            QuadTree* old = quadtree->find(*rect);
+            it->first->update();
+            quadtree->update(*rect,*old);
+        }
+        else
+        {
+            it->first->update();
+        }
     }
 }

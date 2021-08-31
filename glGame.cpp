@@ -121,19 +121,14 @@ void QuadTree::render(const glm::vec2& displacement)
     }
 }
 
-void QuadTree::add(Positional& obj)
-{
-    add(std::shared_ptr<Positional>(&obj));
-}
-
-void QuadTree::add(const std::shared_ptr<Positional>& obj)
+void QuadTree::add(PosWrapper& obj)
 {
     if (nodes[0])
     {
         QuadTree* found = find(*(obj.get()));
         if (found == this)
         {
-            vec.push_back(obj);
+            vec.emplace_back(&obj);
         }
         else
         {
@@ -150,14 +145,14 @@ void QuadTree::add(const std::shared_ptr<Positional>& obj)
     else
     {
 
-        vec.push_back(obj);
+        vec.emplace_back(&obj);
         //vec.emplace_back((new Positional({1,1})));
         if (vec.size() > maxCapacity)
         {
             split();
             for (int i = vec.size()-1; i >= 0; i --)
             {
-                Positional* ptr = vec[i].get();
+                Positional* ptr = vec[i]->get();
                 QuadTree* found = find(*ptr);
                 //std::cout << found->region.x << " " << found->region.y  << std::endl;
                 if (found && found != this)
@@ -177,7 +172,7 @@ void QuadTree::getNearestHelper(positionalVec& vec, Positional& obj)
         int size = this->vec.size();
         for (int i = 0; i < size;i ++)
         {
-            vec.push_back(this->vec[i].get());
+            vec.push_back(this->vec[i]->get());
         }
         if (nodes[0])
         {
@@ -204,7 +199,7 @@ void QuadTree::getNearestHelper(positionalVec& vec, const glm::vec4& area)
         //std::cout << size << std::endl;
         for (int i = 0; i < size;i ++)
         {
-            Positional* ptr = this->vec[i].get();
+            Positional* ptr = this->vec[i]->get();
             if (ptr->collides(area))
             {
                 vec.push_back(ptr);
@@ -234,7 +229,7 @@ void QuadTree::getNearestHelper(positionalVec& vec, const glm::vec2& center, dou
         int size = this->vec.size();
         for (int i = 0; i < size;i ++)
         {
-            Positional* ptr = this->vec[i].get();
+            Positional* ptr = this->vec[i]->get();
             if (ptr->distance(center) <= radius)
             {
                 vec.push_back(ptr);
@@ -323,7 +318,7 @@ bool QuadTree::contains(Positional& positional)
     int size = vec.size();
     for (int i = 0; i < size; i ++)
     {
-        if (vec[i].get() == &positional)
+        if (vec[i]->get() == &positional)
         {
             return true;
         }
@@ -336,9 +331,9 @@ void QuadTree::move(QuadTree& t1, QuadTree& t2, Positional& obj)
     int size = t1.vec.size();
     for (int i = 0; i < size; i ++)
     {
-        if (t1.vec[i].get() == &obj)
+        if (t1.vec[i]->get() == &obj)
         {
-            t2.add((t1.vec[i]));
+            t2.add((*t1.vec[i].get()));
             t1.vec.erase(t1.vec.begin() + i);
             return;
         }
@@ -354,7 +349,7 @@ bool QuadTree::remove(Positional& obj, PositionalCompare func)
     int size = vec.size();
     for (int i = 0; i < size; i ++) //see if obj is in this quadtree
     {
-        if ((func && func(obj,*vec[i].get())) || vec[i].get() == &obj)
+        if ((func && func(obj,*vec[i]->get())) || vec[i]->get() == &obj)
         {
             vec.erase(vec.begin() + i);
             return true;
@@ -380,7 +375,7 @@ void QuadTree::map(void (*fun)(const Positional& pos))
         int size = vec.size();
         for (int i = 0; i < size; ++i)
         {
-            fun(*(vec[i].get()));
+            fun(*(vec[i]->get()));
         }
         if (nodes[0])
         {
@@ -406,8 +401,8 @@ QuadTree* QuadTree::update(Positional& positional, QuadTree& expected)
     }
     else
     {
-        std::cerr << positional.getPos().x << " " << positional.getPos().y << " " << region.x << " " << region.y << " " << region.z << " " << region.a << "\n";
-        throw new std::invalid_argument("");
+        std::cerr << "Positional out of bounds: " << positional.getPos().x << " " << positional.getPos().y << " " << region.x << " " << region.y << " " << region.z << " " << region.a << "\n";
+      //  throw new std::invalid_argument("Cant find positional!");
     }
     return newTree;
 
