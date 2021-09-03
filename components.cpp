@@ -113,6 +113,7 @@ glm::vec2 MoveComponent::getNextPoint()
         angle = atan2((target.y - (center.y)),(target.x - (center.x)));
     }
     glm::vec2 increment = {cos(angle)*speed*DeltaTime::deltaTime,sin(angle)*speed*DeltaTime::deltaTime};
+
     if (ignoreTarget)
     {
         return getCenter() + increment;
@@ -126,6 +127,7 @@ void MoveComponent::update()
     if (!atTarget() || ignoreTarget)
     {
         glm::vec2 nextPoint = getNextPoint();
+
         rect.x += nextPoint.x - center.x;
         rect.y += nextPoint.y - center.y;
     }
@@ -143,15 +145,22 @@ bool MoveComponent::atTarget()
     return atPoint(target);
 }
 
+void MoveComponent::setTarget(const glm::vec2& point)
+{
+    target = point;
+}
 
 const glm::vec2& MoveComponent::getTarget()
 {
     return target;
 }
 
-void MoveComponent::setTarget(const glm::vec2& point)
+void MoveComponent::setPos(const glm::vec2& pos)
 {
-    target = point;
+    rect.x =pos.x;
+    rect.y = pos.y;
+    target.x = pos.x - rect.z/2;
+    target.y = pos.y - rect.a/2;
 }
 
 void MoveComponent::setAngle(float val)
@@ -207,8 +216,8 @@ void RealMoveComponent::decelerate()
 
 RealMoveComponent::RealMoveComponent(float accel_, float deccel_, float speed, const glm::vec4& rect, Entity& entity) : MoveComponent(speed, rect, entity),
                                                                                                                             ComponentContainer<RealMoveComponent>(entity),
-                                                                                                                            accel(accel_),
-                                                                                                                            decel(deccel_)
+                                                                                                                            accel(accel_ == 0 ? speed : accel_),
+                                                                                                                            decel(deccel_ == 0 ? speed : deccel_)
 {
     speed = 0;
 }
@@ -250,7 +259,10 @@ void RealMoveComponent::update()
             decelerate();
             speed = std::max(MoveComponent::distThreshold,speed);
         }
+        glm::vec2 center = getCenter();
+        tilt = atan2(target.y - center.y ,target.x - center.x); //convenient to constnatly set this angle in case it doesn't get set incorrectly
     }
+
   //  std::cout << speed << "\n";
     float oldSpeed = speed;
     MoveComponent::update(); //we want to use every part of MoveComponent::update except the part where it overrides our speed
@@ -374,11 +386,11 @@ void SpriteComponent::render(const SpriteParameter& param)
     }
 }
 
-void SpriteComponent::setParam(const SpriteParameter& param, const AnimationParameter& animeParam)
+void SpriteComponent::setParam(const SpriteParameter& param, const AnimationParameter& animeParam, bool modified_)
 {
     this->sParam = param;
     this->aParam = animeParam;
-    modified = true;
+    modified = modified_;
 }
 
 void SpriteComponent::update()
@@ -400,6 +412,39 @@ void SpriteComponent::update()
         setParam(SpriteParameter(),AnimationParameter()); //reset params
         modified = false;
     }
+}
+
+HealthComponent::HealthComponent(float invulnTime_, float health_,float maxHealth_, Entity& entity) :
+                                                                Component(entity), ComponentContainer<HealthComponent>(entity),
+                                                                invulnTime(invulnTime_), health(health_), maxHealth(maxHealth_) //health
+{
+
+}
+
+void HealthComponent::addHealth(float damage)
+{
+    if (maxHealth == -1)
+    {
+        health = std::max(0.0f, health + damage);
+    }
+    else
+    {
+        health = std::max(0.0f, std::min(maxHealth, health + damage));
+    }
+    if (damage < 0)
+    {
+        invuln.set();
+    }
+}
+
+float HealthComponent::getHealth()
+{
+    return health;
+}
+
+bool HealthComponent::getInvuln()
+{
+    return invuln.timePassed(invulnTime);
 }
 
 Entity::Entity()
@@ -472,6 +517,15 @@ IDComponent::IDComponent(Entity& entity, std::string name_, int id_) : Component
 
 }
 
+void EntityManager::forEachEntity(EntityIt& entity)
+{
+    if (entity->first)
+    {
+        entity->first->update();
+    }
+    ++entity;
+}
+
 void EntityManager::addEntity(Entity& entity)
 {
     std::shared_ptr<Entity> ptr(&entity);
@@ -486,18 +540,67 @@ void EntityManager::addEntity(const std::shared_ptr<Entity>& entity)
     }
 }
 
+EntityManager::EntityIt EntityManager::removeEntity(Entity* entity)
+{
+    EntityIt it = entities.find(entity);
+    if (it != entities.end())
+    {
+        return entities.erase(it);
+    }
+}
+
+std::shared_ptr<Entity> EntityManager::getEntity(Entity* ptr)
+{
+    auto found = entities.find(ptr);
+    if (found != entities.end())
+    {
+        return found->second;
+    }
+    else
+    {
+        return std::shared_ptr<Entity>();
+    }
+}
+
 void EntityManager::update()
 {
     auto end = entities.end();
-    for (auto it = entities.begin(); it != end; ++it)
+    for (auto it = entities.begin(); it != end;)
     {
-        it->first->update();
+        forEachEntity(it);
     }
+}
+
+void EntityPosManager::forEachEntity(EntityIt& it)
+{
+    Entity* entity = it->first;
+    if (entity)
+    {
+        if (RectComponent* rect = entity->getComponent<RectComponent>())
+        {
+            QuadTree* old = quadtree->find(*rect);
+            entity->update();
+            if (old)
+            {
+                quadtree->update(*rect,*old);
+            }
+        }
+        else
+        {
+            entity->update();
+        }
+    }
+    ++it;
 }
 
 void EntityPosManager::init(const glm::vec4& rect)
 {
     quadtree.reset(new QuadTree(rect));
+}
+
+QuadTree* EntityPosManager::getQuadTree()
+{
+    return quadtree.get();
 }
 
 void EntityPosManager::addEntity(const std::shared_ptr<Entity>& entity)
@@ -510,20 +613,25 @@ void EntityPosManager::addEntity(const std::shared_ptr<Entity>& entity)
     EntityManager::addEntity(entity);
 }
 
-void EntityPosManager::update()
+void EntityPosManager::addEntity(Entity& entity, float x, float y)
 {
-    auto end = entities.end();
-    for (auto it = entities.begin(); it != end; ++it)
+    if (RectComponent* rect = entity.getComponent<RectComponent>())
     {
-        if (RectComponent* rect = it->first->getComponent<RectComponent>())
-        {
-            QuadTree* old = quadtree->find(*rect);
-            it->first->update();
-            quadtree->update(*rect,*old);
-        }
-        else
-        {
-            it->first->update();
-        }
+        rect->setPos({x - rect->getRect().z, y - rect->getRect().a});
+        addEntity(entity);
     }
 }
+
+EntityPosManager::EntityIt EntityPosManager::removeEntity(Entity* entity)
+{
+    if (entities.find(entity) != entities.end() && entity)
+    {
+        if (RectComponent* rect = entity->getComponent<RectComponent>())
+        {
+            quadtree->remove(*rect);
+        }
+        return EntityManager::removeEntity(entity);
+    }
+}
+
+

@@ -230,7 +230,7 @@ void QuadTree::getNearestHelper(positionalVec& vec, const glm::vec2& center, dou
         for (int i = 0; i < size;i ++)
         {
             Positional* ptr = this->vec[i]->get();
-            if (ptr->distance(center) <= radius)
+            if (ptr && ptr->distance(center) <= radius)
             {
                 vec.push_back(ptr);
             }

@@ -9,6 +9,7 @@
 
 #include "glGame.h"
 #include "render.h"
+#include "SDLhelper.h"
 
 class Entity;
 class Component;
@@ -139,6 +140,7 @@ public:
     bool atTarget(); //returns atPoint(target);
     virtual void setTarget(const glm::vec2& point);
     virtual const glm::vec2& getTarget();
+    virtual void setPos(const glm::vec2& pos); //sets both top left corner and target.
     void setAngle(float val); //really only useful if ignoreTarget is true, since angle is otherwise manually calculated
     float getAngle();
     float getVelocity();
@@ -153,7 +155,7 @@ public:
 class RealMoveComponent : public MoveComponent, public ComponentContainer<RealMoveComponent> //move component that speeds up and slows down as it leaves/approaches the destination
 {
     //class doesn't really work with ignoreTarget, so update will almost certainly have to be overriten
-    float accel = 0, decel = 0;
+    float accel = 0, decel = 0; //accel and decel = maxSpeed if they are set to 0
     float maxSpeed = 0; //given a target, represents the maximum speed before having to decelerate
 protected:
     void accelerate();
@@ -218,8 +220,22 @@ protected:
 public:
     SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity, RenderCamera* camera = RenderCamera::currentCamera); //loads a sprite or animation
     virtual void render(const SpriteParameter& param);
-    void setParam(const SpriteParameter& param, const AnimationParameter& animeParam = AnimationParameter());
+    void setParam(const SpriteParameter& param, const AnimationParameter& animeParam = AnimationParameter(), bool modified_= true); //set modified to true if you don't want to call default render
     void update();
+};
+
+class HealthComponent : public Component, public ComponentContainer<HealthComponent>
+{
+protected:
+    DeltaTime invuln;
+    float invulnTime; //how long to be invincible for after taking damage
+    float maxHealth = 0; //set maxHealth to be negative one to basically have no max health limit
+    float health = 0;
+public:
+    HealthComponent(float invulnTime_,float health_, float maxHealth_, Entity& entity);
+    virtual void addHealth(float damage); //damage can be positive or negative
+    float getHealth();
+    bool getInvuln();
 };
 
 class Entity
@@ -287,20 +303,29 @@ class EntityManager //convenient class for storing and updating each entity
 {
 protected:
     std::unordered_map<Entity*,std::shared_ptr<Entity>> entities;
+    typedef std::unordered_map<Entity*,std::shared_ptr<Entity>>::iterator EntityIt;
+    virtual void forEachEntity(EntityIt& it); //used to allow child managers to easily change how they manage entities without forlooping twice
+                                                            //it is expected to be modified
 public:
     virtual void addEntity(Entity& entity);
     virtual void addEntity(const std::shared_ptr<Entity>& entity);
+    virtual EntityIt removeEntity(Entity* entity);
+    std::shared_ptr<Entity> getEntity(Entity* ptr);
     virtual void update();
 };
 
 class EntityPosManager : public EntityManager//Entity Manager that also keeps a quadtree to track entity position
 {
     std::unique_ptr<QuadTree> quadtree;
+protected:
+    virtual void forEachEntity(EntityIt& entity);
 public:
     void init(const glm::vec4& rect);
+    QuadTree* getQuadTree(); //can return null, most likely because init was never called
     using EntityManager::addEntity;
     virtual void addEntity(const std::shared_ptr<Entity>& ptr);
-    virtual void update();
+    virtual void addEntity(Entity& entity, float x, float y); //sets center position
+    EntityIt removeEntity(Entity* entity);
 };
 
 

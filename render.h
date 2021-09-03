@@ -159,7 +159,7 @@ protected:
     glm::vec3 tint;
     unsigned int VBO=-1,modVBO = -1, VAO=-1;
     static const int floats; //the number of floats we pass everytime we render an instance/spriteParameter
-    static const int floatSize; //size of floats in bytes;
+    static const size_t floatSize; //size of floats in bytes;
     void load(std::string source);
     virtual void loadData(GLfloat* data, const SpriteParameter& parameter, int index);
     void draw( RenderProgram& program, GLfloat* data, int instances); //draws the sprite. Assumes ModVBO has already been loaded
@@ -300,6 +300,8 @@ class SpriteManager
     static std::vector<SpriteWrapper*> sprites;
     static std::map<zWrapper,std::list<SpriteParameter>,ZWrapperComparator> params;
 public:
+    constexpr static float zIncrement = .001; //slight increment so sprites don't overlap
+
     static void addSprite(SpriteWrapper& spr);
     static void request(SpriteWrapper& wrapper,const SpriteParameter& param);
     static void render();
