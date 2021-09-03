@@ -65,9 +65,6 @@
 		<Unit filename="../stb_image.h" />
 		<Unit filename="../vanilla.cpp" />
 		<Unit filename="../vanilla.h" />
-		<Unit filename="main.cpp">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
 		<Extensions>
 			<lib_finder disable_auto="1" />
 		</Extensions>

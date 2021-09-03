@@ -209,7 +209,7 @@ void RenderProgram::init(int screenWidth, int screenHeight)
     {
         {0,screenWidth},
         {0,screenHeight},
-        {-10,10}     //magic numbers. Can be anything
+        {-10.0f,10.0f}     //magic numbers. Can be anything
     };
     currentRange = baseRange;
 
@@ -377,7 +377,7 @@ glm::vec2 RenderCamera::toAbsolute(const glm::vec2& point) const
 
 
 const int Sprite::floats = 26;
-const int Sprite::floatSize = sizeof(float);
+const size_t Sprite::floatSize = sizeof(float);
    void Sprite::load(std::string source)
     {
 
@@ -529,6 +529,7 @@ void Sprite::loadData(GLfloat* data, const SpriteParameter& parameter, int index
             data[index + 20 + 3] = current->portion.y;
             data[index + 20 + 4] = current->portion.z;
             data[index + 20 + 5] = current->portion.a;
+           // std::cout << data[index + 20+ 1]<<"\n";
            /* int vertAmount = current->indices.size();
             for (int j = 0; j < vertAmount; j ++)
             {
@@ -815,7 +816,8 @@ void SpriteWrapper::render(const std::list<SpriteParameter>& parameters, float z
         for (auto it = parameters.begin(); it != end; ++it)
         {
             current = *it;
-            current.z += zMod;
+            current.z += zMod + SpriteManager::zIncrement*(float)i/size;
+            //std::cout << current.z << " ";
             spr->loadData(data, current, index*floats);
             index ++;
             if (i == size - 1 || ((std::next(it))->program != current.program ) )
@@ -920,9 +922,10 @@ void SpriteManager::request(SpriteWrapper& wrapper, const SpriteParameter& param
 void SpriteManager::render()
 {
     int i= 0;
-    for (auto it = params.begin(); it != params.end(); ++it)
+    auto end = params.end();
+    for (auto it = params.begin(); it != end; ++it)
     {
-       it->first.second->render(it->second,.0001*i);
+       it->first.second->render(it->second,i*zIncrement);
        ++i;
     }
     params.clear();
