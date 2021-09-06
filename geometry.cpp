@@ -174,7 +174,7 @@ bool lineInLine(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, c
     glm::vec2 nonVert = {0,0}; //this equals the slope and yInt of the line that is not vertical, or line b1-b2 if neither are vertical.
     if (a1.x - a2.x == 0 && b1.x - b2.x == 0)
     {
-        double highest = std::min(a1.y,a2.y);
+        float highest = std::min(a1.y,a2.y);
         return a1.x == b1.x && abs(highest - std::min(b1.y,b2.y)) >= abs((highest - (a1.y + a2.y - highest)));
     }
     else

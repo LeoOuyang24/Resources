@@ -129,6 +129,7 @@ class QuadTree //this is a quadtree of shared_ptr, meaning this quadtree actuall
 public:
     QuadTree(const glm::vec4& rect);
     void render(const glm::vec2& displacement);
+    void render(RenderCamera& camera); //calls camera.toScreen() on the rect;
     ~QuadTree();
     int count (); //total number of things in this quadtree and its children
     int size(); //number of things in this quadtree
