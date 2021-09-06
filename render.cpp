@@ -813,11 +813,13 @@ void SpriteWrapper::render(const std::list<SpriteParameter>& parameters, float z
         int i = 0;
        // bool deleted = false;
        SpriteParameter current;
+        glDisable(GL_DEPTH_TEST);
+
         for (auto it = parameters.begin(); it != end; ++it)
         {
             current = *it;
-            current.z += zMod + SpriteManager::zIncrement*(float)i/size;
-            //std::cout << current.z << " ";
+           // current.z += zMod + SpriteManager::zIncrement*(float)i/size;
+          //  std::cout << current.z << "\n";
             spr->loadData(data, current, index*floats);
             index ++;
             if (i == size - 1 || ((std::next(it))->program != current.program ) )
@@ -833,6 +835,7 @@ void SpriteWrapper::render(const std::list<SpriteParameter>& parameters, float z
             }
             i ++;
         }
+        glEnable(GL_DEPTH_TEST);
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER,0);
         spr->reset();
@@ -925,7 +928,7 @@ void SpriteManager::render()
     auto end = params.end();
     for (auto it = params.begin(); it != end; ++it)
     {
-       it->first.second->render(it->second,i*zIncrement);
+       it->first.second->render(it->second,0);
        ++i;
     }
     params.clear();

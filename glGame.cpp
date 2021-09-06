@@ -121,6 +121,21 @@ void QuadTree::render(const glm::vec2& displacement)
     }
 }
 
+void QuadTree::render(RenderCamera& camera)
+{
+      if (nodes[0])
+    {
+        for (int i = 0; i < 4; i ++)
+        {
+            nodes[i]->render(camera);
+        }
+    }
+    else
+    {
+        PolyRender::requestRect(camera.toScreen(region),{0,0,0,1},false,0,1);
+    }
+}
+
 void QuadTree::add(PosWrapper& obj)
 {
     if (nodes[0])
