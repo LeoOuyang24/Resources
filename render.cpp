@@ -411,6 +411,7 @@ const size_t Sprite::floatSize = sizeof(float);
             break;
         case 4:
             rgb = GL_RGBA;
+            transparent = true;
             break;
         }
 
@@ -423,6 +424,8 @@ const size_t Sprite::floatSize = sizeof(float);
         {
             std::cout << "Error loading texture: " << source << std::endl;
         }
+
+
 
         stbi_image_free(data);
         loadVertices();
@@ -813,7 +816,6 @@ void SpriteWrapper::render(const std::list<SpriteParameter>& parameters, float z
         int i = 0;
        // bool deleted = false;
        SpriteParameter current;
-        glDisable(GL_DEPTH_TEST);
 
         for (auto it = parameters.begin(); it != end; ++it)
         {
@@ -835,7 +837,6 @@ void SpriteWrapper::render(const std::list<SpriteParameter>& parameters, float z
             }
             i ++;
         }
-        glEnable(GL_DEPTH_TEST);
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER,0);
         spr->reset();
@@ -926,10 +927,19 @@ void SpriteManager::render()
 {
     int i= 0;
     auto end = params.end();
+    bool shouldBeEnabled = glIsEnabled(GL_DEPTH_TEST) == GL_TRUE;
+    if (shouldBeEnabled)
+    {
+        glDisable(GL_DEPTH_TEST);
+    }
     for (auto it = params.begin(); it != end; ++it)
     {
        it->first.second->render(it->second,0);
        ++i;
+    }
+    if (shouldBeEnabled)
+    {
+        glEnable(GL_DEPTH_TEST);
     }
     params.clear();
     /*int size = sprites.size();
