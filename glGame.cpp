@@ -180,6 +180,13 @@ void QuadTree::add(PosWrapper& obj)
 
 }
 
+std::shared_ptr<Positional>& QuadTree::add(Positional& pos)
+{
+    SharedWrapper* ptr=new SharedWrapper(&pos);
+    add(*(ptr));
+    return ptr->ptr;
+}
+
 void QuadTree::getNearestHelper(positionalVec& vec, Positional& obj)
 {
     if (obj.collides(region))

@@ -65,11 +65,15 @@ typedef  bool (*PositionalCompare) (const Positional& pos1, const Positional& po
 class PosWrapper
 {
     //once upon a time, Quadtree was a quadtree that only held shared pointers. As a result, RawQuadTree was created to hold raw pointers. The problem is,
-    //there code is nearly identical, just one handles raw pointers instead of smart ones. A generic way of handling both was needed. PosWrapper is that
+    //their code is nearly identical, just one handles raw pointers instead of smart ones. A generic way of handling both was needed. PosWrapper is that
     //solution: it is a very simple parent class with a single function that returns a pointer to a Positional. This is all we need to generalize raw and
     //smart pointers
 public:
     virtual Positional* get() const = 0 ;
+    virtual ~PosWrapper()
+    {
+
+    }
 };
 
 struct SharedWrapper : public PosWrapper
@@ -114,7 +118,7 @@ struct RawWrapper : public PosWrapper
 typedef std::vector<std::unique_ptr<PosWrapper>> pointerVec;
 typedef std::vector<Positional*> positionalVec;
 
-class QuadTree //this is a quadtree of shared_ptr, meaning this quadtree actually owns its objects
+class QuadTree //quadtree for 2d collision detection
 {
     static constexpr int maxCapacity = 100; //maximum capacity
     pointerVec vec;
@@ -139,6 +143,7 @@ public:
     positionalVec getNearest( const glm::vec4& area); //get all Positionals that intersect with area
     positionalVec getNearest(const glm::vec2& center, double radius); //finds all objects within a certain radius
     void add(PosWrapper& obj);
+    std::shared_ptr<Positional>& add(Positional& pos); //adds positional in as a SharedWrapper and returns the shared pointer
     void clear();
     void map(void (*fun)(const Positional& pos)); //applies pos to all objects in tree as well as children
     QuadTree* update(Positional& obj, QuadTree& expected); //given an obj and its expected quadtree, checks to see if the obj is where its expected. If it has moved, change and return its new location

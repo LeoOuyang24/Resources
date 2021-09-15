@@ -163,6 +163,7 @@ protected:
     void load(std::string source);
     virtual void loadData(GLfloat* data, const SpriteParameter& parameter, int index);
     void draw( RenderProgram& program, GLfloat* data, int instances); //draws the sprite. Assumes ModVBO has already been loaded
+    bool transparent = false;
 public:
     Sprite(std::string source);
     Sprite()

@@ -51,6 +51,8 @@
 		<Unit filename="../glGame.h" />
 		<Unit filename="../glInterface.cpp" />
 		<Unit filename="../glInterface.h" />
+		<Unit filename="../pathfind.cpp" />
+		<Unit filename="../pathfind.h" />
 		<Unit filename="../render.cpp" />
 		<Unit filename="../render.h" />
 		<Unit filename="../shaders/fragment/fragmentShader.h" />

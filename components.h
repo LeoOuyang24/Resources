@@ -137,9 +137,10 @@ public:
     glm::vec2 getNextPoint(); //gets the projected center to move towards
     virtual void update();
     virtual bool atPoint(const glm::vec2& point); //whether or not our center is within distThreshold of the point.
-    bool atTarget(); //returns atPoint(target);
+    virtual bool atTarget(); //returns atPoint(target);
     virtual void setTarget(const glm::vec2& point);
     virtual const glm::vec2& getTarget();
+    void setTiltTowardsTarget();
     virtual void setPos(const glm::vec2& pos); //sets both top left corner and target.
     void setAngle(float val); //really only useful if ignoreTarget is true, since angle is otherwise manually calculated
     float getAngle();
@@ -166,6 +167,10 @@ public:
     float getAccel();
     float getDecel();
     virtual void update();
+    virtual ~RealMoveComponent()
+    {
+
+    }
 };
 
 struct ForceVector
@@ -193,7 +198,10 @@ public:
     {
         return finalForce;
     }
+    virtual ~ForcesComponent()
+    {
 
+    }
 
 };
 
@@ -222,9 +230,13 @@ public:
     virtual void render(const SpriteParameter& param);
     void setParam(const SpriteParameter& param, const AnimationParameter& animeParam = AnimationParameter(), bool modified_= true); //set modified to true if you don't want to call default render
     void update();
+    virtual ~SpriteComponent()
+    {
+
+    }
 };
 
-class HealthComponent : public Component, public ComponentContainer<HealthComponent>
+class BaseHealthComponent : public Component, public ComponentContainer<BaseHealthComponent>
 {
 protected:
     DeltaTime invuln;
@@ -232,10 +244,14 @@ protected:
     float maxHealth = 0; //set maxHealth to be negative one to basically have no max health limit
     float health = 0;
 public:
-    HealthComponent(float invulnTime_,float health_, float maxHealth_, Entity& entity);
+    BaseHealthComponent(float invulnTime_,float health_, float maxHealth_, Entity& entity);
     virtual void addHealth(float damage); //damage can be positive or negative
     float getHealth();
     bool getInvuln();
+    virtual ~BaseHealthComponent()
+    {
+
+    }
 };
 
 class Entity
@@ -320,7 +336,7 @@ class EntityPosManager : public EntityManager//Entity Manager that also keeps a 
 protected:
     virtual void forEachEntity(EntityIt& entity);
 public:
-    void init(const glm::vec4& rect);
+    virtual void init(const glm::vec4& rect);
     QuadTree* getQuadTree(); //can return null, most likely because init was never called
     using EntityManager::addEntity;
     virtual void addEntity(const std::shared_ptr<Entity>& ptr);

@@ -155,6 +155,12 @@ const glm::vec2& MoveComponent::getTarget()
     return target;
 }
 
+void MoveComponent::setTiltTowardsTarget()
+{
+     glm::vec2 center = getCenter();
+    tilt = atan2(target.y - center.y ,target.x - center.x);
+}
+
 void MoveComponent::setPos(const glm::vec2& pos)
 {
     rect.x =pos.x;
@@ -259,8 +265,7 @@ void RealMoveComponent::update()
             decelerate();
             speed = std::max(MoveComponent::distThreshold,speed);
         }
-        glm::vec2 center = getCenter();
-        tilt = atan2(target.y - center.y ,target.x - center.x); //convenient to constnatly set this angle in case it doesn't get set incorrectly
+        setTiltTowardsTarget(); //convenient to constnatly set this angle in case it doesn't get set incorrectly
     }
 
   //  std::cout << speed << "\n";
@@ -414,14 +419,14 @@ void SpriteComponent::update()
     }
 }
 
-HealthComponent::HealthComponent(float invulnTime_, float health_,float maxHealth_, Entity& entity) :
-                                                                Component(entity), ComponentContainer<HealthComponent>(entity),
+BaseHealthComponent::BaseHealthComponent(float invulnTime_, float health_,float maxHealth_, Entity& entity) :
+                                                                Component(entity), ComponentContainer<BaseHealthComponent>(entity),
                                                                 invulnTime(invulnTime_), health(health_), maxHealth(maxHealth_) //health
 {
 
 }
 
-void HealthComponent::addHealth(float damage)
+void BaseHealthComponent::addHealth(float damage)
 {
     if (maxHealth == -1)
     {
@@ -437,12 +442,12 @@ void HealthComponent::addHealth(float damage)
     }
 }
 
-float HealthComponent::getHealth()
+float BaseHealthComponent::getHealth()
 {
     return health;
 }
 
-bool HealthComponent::getInvuln()
+bool BaseHealthComponent::getInvuln()
 {
     return invuln.timePassed(invulnTime);
 }
@@ -618,7 +623,7 @@ void EntityPosManager::addEntity(Entity& entity, float x, float y)
     if (RectComponent* rect = entity.getComponent<RectComponent>())
     {
         rect->setPos({x - rect->getRect().z, y - rect->getRect().a});
-        addEntity(entity);
+        addEntity(std::shared_ptr<Entity>(&entity));
     }
 }
 
