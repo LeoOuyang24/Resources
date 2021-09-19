@@ -146,8 +146,8 @@ bool inLine(const glm::vec2& point, const glm::vec2& point1, const glm::vec2& po
     {
         return point1.x == point.x && point.y >= std::min(point1.y,point2.y) && point.y <= std::max(point1.y,point2.y);
     }
-    double slope = (point2.y - point1.y)/(point2.x - point1.x);
-    double yInt = point1.y - slope*point1.x;
+    float slope = (point2.y - point1.y)/(point2.x - point1.x);
+    float yInt = point1.y - slope*point1.x;
     return slope*point.x + yInt == point.y && point.x >= std::min(point1.x,point2.x) && point.x <= std::max(point1.x,point2.x);
 }
 
@@ -241,6 +241,22 @@ bool lineInLine(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, c
     return val2;
 }
 
+bool lineInLineExtend(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2)
+{
+    if (a1.x == a2.x && b1.x ==b2.x)
+    {
+        return b1.x == a1.x;
+    }
+    float slope1 = (a1.y - a2.y)/(a1.x - a2.x);
+    float slope2 = (b1.y - b2.y)/(b1.x - b2.x);
+    std::cout << a1.x << " " << a1.y << " " << a2.x << " " << a2.y << " " << slope1 << " " << slope2 <<"\n";
+    if (slope1 == slope2)
+    {
+        return (a1.y - slope1*a1.x) == (a2.y - slope1*a2.x); //if the two slopes are the same, they still intersect if they have the same y-intercept, since they'd be the same line
+    }
+    return true; //if slopes are different, they definitely intersect somewhere
+}
+
 glm::vec2 lineLineIntersect(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2)
 {
     glm::vec2 intersect = {0,0};
@@ -309,6 +325,11 @@ glm::vec2 lineLineIntersectExtend(const glm::vec2& a1, const glm::vec2& a2, cons
         {
             double slope1 = (a1.y - a2.y)/(a1.x - a2.x);
             double slope2 = (b1.y - b2.y)/(b1.x - b2.x);
+
+            if (slope1 == slope2)
+            {
+                return {0,0};
+            }
 
             double yInt1 = a1.y - slope1*a1.x;
             double yInt2 = b1.y - slope2*b1.x;
