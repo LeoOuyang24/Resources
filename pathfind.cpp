@@ -570,6 +570,7 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
        // glm::vec2 bestPoint = {0,0}; //the last point of the best path found so far. origin until one path is found
         glm::vec2 curPoint; //current point to analyze
         NavMeshNode* curNode = startNode; //current node to analyze
+        glm::vec4 endRect = endNode->getRect();
         bool startEdge = false; //there's a fun edge case where if the start point is on the edge of two nodes, the algorithm will skirt around the neighboring node. This helps fix that (see documentation).
         while (heap.size() != 0 && heap.peak().first != end) //we end either when the heap is empty (no path) or when the top of the heap is the end (there is a path)
         {
@@ -583,7 +584,7 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
             float angle = atan2(curNode->getCenter().y - curPoint.y, curNode->getCenter().x - curPoint.x);
             //PolyRender::requestLine(glm::vec4(curPoint,curPoint + glm::vec2(40*cos(angle),40*sin(angle))),{0,0,0,1},1,RenderCamera::currentCamera);
             heap.pop();
-            if (curNode == endNode ) //if we are in the endNode, we can go directly to the end. This may not be the shortest path, so we keep searching
+            if (curNode == endNode || pointInVec(endRect,curPoint)) //if we are in the endNode, we can go directly to the end. This may not be the shortest path, so we keep searching
             {
                 double score = pointDistance(curPoint,end) + paths[curPoint].first;
                 if (paths.count(end) == 0)
@@ -607,10 +608,10 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
             auto endIt = nextTo->end(); //get the end iterator
             for (auto it = nextTo->begin(); it != endIt; ++it)
             {
-                if (visited.count(it->first) > 0)
+               /* if (visited.count(it->first) > 0)
                 {
                     continue;
-                }
+                }*/
               /*  if (((curPoint.x >= it->second.x && curPoint.x <= it->second.z) && (curPoint.y == it->second.y)) //since all lines are horizontal or vertical, this tests to see if the our current point is on the intersection of our neighbor.
                      || it->second.z - it->second.x < width) //also don't process if the line is too narrow
                 {
@@ -654,7 +655,7 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
 
                     paths[midpoint].first = newDistance;
                     paths[midpoint].second = curPoint;
-                    pointAndNodes[midpoint] = pointInVec(endNode->getRect(),midpoint) ? endNode : it->first;
+                    pointAndNodes[midpoint] = it->first;
                     if (newPoint)
                     {
                         //the final score that also uses the heuristic
@@ -679,7 +680,7 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
             {
                 //std::cout << paths.count(curPoint) << " " << curPoint.x << " " << curPoint.y << std::endl;
                 glm::vec2 nextPoint = paths[shortCut].second; //nextPoint is the nextPoint to process.
-              //  PolyRender::requestCircle({1,1,1,1},RenderCamera::currentCamera->toScreen(nextPoint),10,2);
+               // PolyRender::requestCircle({1,1,1,1},RenderCamera::currentCamera->toScreen(nextPoint),10,2);
                     glm::vec4 line = (nextPoint != start ?
                                             pointAndNodes[nextPoint]->getNextTo()[pointAndNodes[paths[nextPoint].second]] : //intersection between the two nodes
                                             glm::vec4(startNode->getRect().x ,start.y, startNode->getRect().x + startNode->getRect().z, start.y));// - glm::vec4(width,0,width,0);
@@ -691,42 +692,30 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
                             rightBound ={line.z, line.a};
                             boundsSet = true;
                         }
-                       if (leftBound.y == curPoint.y && leftBound.y != line.y)
-                            {
-                                finalPath.push_front({shortCut,{line.x,line.y},{line.z,line.a}});
-                                curPoint = shortCut;
-                                leftBound = {bounds.x,0};
-                                rightBound = {bounds.x + bounds.z, 0};
-                                boundsSet = false;
-                            }
-                            else
-                            {
-                                if (leftBound.y != curPoint.y)
-                                {
-                                    leftBound = {std::max(line.x, lineLineIntersectExtend(leftBound,curPoint,{line.x,line.y},{line.z,line.a}).x),line.y};
-                                    rightBound = {std::min(line.z,lineLineIntersectExtend(rightBound,curPoint,{line.x,line.y},{line.z,line.a}).x),line.y};
-                                }
-                             //   std::cout << leftBound.x <<" " << leftBound.y << " " << rightBound.x << " " << rightBound.y << " " << curPoint.x << " " << curPoint.y << " " << nextPoint.x << " " << nextPoint.y<< "\n";
-                               /* PolyRender::requestNGon(10,RenderCamera::currentCamera->toScreen(rightBound),10,{0,0,1,1},0,10,2);
-                                PolyRender::requestNGon(10,RenderCamera::currentCamera->toScreen(leftBound),10,{1,0,0,1},0,10,2);
-                                PolyRender::requestLine(line,{0,1,0,1},3,RenderCamera::currentCamera);*/
-                                boundsSet = true;
-                                //rightBound.x < leftBound.x || !pointInTriangle(leftBound,rightBound,curPoint,nextPoint)
-                                if (true) //if we can't move to nextPoint, then shortCut is the furthest we can move.
-                                {
-                                    finalPath.push_front({shortCut,{line.x,line.y},{line.z,line.a}});
-                                    curPoint = shortCut;
-                                    leftBound = {bounds.x,0};
-                                    rightBound = {bounds.x + bounds.z, 0};
-                                    boundsSet = false;
-                                    shortCut = nextPoint;
-
-                                }
-                                else
-                                {
-                                    shortCut = nextPoint;
-                                }
-                            }
+                        if (leftBound.y != curPoint.y)
+                        {
+                            leftBound = {std::max(line.x, lineLineIntersectExtend(leftBound,curPoint,{line.x,line.y},{line.z,line.a}).x),line.y};
+                            rightBound = {std::min(line.z,lineLineIntersectExtend(rightBound,curPoint,{line.x,line.y},{line.z,line.a}).x),line.y};
+                        }
+                        /*std::cout << leftBound.x <<" " << leftBound.y << " " << rightBound.x << " " << rightBound.y << " " << curPoint.x << " " << curPoint.y << " " << nextPoint.x << " " << nextPoint.y<< "\n";
+                        PolyRender::requestNGon(10,RenderCamera::currentCamera->toScreen(rightBound),10,{0,0,1,1},0,10,2);
+                        PolyRender::requestNGon(10,RenderCamera::currentCamera->toScreen(leftBound),10,{1,0,0,1},0,10,2);
+                        PolyRender::requestLine(line,{0,1,0,1},3,RenderCamera::currentCamera);*/
+                        boundsSet = true;
+                        //rightBound.x < leftBound.x || !pointInTriangle(leftBound,rightBound,curPoint,nextPoint)
+                        if (rightBound.x < leftBound.x || !pointInTriangle(leftBound,rightBound,curPoint,nextPoint)) //if we can't move to nextPoint, then shortCut is the furthest we can move.
+                        {
+                            finalPath.push_front({shortCut,{line.x,line.y},{line.z,line.a}});
+                            curPoint = shortCut;
+                            leftBound = {bounds.x,0};
+                            rightBound = {bounds.x + bounds.z, 0};
+                            boundsSet = false;
+                          // shortCut = nextPoint;
+                        }
+                        else
+                        {
+                            shortCut = nextPoint;
+                        }
                 //PolyRender::renderPolygons();
 
             }
@@ -953,7 +942,7 @@ void NavMesh::render()
                                          false,
                                          0,1);
                 const NavMesh::NavMeshNode* node = static_cast<const NavMeshNode*>(&pos);
-                node->render();
+                //node->render();
                  });
     }
     else
