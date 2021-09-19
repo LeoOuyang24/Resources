@@ -25,7 +25,7 @@ struct HashPoint
 class NavMesh //a navigation mesh of rectangles
 {
     class NavMeshNode;
-    typedef std::unordered_map<NavMeshNode*,glm::vec4> Neighbors; //pointer to the node and the line of intersection
+    typedef std::unordered_map<NavMeshNode*,glm::vec4> Neighbors; //pointer to the node and the line of intersection. The XY of the line should be the of the leftmost point
 
    class NavMeshNode : public RectPositional
     {
@@ -80,6 +80,7 @@ public:
     int getNumNodes();
     void render();
     void renderNode(const glm::vec2& point);
+    ~NavMesh();
 };
 
 struct Terrain : public RectPositional

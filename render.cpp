@@ -975,10 +975,18 @@ void PolyRender::init(int screenWidth, int screenHeight)
 
 }
 
-void PolyRender::requestLine(const glm::vec4& line, const glm::vec4& color, float z)
+void PolyRender::requestLine(const glm::vec4& line, const glm::vec4& color, float z, RenderCamera* camera)
 {
-    lines.push_back(std::pair<glm::vec3,glm::vec4>({line.x,line.y,z},color));
-    lines.push_back(std::pair<glm::vec3, glm::vec4>({line.z,line.a,z},color));
+    if (camera)
+    {
+        lines.push_back(std::pair<glm::vec3,glm::vec4>(glm::vec3(camera->toScreen({line.x,line.y}),z),color));
+        lines.push_back(std::pair<glm::vec3, glm::vec4>(glm::vec3(camera->toScreen({line.z,line.a}),z),color));
+    }
+    else
+    {
+      lines.push_back(std::pair<glm::vec3,glm::vec4>({line.x,line.y,z},color));
+        lines.push_back(std::pair<glm::vec3, glm::vec4>({line.z,line.a,z},color));
+    }
 }
 void PolyRender::requestCircle( const glm::vec4& color,const glm::vec2& center, double radius,float z)
 {

@@ -320,7 +320,7 @@ struct PolyRender
     static unsigned int polyVBO;
     static unsigned int colorVBO;
     static void init(int screenWidth, int screenHeight);
-    static void requestLine(const glm::vec4& line, const glm::vec4& color, float z = 0);
+    static void requestLine(const glm::vec4& line, const glm::vec4& color, float z = 0, RenderCamera* camera = 0);
     static void requestCircle(const glm::vec4& color,const glm::vec2& center, double radius, float z);
     static void requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z);
     static void requestNGon(int n, const glm::vec2& center, double side, const glm::vec4& color, double angle, bool filled, float z); //draws a regular n gon. Angle is in radians
