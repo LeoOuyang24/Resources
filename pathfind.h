@@ -67,6 +67,7 @@ public:
     void reset(); //clears nodeTree and negativeTree but keeps bounds
     glm::vec4 validMove(const glm::vec4& start, const glm::vec2& displacement); //returns where start should end up without colliding into any walls;
     glm::vec4 getWallRect(const glm::vec4& rect); //returns the wall that rect intersects with. glm::vec4(0) if there is no wall
+    positionalVec getWallsNearby(const glm::vec4& rect);
     bool notInWall(const glm::vec4& rect); //returns true if rect is in a wall.
     glm::vec4 getNearestNodeRect(const glm::vec2& point); //returns the rect of the node that the point belongs to. glm::vec4(0) if there is no nearby node
     glm::vec2 closestPoint(const glm::vec2& point); //returns the closest valid point to point. Throws if there are no nearby nodes
@@ -96,6 +97,7 @@ class EntityTerrainManager : public EntityPosManager
     std::list<std::shared_ptr<Terrain>> terrain;
 protected:
     std::shared_ptr<NavMesh> mesh;
+    virtual void updateTerrain();
 public:
     virtual void init(const glm::vec4& rect);
     void addTerrain(Terrain& box);

@@ -116,9 +116,9 @@ glm::vec2 MoveComponent::getNextPoint()
 
     if (ignoreTarget)
     {
-        return getCenter() + increment;
+        return glm::vec2(rect.x, rect.y) + increment;
     }
-    return getCenter() + glm::vec2(absMin(increment.x,target.x - center.x),absMin(increment.y, target.y - center.y));
+    return glm::vec2(rect.x + absMin(increment.x,target.x - center.x),rect.y + absMin(increment.y, target.y - center.y));
 }
 
 void MoveComponent::update()
@@ -128,8 +128,8 @@ void MoveComponent::update()
     {
         glm::vec2 nextPoint = getNextPoint();
 
-        rect.x += nextPoint.x - center.x;
-        rect.y += nextPoint.y - center.y;
+        rect.x = nextPoint.x;
+        rect.y = nextPoint.y;
     }
     velocity = pointDistance({rect.x + rect.z/2, rect.y + rect.a/2}, center); //distance between new center vs old center
     speed = baseSpeed;
@@ -522,13 +522,10 @@ IDComponent::IDComponent(Entity& entity, std::string name_, int id_) : Component
 
 }
 
-void EntityManager::forEachEntity(EntityIt& entity)
+bool EntityManager::forEachEntity(Entity& entity)
 {
-    if (entity->first)
-    {
-        entity->first->update();
-    }
-    ++entity;
+    entity.update();
+    return false;
 }
 
 void EntityManager::addEntity(Entity& entity)
@@ -572,30 +569,33 @@ void EntityManager::update()
     auto end = entities.end();
     for (auto it = entities.begin(); it != end;)
     {
-        forEachEntity(it);
+       if (forEachEntity(*it->first))
+       {
+           it = removeEntity(it->first);
+       }
+       else
+       {
+           ++it;
+       }
     }
 }
 
-void EntityPosManager::forEachEntity(EntityIt& it)
+bool EntityPosManager::forEachEntity(Entity& entity)
 {
-    Entity* entity = it->first;
-    if (entity)
+    if (RectComponent* rect = entity.getComponent<RectComponent>())
     {
-        if (RectComponent* rect = entity->getComponent<RectComponent>())
+        QuadTree* old = quadtree->find(*rect);
+        entity.update();
+        if (old)
         {
-            QuadTree* old = quadtree->find(*rect);
-            entity->update();
-            if (old)
-            {
-                quadtree->update(*rect,*old);
-            }
-        }
-        else
-        {
-            entity->update();
+            quadtree->update(*rect,*old);
         }
     }
-    ++it;
+    else
+    {
+        entity.update();
+    }
+    return false;
 }
 
 void EntityPosManager::init(const glm::vec4& rect)
@@ -639,4 +639,9 @@ EntityPosManager::EntityIt EntityPosManager::removeEntity(Entity* entity)
     }
 }
 
+void EntityPosManager::reset()
+{
+    entities.clear();
+    quadtree->clear();
+}
 

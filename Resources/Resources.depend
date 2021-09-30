@@ -33,7 +33,7 @@
 
 1524390096 c:\users\leoou\onedrive\desktop\freetype-2.9.1\include\freetype\config\ftheader.h
 
-1631891744 c:\users\leoou\onedrive\desktop\resources\geometry.h
+1632095247 c:\users\leoou\onedrive\desktop\resources\geometry.h
 	<vector>
 	<map>
 	"glew.h"
@@ -571,7 +571,7 @@
 1525706584 c:\users\leoou\onedrive\desktop\glm\glm\gtc\type_ptr.inl
 	<cstring>
 
-1631831473 c:\users\leoou\onedrive\desktop\resources\render.h
+1632949002 c:\users\leoou\onedrive\desktop\resources\render.h
 	<iostream>
 	<vector>
 	<map>
@@ -581,7 +581,7 @@
 	"gtc/matrix_transform.hpp"
 	"gtc/type_ptr.hpp"
 
-1631972909 source:c:\users\leoou\onedrive\desktop\resources\geometry.cpp
+1632145540 source:c:\users\leoou\onedrive\desktop\resources\geometry.cpp
 	<math.h>
 	<iostream>
 	"geometry.h"
@@ -965,14 +965,14 @@
 	"SDLhelper.h"
 	<iostream>
 
-1631407755 source:c:\users\leoou\onedrive\desktop\resources\components.cpp
+1632268268 source:c:\users\leoou\onedrive\desktop\resources\components.cpp
 	<iostream>
 	"vanilla.h"
 	"SDLHelper.h"
 	"render.h"
 	"components.h"
 
-1631726259 c:\users\leoou\onedrive\desktop\resources\components.h
+1632180861 c:\users\leoou\onedrive\desktop\resources\components.h
 	<memory.h>
 	<unordered_map>
 	<unordered_set>
@@ -982,7 +982,7 @@
 	"render.h"
 	"SDLhelper.h"
 
-1631726524 c:\users\leoou\onedrive\desktop\resources\glgame.h
+1632173011 c:\users\leoou\onedrive\desktop\resources\glgame.h
 	<glew.h>
 	<glm.hpp>
 	<gtc/matrix_transform.hpp>
@@ -992,19 +992,20 @@
 	"geometry.h"
 	"render.h"
 
-1631725527 source:c:\users\leoou\onedrive\desktop\resources\glgame.cpp
+1632173011 source:c:\users\leoou\onedrive\desktop\resources\glgame.cpp
+	"SDL.h"
 	"glGame.h"
 	"render.h"
 
 1629746580 source:c:\users\leoou\onedrive\desktop\resources\resources\main.cpp
 
-1632089729 source:c:\users\leoou\onedrive\desktop\resources\pathfind.cpp
+1632268546 source:c:\users\leoou\onedrive\desktop\resources\pathfind.cpp
 	<algorithm>
 	<unordered_set>
 	"vanilla.h"
 	"pathfind.h"
 
-1631974026 c:\users\leoou\onedrive\desktop\resources\pathfind.h
+1632268535 c:\users\leoou\onedrive\desktop\resources\pathfind.h
 	<unordered_map>
 	<deque>
 	"glGame.h"

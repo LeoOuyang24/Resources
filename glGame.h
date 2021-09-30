@@ -69,7 +69,11 @@ class PosWrapper
     //solution: it is a very simple parent class with a single function that returns a pointer to a Positional. This is all we need to generalize raw and
     //smart pointers
 public:
-    virtual Positional* get() const = 0 ;
+    virtual Positional* get() const
+    {
+        std::cout << "ERROR\n";
+        return nullptr;
+    }
     virtual ~PosWrapper()
     {
 
