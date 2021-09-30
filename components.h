@@ -134,7 +134,7 @@ protected:
 public:
     MoveComponent(float speed, const glm::vec4& rect, Entity& entity);
     void teleport(const glm::vec2& point); //centers the entity at the point and sets it as the new target
-    glm::vec2 getNextPoint(); //gets the projected center to move towards
+    virtual glm::vec2 getNextPoint(); //gets the next point to move towards. (TOP LEFT CORNER (x,y), not center)
     virtual void update();
     virtual bool atPoint(const glm::vec2& point); //whether or not our center is within distThreshold of the point.
     virtual bool atTarget(); //returns atPoint(target);
@@ -320,8 +320,8 @@ class EntityManager //convenient class for storing and updating each entity
 protected:
     std::unordered_map<Entity*,std::shared_ptr<Entity>> entities;
     typedef std::unordered_map<Entity*,std::shared_ptr<Entity>>::iterator EntityIt;
-    virtual void forEachEntity(EntityIt& it); //used to allow child managers to easily change how they manage entities without forlooping twice
-                                                            //it is expected to be modified
+    virtual bool forEachEntity(Entity& it); //used to allow child managers to easily change how they manage entities without forlooping twice
+                                            //returns true if the entity should be deleted after this function call
 public:
     virtual void addEntity(Entity& entity);
     virtual void addEntity(const std::shared_ptr<Entity>& entity);
@@ -334,7 +334,7 @@ class EntityPosManager : public EntityManager//Entity Manager that also keeps a 
 {
     std::unique_ptr<QuadTree> quadtree;
 protected:
-    virtual void forEachEntity(EntityIt& entity);
+    virtual bool forEachEntity(Entity& entity);
 public:
     virtual void init(const glm::vec4& rect);
     QuadTree* getQuadTree(); //can return null, most likely because init was never called
@@ -342,6 +342,7 @@ public:
     virtual void addEntity(const std::shared_ptr<Entity>& ptr);
     virtual void addEntity(Entity& entity, float x, float y); //sets center position
     EntityIt removeEntity(Entity* entity);
+    void reset();
 };
 
 

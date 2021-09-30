@@ -513,6 +513,11 @@ glm::vec4 NavMesh::getWallRect(const glm::vec4& rect)
     return glm::vec4(0);
 }
 
+positionalVec NavMesh::getWallsNearby(const glm::vec4& rect)
+{
+    return negativeTree.getNearest(rect);
+}
+
 bool NavMesh::notInWall(const glm::vec4& rect)
 {
     return getWallRect(rect) == glm::vec4(0);
@@ -966,6 +971,18 @@ NavMesh::~NavMesh()
     negativeTree.clear();
 }
 
+void EntityTerrainManager::updateTerrain()
+{
+     auto end = terrain.end();
+    if (RenderCamera::currentCamera)
+    {
+        for (auto it =terrain.begin(); it != end; ++it)
+        {
+            PolyRender::requestRect(RenderCamera::currentCamera->toScreen((*it)->getRect()),{1,0,0,1},true,0,1);
+        }
+    }
+}
+
 void EntityTerrainManager::init(const glm::vec4& rect)
 {
     EntityPosManager::init(rect);
@@ -1001,14 +1018,7 @@ std::shared_ptr<NavMesh>& EntityTerrainManager::getMeshPtr()
 
 void EntityTerrainManager::update()
 {
-    auto end = terrain.end();
-    if (RenderCamera::currentCamera)
-    {
-        for (auto it =terrain.begin(); it != end; ++it)
-        {
-            PolyRender::requestRect(RenderCamera::currentCamera->toScreen((*it)->getRect()),{1,0,0,1},true,0,1);
-        }
-    }
+    updateTerrain();
     EntityPosManager::update();
 }
 

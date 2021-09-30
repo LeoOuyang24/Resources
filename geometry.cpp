@@ -402,26 +402,29 @@ glm::vec2 rotatePoint(const glm::vec2& p, const glm::vec2& rotateAround, double 
     return {point.x*cos(angle)-point.y*sin(angle)+rotateAround.x, point.x*sin(angle) + point.y*cos(angle)+rotateAround.y};
 }
 
-glm::vec4 moveRect(const glm::vec4& rect, const glm::vec4& wall, const glm::vec2& move)
+glm::vec4 moveRect(const glm::vec4& rect, const glm::vec4& wall, const glm::vec2& move, float rotation, float wallRotation)
 {
     glm::vec4 finalRect = rect + glm::vec4(move.x,move.y,0,0);
     glm::vec4 vertRect = {rect.x, rect.y + move.y, rect.z, rect.a};
-    if (vecIntersect(vertRect, wall)) //result if rect only moved vertically.
+    if (vecIntersect(vertRect, wall,rotation,wallRotation)) //result if rect only moved vertically.
     {
         if (rect.y + rect.a < wall.y)
         {
+            std::cout << "up\n";
             finalRect.y = wall.y - rect.a - 1;
         }
         else
         {
+            printRect(rect);
             finalRect.y = wall.y + wall.a+ 1;
         }
     }
     glm::vec4 horizRect = {rect.x + move.x, rect.y, rect.z,rect.a};
-    if (vecIntersect(horizRect,wall)) //result if rect only moved horizontally.
+    if (vecIntersect(horizRect,wall,rotation,wallRotation)) //result if rect only moved horizontally.
         {
             if (rect.x + rect.z < wall.x)
             {
+                std::cout << "left\n";
                 finalRect.x = wall.x - rect.z - 1;
             }
             else

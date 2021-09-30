@@ -287,17 +287,6 @@ class SpriteManager
             return a.first < b.first;
         }
     };
-    struct ZWrapperHash
-    {
-        size_t operator()(zWrapper& a) const//stolen from stack overflow to combine the hashes of z and SpriteWrapper*
-        {
-          //  std::hash<SpriteParameter*> pHash;
-           // std::hash<float> fHash;
-            size_t seed = std::hash<SpriteWrapper*>()(a.second);
-            seed ^= std::hash<float>()(a.first) + 0x9e3779b9 + (seed<<6) + (seed>>2);
-            return seed;
-        }
-    };
     static std::vector<SpriteWrapper*> sprites;
     static std::map<zWrapper,std::list<SpriteParameter>,ZWrapperComparator> params;
 public:
@@ -321,9 +310,9 @@ struct PolyRender
     static unsigned int colorVBO;
     static void init(int screenWidth, int screenHeight);
     static void requestLine(const glm::vec4& line, const glm::vec4& color, float z = 0, RenderCamera* camera = 0);
-    static void requestCircle(const glm::vec4& color,const glm::vec2& center, double radius, float z);
+    static void requestCircle(const glm::vec4& color,const glm::vec2& center, double radius, bool filled, float z);
     static void requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z);
-    static void requestNGon(int n, const glm::vec2& center, double side, const glm::vec4& color, double angle, bool filled, float z); //draws a regular n gon. Angle is in radians
+    static void requestNGon(int n, const glm::vec2& center, double side, const glm::vec4& color, double angle, bool filled, float z, bool radius = false); //draws a regular n gon. Angle is in radians. If radius is true, then side is the radius length rather than the side length
     static void requestPolygon(const std::vector<glm::vec3>& points, const glm::vec4& color);
     static void render();
     static void renderMesh(float* mesh, int w, int h);

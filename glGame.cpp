@@ -1,3 +1,5 @@
+#include "SDL.h"
+
 #include "glGame.h"
 #include "render.h"
 
@@ -136,6 +138,7 @@ void QuadTree::render(RenderCamera& camera)
     }
 }
 
+
 void QuadTree::add(PosWrapper& obj)
 {
     if (nodes[0])
@@ -164,6 +167,7 @@ void QuadTree::add(PosWrapper& obj)
         //vec.emplace_back((new Positional({1,1})));
         if (vec.size() > maxCapacity)
         {
+
             split();
             for (int i = vec.size()-1; i >= 0; i --)
             {
@@ -355,7 +359,7 @@ void QuadTree::move(QuadTree& t1, QuadTree& t2, Positional& obj)
     {
         if (t1.vec[i]->get() == &obj)
         {
-            t2.add((*t1.vec[i].get()));
+            t2.add((*t1.vec[i].release()));
             t1.vec.erase(t1.vec.begin() + i);
             return;
         }

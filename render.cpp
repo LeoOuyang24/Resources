@@ -988,9 +988,9 @@ void PolyRender::requestLine(const glm::vec4& line, const glm::vec4& color, floa
         lines.push_back(std::pair<glm::vec3, glm::vec4>({line.z,line.a,z},color));
     }
 }
-void PolyRender::requestCircle( const glm::vec4& color,const glm::vec2& center, double radius,float z)
+void PolyRender::requestCircle( const glm::vec4& color,const glm::vec2& center, double radius, bool filled, float z)
 {
-    requestNGon(360,center,radius*cos((360 - 2)*180/360/2*M_PI/180)*2,color,0,false,z);
+    requestNGon(360,center,radius,color,0,filled,z,true);
 }
 
 void PolyRender::requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z)
@@ -1024,10 +1024,16 @@ void PolyRender::requestRect(const glm::vec4& rect, const glm::vec4& color, bool
     }
 }
 
-void PolyRender::requestNGon(int n, const glm::vec2& center, double side, const glm::vec4& color, double angle, bool filled, float z)
+void PolyRender::requestNGon(int n, const glm::vec2& center, double side, const glm::vec4& color, double angle, bool filled, float z, bool radius)
 {
     //this function divides a regular NGon into n-2 triangles so we can render them using a triangle strip
     double cycleAngle = 2.0/n*M_PI;
+    if (radius)
+    {
+        side = 2*side*sin(M_PI/n);
+        //the angle in the center of a regular polygon divided in half is always M_PI/n, we then use trigonometry to figure out the
+        //length of the side given the radius
+    }
     glm::vec2 first = {center.x - side/2, center.y + side/2/tan(cycleAngle/2)}; //first is the angle we start at and the point we'll be rotating around the center to generate our verticies
     if (angle != 0)
     {
