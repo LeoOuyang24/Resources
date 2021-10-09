@@ -40,7 +40,7 @@ Font::Character::Character(char c, FT_Face& face) : Sprite()
         face->glyph->bitmap.buffer
     );
 
-    glGenerateMipmap(GL_TEXTURE_2D);
+   // glGenerateMipmap(GL_TEXTURE_2D);
 
     //std::cout << glGetError() << std::endl;
     //std::cout << texture << std::endl;
@@ -186,6 +186,15 @@ void Font::requestWrite(FontParameter&& param)
     auto screenDimen = (RenderProgram::getScreenDimen()); //we need to find the dimensions of the screen vs the dimensions of the projection matrix and scale accordingly. We will assume that the ortho and screen dimen start at 0
 
     double x = absRect.x;
+    switch (param.align)
+    {
+    case RIGHT:
+        x -= getDimen(param.text,scale,1).x;
+        break;
+    case CENTER:
+        x -= getDimen(param.text,scale,1).x/2;
+        break;
+    }
 //    PolyRender::requestRect(absRect,{0,1,0,1},false,0,-1);
     //std::cout << length << std::endl;
       //  std::cout << "Start: " << writeRequests.size() << std::endl;

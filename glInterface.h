@@ -11,11 +11,12 @@
 class Panel //parent class of anything that goes on a window, including other windows and buttons. DOES NOT RENDER ANYTHING; create children for functionality
 {
 protected:
-    float baseZ = 0; //z of the panel. Added to param.z
     glm::vec4 scale(const glm::vec4& scaleRect);
     glm::vec4 rect, backgroundColor;
     SpriteWrapper* sprite = nullptr;
+    float baseZ = 0; //z of the panel. Added to param.z
     SpriteParameter param; //used to modify the spriteParameter. rect is effected by the Panel.Rect, rather than the param.rect
+                            //Many children of Panel uses param.z to alter the z at which they are rendered at
     const SpriteParameter originalSprite;
     bool dead = false;
     bool doUpdate = true; //whether to update this window or not
@@ -35,6 +36,11 @@ public:
     void updateBlit(float z, const glm::vec4& blit); //blits to a rect and updates
     void updateBlit(float z, RenderCamera& camera, bool absolute);
     void updateBlit(float z, RenderCamera& camera, bool absolute, const glm::vec4& blit); //renders at blit location
+    void requestWrite(Font& font, FontParameter&& param, float z); //renders text on top of panel, if panel is to be rendered at z
+    float getZ() //get the root Z this panel will be rendered at
+    {
+        return baseZ + param.z;
+    }
 };
 
 class Message : public Panel //a very simple rect that displays messages and sprites
@@ -99,6 +105,7 @@ public:
 
 class Window : public Panel
 {
+    //Windows are panels that can store and render other panels.
     typedef std::pair<std::unique_ptr<Panel>,bool> PanelPair; //panel and whether to render it absoltue or not. Unique ptr because panels should only be owned by the Window, nothing else
 protected:
     std::list<PanelPair> panels;
@@ -110,7 +117,7 @@ public:
     void removePanel(Panel& button);
     void addPanel(Panel& button, bool absolute = false); //Adds button relative to top right corner
     void setCamera(RenderCamera* cam);
-    virtual void update(float x, float y, float z, const glm::vec4& scale);//this function also renders the window. x,y, and clicked are where the mouse is and whether or not it clicked
+    virtual void update(float x, float y, float z, const glm::vec4& scale);
     virtual void updateTop(float z, const glm::vec4& blit); //given a rect, calculates the scaling rect. Useful for windows that have no parent windows
     virtual void updateTop(float z); //same as other updateTop except blit is our own rect. Basically no scaling
     virtual void switchTo(Window& swapTo); //called when swapping away from this window. swapTo is the new window
