@@ -87,6 +87,12 @@ void Panel::updateBlit(float z, RenderCamera& camera, bool absolute, const glm::
     update(mousePos.x,mousePos.y,z,scale);
 }
 
+void Panel::requestWrite(Font& font, FontParameter&& param, float z)
+{
+    param.z = getZ() + z + .1;
+    font.requestWrite(std::move(param));
+}
+
 Message::Message(const glm::vec4& box, SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc)(), double z_ ) :
                 Panel(box,color,spr,z_), font(font), paper(param), originalPaper(param),dynamicString(strFunc)
 {
@@ -99,11 +105,11 @@ void Message::update(float mouseX, float mouseY, float z, const glm::vec4& scale
    // std::cout << rect.x << " " << rect.y << std::endl;
     if (!sprite && backgroundColor.a > 0) //if the sprite would over lap the background color or the backgroundColor is transparent, don't render it
     {
-        PolyRender::requestRect(renderRect,backgroundColor,true,0,baseZ + param.z + z);
+        PolyRender::requestRect(renderRect,backgroundColor,true,0,getZ() + z);
     }
     else if (sprite)
     {
-        sprite->request({renderRect,param.radians,param.effect,param.tint,param.program,baseZ + param.z+ z,param.portion});
+        sprite->request({renderRect,param.radians,param.effect,param.tint,param.program,getZ()+ z,param.portion});
     }
     if (font)
     {
@@ -112,7 +118,7 @@ void Message::update(float mouseX, float mouseY, float z, const glm::vec4& scale
         {
             print = dynamicString();
         }
-        font->requestWrite({print,renderRect,paper.angle,paper.color,baseZ + param.z + z + .1});
+        font->requestWrite({print,renderRect,paper.angle,paper.color,getZ() + z + .1});
     }
     paper = originalPaper;
 
@@ -276,11 +282,11 @@ void Window::update(float x, float y, float z, const glm::vec4& blit)
         glm::vec4 renderRect = scale(blit);
         if (sprite)
         {
-            sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,z + param.z});
+            sprite->request({renderRect,0,NONE,{1,1,1,1},&RenderProgram::basicProgram,getZ() + z + param.z});
         }
         else if (backgroundColor.a > 0)
         {
-            PolyRender::requestRect(renderRect,backgroundColor,true,0,z + param.z);
+            PolyRender::requestRect(renderRect,backgroundColor,true,0,getZ() + z + param.z);
         }
         auto end = panels.end();
         for (auto i = panels.begin(); i != end;)
@@ -290,11 +296,11 @@ void Window::update(float x, float y, float z, const glm::vec4& blit)
                 bool hover = pointInVec(i->first.get()->getRect(),x,y,0);
                 if (camera)
                 {
-                    i->first.get()->updateBlit(baseZ + param.z + z + .1,*camera, i->second);
+                    i->first.get()->updateBlit(getZ() + z + .1,*camera, i->second);
                 }
                 else
                 {
-                    i->first.get()->update(x,y,baseZ + param.z+ z + .1,blit);
+                    i->first.get()->update(x,y,getZ()+ z + .1,blit);
                 }
                 if (i->first->getDead())
                 {

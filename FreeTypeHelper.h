@@ -10,7 +10,12 @@
 #include "geometry.h"
 #include "render.h"
 
-
+enum Align
+{
+    LEFT,
+    CENTER,
+    RIGHT
+};
 
 
 struct FontParameter //Represents all the information  required to call the write function given to a font
@@ -20,6 +25,7 @@ struct FontParameter //Represents all the information  required to call the writ
     double angle = 0;
     glm::vec4 color = {0,0,0,1};
     float z = 0;
+    Align align = LEFT;
 };
 
 class Font
