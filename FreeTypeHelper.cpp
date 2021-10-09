@@ -39,6 +39,9 @@ Font::Character::Character(char c, FT_Face& face) : Sprite()
         GL_UNSIGNED_BYTE,
         face->glyph->bitmap.buffer
     );
+
+    glGenerateMipmap(GL_TEXTURE_2D);
+
     //std::cout << glGetError() << std::endl;
     //std::cout << texture << std::endl;
     letter = c;
@@ -157,14 +160,14 @@ glm::vec2 Font::getDimen(std::string text, GLfloat hScale, GLfloat vScale)
         Character* ch = &(characters[*c].get()->getCharacter());
         GLfloat h = ch->getSize().y * vScale;
         totalWidth += (ch->getAdvance())*hScale/64;
-        maxHeight += (h-maxHeight)*(h > maxHeight);
+        maxHeight += (h > maxHeight)*(h-maxHeight);
     }
     return {totalWidth,maxHeight};
 }
 
 void Font::requestWrite(FontParameter&& param)
 {
-    double scale;
+    float scale;
     glm::vec4 absRect = absoluteValueRect(param.rect);
     glm::vec2 dimen = getDimen(param.text,1,1);
     if (param.rect.z < 0 )
@@ -183,6 +186,7 @@ void Font::requestWrite(FontParameter&& param)
     auto screenDimen = (RenderProgram::getScreenDimen()); //we need to find the dimensions of the screen vs the dimensions of the projection matrix and scale accordingly. We will assume that the ortho and screen dimen start at 0
 
     double x = absRect.x;
+//    PolyRender::requestRect(absRect,{0,1,0,1},false,0,-1);
     //std::cout << length << std::endl;
       //  std::cout << "Start: " << writeRequests.size() << std::endl;
     int size = param.text.size();
@@ -198,6 +202,8 @@ void Font::requestWrite(FontParameter&& param)
         glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
         GLfloat w = chSize->x*scale;
         GLfloat h = (chSize->y)*scale;
+      //  PolyRender::requestRect({pos.x,pos.y,w,h},{1,0,0,1},false,0,-1);
+     // printRect({pos.x,pos.y,w,h});
         characters[c]->request({{pos.x,pos.y,w,h},0,NONE,param.color,&wordProgram,param.z});
         x += (ch->getAdvance() >> 6 )*scale;
     }
