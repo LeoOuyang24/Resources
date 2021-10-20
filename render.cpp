@@ -390,8 +390,8 @@ const size_t Sprite::floatSize = sizeof(float);
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D,texture);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -976,18 +976,46 @@ void PolyRender::init(int screenWidth, int screenHeight)
 
 }
 
-void PolyRender::requestLine(const glm::vec4& line, const glm::vec4& color, float z, RenderCamera* camera)
+void PolyRender::requestLine(const glm::vec4& line, const glm::vec4& color, float z, unsigned int thickness, RenderCamera* camera)
 {
-    if (camera)
+    requestGradientLine(line,color,color,z,thickness,camera);
+}
+
+void PolyRender::requestGradientLine(const glm::vec4& line, const glm::vec4& color1, const glm::vec4& color2, float z, unsigned int thickness, RenderCamera* camera)
+{
+   // if (thickness == 1)
     {
-        lines.push_back(std::pair<glm::vec3,glm::vec4>(glm::vec3(camera->toScreen({line.x,line.y}),z),color));
-        lines.push_back(std::pair<glm::vec3, glm::vec4>(glm::vec3(camera->toScreen({line.z,line.a}),z),color));
+
+        /*here, we have to draw "thickness" amount of lines, each of which are parallel translated. https://math.stackexchange.com/a/2594547
+        is the full explanation.*/
+        float dist = sqrt(pow(line.y - line.a,2) + pow(line.x - line.z,2)); //distance between 2 lines
+        glm::vec2 perpVector = {-(line.y - line.a)/dist,(line.x - line.z)/dist}; //calculate the unit vector perpendicular to our line
+        for (int i = 0; i < thickness; ++i)
+        {
+            glm::vec2 disp = perpVector*(thickness/2.0f-i); //displacement of both points
+            glm::vec2 p1 = glm::vec2(line.x,line.y) + disp;
+            glm::vec2 p2 = glm::vec2(line.z,line.a) + disp;
+            if (camera)
+            {
+                p1 = camera->toScreen(p1);
+                p2 = camera->toScreen(p2);
+            }
+            lines.push_back(std::pair<glm::vec3,glm::vec4>(glm::vec3(p1,z),color1));
+            lines.push_back(std::pair<glm::vec3, glm::vec4>(glm::vec3(p2,z),color2));
+        }
     }
-    else
+    /*else if (thickness != 0)
     {
-      lines.push_back(std::pair<glm::vec3,glm::vec4>({line.x,line.y,z},color));
-        lines.push_back(std::pair<glm::vec3, glm::vec4>({line.z,line.a,z},color));
-    }
+        glm::vec2 midpoint = {(line.x +line.z)/2,(line.y + line.a)/2};
+        float width = pointDistance({line.x,line.y},{line.z,line.a});
+        glm::vec4 rect = {midpoint.x - width/2,midpoint.y - thickness/2,width,thickness};
+        if (camera)
+        {
+            rect = camera->toScreen(rect);
+        }
+        //std::cout << line.y - line.a << " " << line.x - line.z<< " " << atan2(line.y - line.a,line.x - line.z) << "\n";
+        PolyRender::requestRect(rect,color,true,  atan2(line.y - line.a,line.x - line.z),z);
+    }*/
 }
 void PolyRender::requestCircle( const glm::vec4& color,const glm::vec2& center, double radius, bool filled, float z)
 {

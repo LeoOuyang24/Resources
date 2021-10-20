@@ -86,9 +86,22 @@ public:
 
 struct Terrain : public RectPositional
 {
-    Terrain(const glm::vec4& box) : RectPositional(box)
+    typedef void (*RenderFunc)(Terrain&);
+    RenderFunc renderFunc; //render function, makes it easy to create terrain with different rendering without having to make a whole child class
+    Terrain( const glm::vec4& box, RenderFunc r = nullptr) : RectPositional(box), renderFunc(r)
     {
 
+    }
+    virtual void render()
+    {
+        if (!renderFunc)
+        {
+            PolyRender::requestRect(RenderCamera::currentCamera->toScreen(rect),{1,0,0,1},true,0,1);
+        }
+        else
+        {
+            renderFunc(*this);
+        }
     }
 };
 
@@ -102,7 +115,7 @@ public:
     virtual void init(const glm::vec4& rect);
     void addTerrain(Terrain& box);
     using EntityPosManager::addEntity;
-    void addEntity(Entity& entity, float x,float y);
+    void addEntity(Entity& entity, float x,float y, bool centered = true);
     std::shared_ptr<NavMesh>& getMeshPtr();
     void update();
 };

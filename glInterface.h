@@ -69,11 +69,11 @@ class Button : public Message
 {
 protected:
     const glm::vec4 baseColor;
-    void (*toDo) () = nullptr;
+    void (*toDo) (Button*) = nullptr;
 public:
     using Panel::update;
 
-    Button(const glm::vec4& box, void (*func)(), SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc)() = nullptr, double z_ = 0);
+    Button(const glm::vec4& box, void (*func)(Button*), SpriteWrapper* spr, const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc)() = nullptr, double z_ = 0);
     virtual void press();
     virtual void hover(); //what to do if the mouse hovers over this button
     virtual void render(float x, float y, float z, const glm::vec4& scaleRect); // just calls Message::update() by default. Can be modified for more flexibility

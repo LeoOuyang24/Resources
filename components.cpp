@@ -618,11 +618,11 @@ void EntityPosManager::addEntity(const std::shared_ptr<Entity>& entity)
     EntityManager::addEntity(entity);
 }
 
-void EntityPosManager::addEntity(Entity& entity, float x, float y)
+void EntityPosManager::addEntity(Entity& entity, float x, float y, bool centered)
 {
     if (RectComponent* rect = entity.getComponent<RectComponent>())
     {
-        rect->setPos({x - rect->getRect().z, y - rect->getRect().a});
+        rect->setPos({x - centered*rect->getRect().z/2, y - centered*rect->getRect().a/2}); //if centered, we have to adjust the position so that our center is over x and y
         addEntity(std::shared_ptr<Entity>(&entity));
     }
 }
