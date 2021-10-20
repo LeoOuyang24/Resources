@@ -978,7 +978,7 @@ void EntityTerrainManager::updateTerrain()
     {
         for (auto it =terrain.begin(); it != end; ++it)
         {
-            PolyRender::requestRect(RenderCamera::currentCamera->toScreen((*it)->getRect()),{1,0,0,1},true,0,1);
+            it->get()->render();
         }
     }
 }
@@ -995,7 +995,7 @@ void EntityTerrainManager::addTerrain(Terrain& wall)
     terrain.push_back(std::static_pointer_cast<Terrain>(mesh->smartAddWall(wall)));
 }
 
-void EntityTerrainManager::addEntity(Entity& entity, float x, float y)
+void EntityTerrainManager::addEntity(Entity& entity, float x, float y, bool centered)
 {
     glm::vec2 pos = {x,y}; //adjusted position to move entity to in case there are walls
     if (!mesh->notInWall({x,y,1,1})) //if {x,y} collides with a wall
@@ -1003,11 +1003,20 @@ void EntityTerrainManager::addEntity(Entity& entity, float x, float y)
         if (RectComponent* rectComp = entity.getComponent<RectComponent>())
         {
             glm::vec4 rect = rectComp->getRect();
-            glm::vec4 nodeRect = mesh->getNearestNodeRect({x,y}) + glm::vec4({rect.z/2,rect.a/2,-rect.z,-rect.a}); //adjust nodeRect so any point in it can hold our center
-            pos = closestPointOnVec(nodeRect,{x,y});
+            if (!centered) //for simplicity, we convert pos to the center point. This makes it easier to adjust our node rect later
+            {
+                pos.x += rect.z/2;
+                pos.y += rect.a/2;
+            }
+            glm::vec4 nodeRect = mesh->getNearestNodeRect(pos) + glm::vec4({rect.z/2,rect.a/2,-rect.z,-rect.a}); //adjust nodeRect so any point in it can hold our center
+            pos = closestPointOnVec(nodeRect,pos); //this should give us the closest point in the node to {x,y} that is free of collision
+            EntityPosManager::addEntity(entity,pos.x,pos.y, true );
         }
     }
-    EntityPosManager::addEntity(entity,pos.x,pos.y );
+    else
+    {
+        EntityPosManager::addEntity(entity,pos.x,pos.y, centered );
+    }
 }
 
 std::shared_ptr<NavMesh>& EntityTerrainManager::getMeshPtr()

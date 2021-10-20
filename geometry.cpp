@@ -226,19 +226,7 @@ bool lineInLine(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, c
             intersect.x >= std::min(b1.x, b2.x) - rounding && intersect.x <= std::max(b1.x,b2.x) + rounding &&
             intersect.y >= std::min(a1.y, a2.y) - rounding && intersect.y <= std::max(a1.y, a2.y) + rounding &&
             intersect.y >= std::min(b1.y, b2.y) - rounding && intersect.y <= std::max(b1.y, b2.y) + rounding;
-
-    rounding = 0.02;
-    bool val2 =  intersect.x >= std::min(a1.x, a2.x) - rounding && intersect.x <= std::max(a1.x, a2.x) + rounding &&
-            intersect.x >= std::min(b1.x, b2.x) - rounding && intersect.x <= std::max(b1.x,b2.x) + rounding &&
-            intersect.y >= std::min(a1.y, a2.y) - rounding && intersect.y <= std::max(a1.y, a2.y) + rounding &&
-            intersect.y >= std::min(b1.y, b2.y) - rounding && intersect.y <= std::max(b1.y, b2.y) + rounding;
-    if (val != val2)
-    {
-        std::cout << "lineInLine Threshold not good enough: " << intersect.x << " " << intersect.y << std::endl;
-        printRect(glm::vec4(a1,a2));
-        printRect(glm::vec4(b1,b2));
-    }
-    return val2;
+    return val;
 }
 
 bool lineInLineExtend(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2)
@@ -249,7 +237,6 @@ bool lineInLineExtend(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2&
     }
     float slope1 = (a1.y - a2.y)/(a1.x - a2.x);
     float slope2 = (b1.y - b2.y)/(b1.x - b2.x);
-    std::cout << a1.x << " " << a1.y << " " << a2.x << " " << a2.y << " " << slope1 << " " << slope2 <<"\n";
     if (slope1 == slope2)
     {
         return (a1.y - slope1*a1.x) == (a2.y - slope1*a2.x); //if the two slopes are the same, they still intersect if they have the same y-intercept, since they'd be the same line
@@ -410,12 +397,10 @@ glm::vec4 moveRect(const glm::vec4& rect, const glm::vec4& wall, const glm::vec2
     {
         if (rect.y + rect.a < wall.y)
         {
-            std::cout << "up\n";
             finalRect.y = wall.y - rect.a - 1;
         }
         else
         {
-            printRect(rect);
             finalRect.y = wall.y + wall.a+ 1;
         }
     }
@@ -424,7 +409,6 @@ glm::vec4 moveRect(const glm::vec4& rect, const glm::vec4& wall, const glm::vec2
         {
             if (rect.x + rect.z < wall.x)
             {
-                std::cout << "left\n";
                 finalRect.x = wall.x - rect.z - 1;
             }
             else

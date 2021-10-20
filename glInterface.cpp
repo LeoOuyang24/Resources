@@ -146,7 +146,7 @@ void Ticker::update(float mouseX, float mouseY, float z, const glm::vec4& scaleR
     Message::update(mouseX,mouseY,z,scaleRect);
 }
 
-Button::Button(const glm::vec4& box,  void (*func)(), SpriteWrapper* spr,
+Button::Button(const glm::vec4& box,  void (*func)(Button*), SpriteWrapper* spr,
                const FontParameter& param, Font* font, const glm::vec4& color, std::string (*strFunc) (), double z_ ) :
                Message( box,spr,param,font,color,strFunc,z_), toDo(func), baseColor(color)
 {
@@ -156,7 +156,7 @@ void Button::press()
 {
     if (toDo != nullptr)
     {
-        toDo();
+        toDo(this);
     }
 }
 
