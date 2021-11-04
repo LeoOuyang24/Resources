@@ -173,38 +173,6 @@ public:
     }
 };
 
-struct ForceVector
-{
-    float angle;
-    float magnitude;
-    int frames; //number of frames to apply the force for
-    float increment = 0; //% amount to increment the force by every frame
-};
-
-class ForcesComponent : public Component, public ComponentContainer<ForcesComponent> //component that pushes MoveComponent based on what forces are currently being applied
-{
-protected:
-    glm::vec2 finalForce = glm::vec2(0); //after applying all forces, this is the final x and y displacement to move
-    std::list<ForceVector> forces;
-    MoveComponent* move = nullptr; //forcesComponent will only work if there is a moveComponent on the entity
-    void applyForce(ForceVector force);
-    void applyAllForces();
-public:
-    ForcesComponent(Entity& entity);
-    bool getBeingPushed();
-    void addForce(ForceVector force);
-    void update();
-    glm::vec2 getFinalForce()
-    {
-        return finalForce;
-    }
-    virtual ~ForcesComponent()
-    {
-
-    }
-
-};
-
 class RenderComponent : public Component, public ComponentContainer<RenderComponent>
 {
 protected:
