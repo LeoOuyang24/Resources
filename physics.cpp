@@ -77,6 +77,7 @@ void ChainLinkComponent::update()
 {
     if (move)
     {
+        ForcesComponent::update();
         auto downPtr = down.get();
         bool print = false;
         if (downPtr)
@@ -85,19 +86,17 @@ void ChainLinkComponent::update()
             {
                 glm::vec2 ourPoint = getLinkPos();
                 glm::vec2 downPoint = downLink->getLinkPos();
+                glm::vec2 chainForce = tension*(downPoint - ourPoint);
+                addForce(chainForce);
+                downLink->addForce(-1.0f*chainForce);
+
                 if (pointDistance(downPoint,ourPoint) > linkDist)
                 {
-                    glm::vec2 chainForce = tension*(downPoint - ourPoint);
-                    //std::cout << glm::length(chainForce) << " " << pointDistance(downPoint,ourPoint) << " " << linkDist <<"\n";
-                    addForce(chainForce);
                     glm::vec2 disp = linkDist*glm::normalize(downPoint - ourPoint);
                     move->teleport(downPoint - disp);
-                    print = true;
                 }
             }
         }
-        glm::vec2 oldForce = finalForce;
-        ForcesComponent::update();
         //if (print)
           //  printRect(glm::vec4(oldForce,finalForce));
     }
@@ -123,7 +122,7 @@ void ChainRenderComponent::update()
     }
 }
 
-Chain::Chain(ChainLinkRender renderFunc_, const glm::vec4& color1, const glm::vec4& color2,  float linkDist_, float tension_, int length, glm::vec2 start, float angle, float friction_)
+Chain::Chain(ChainLinkRender renderFunc_, const glm::vec4& color1, const glm::vec4& color2,  float linkDist_,  int length, glm::vec2 start, float tension_, float angle, float friction_)
 {
     //color1 to color2 is a gradient along the chain, linkDist is the max distance between links, tension is the tension of the chain,
     glm::vec2 tilt = glm::vec2(cos(angle),-sin(angle))*linkDist_;
@@ -163,16 +162,14 @@ void Chain::setBottomPos(const glm::vec2& pos)
 
 void Chain::update()
 {
-    if (top.get())
-    {
-        ChainLinkComponent* link = top->getComponent<ChainLinkComponent>();
-        int i = 0;
-        while (link)
-        {
-            link->getEntity().update();
-            link = link->getNextLink();
-           // std::cout << i << "\n";
-            ++i;
-        }
-    }
+    apply([](ChainLinkComponent& link){
+        link.getEntity().update();
+        });
+}
+
+void Chain::collide(Entity& entity)
+{
+    apply([entity](ChainLinkComponent& link) mutable {
+            link.collide(entity);
+        });
 }

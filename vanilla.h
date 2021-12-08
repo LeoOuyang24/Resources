@@ -604,4 +604,59 @@ public:
 template <typename T>
 std::shared_ptr<T> GlobalMount<T>::ptr;
 
+template <typename T>
+class ReusableVector //not sure what else to call this
+{
+    //This is a data structure like a vector (contiguous memory) that overwrites elements to the index-th position of a vector when pushing back.
+    //the idea here is that if we have a vector that has to be filled with data and then cleared to make room for new data every iteration, it instead
+    //uses the old memory already allocated instead of having to do an expensive reallocation.
+    unsigned int index = 0; //position in our vector to write to. Also the size of our vector.
+    std::vector<T> vec;
+public:
+    T& operator[](unsigned int i)
+    {
+        return vec[i];
+    }
+    void push_back(T t, void (*replace)(T) = nullptr) //adds t to our vector, replacing any element that may have been there previously. replace is called on the old element (mainly used to clean up things like raw pointers)
+    {
+        if (index >= vec.size())
+        {
+            vec.push_back(t);
+        }
+        else
+        {
+            if (replace)
+            {
+                replace(vec[index]);
+            }
+            if (vec[index] != t)
+            {
+                vec[index] = t;
+            }
+        }
+        ++index;
+    }
+    T* getArray()
+    {
+        if (index > 0)
+        {
+            return &vec[0];
+        }
+        return nullptr; //if size is greater than 0, return the address of the first element in our vector (address of the beginning of our contigous array) or return null if the size is 0
+    }
+    int size()
+    {
+        return index;
+    }
+    void clear() //does not empty the vec! Simply sets index to 0 so we can reuse our memory
+    {
+        index = 0;
+    }
+    void empty() //actually deletes everything in the vector
+    {
+        vec.clear();
+        index = 0;
+    }
+
+};
 #endif // VANILLA_H_INCLUDED

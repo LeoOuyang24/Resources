@@ -12,10 +12,7 @@
 #include "gtc/matrix_transform.hpp"
 #include "gtc/type_ptr.hpp"
 
-
-
-
-
+#include "vanilla.h"
 
 class RenderProgram;
 void drawLine(RenderProgram& program,glm::vec3 color,const std::vector<glm::vec4>& points);
@@ -298,11 +295,15 @@ public:
 
 };
 
+template<typename T>
+using PolyStorage = std::vector<T>;
 struct PolyRender
 {
     static std::vector<std::pair<glm::vec3,glm::vec4>> lines; //lines and their colors
-    static std::vector<std::pair<int,glm::vec4>> polygons; //number of edges and color of each polygon
-    static std::vector<glm::vec3> polyPoints; //points of polygons
+    static PolyStorage<glm::vec4> polyColors; //color of each polygon. Color is repeated once for each edge of the polygon
+    static PolyStorage<glm::vec3> polyPoints; //points of polygons
+    static PolyStorage<GLuint> polyIndices;
+    static int polygonRequests;
     static RenderProgram polyRenderer;
     static unsigned int VAO;
     static unsigned int lineVBO;

@@ -180,6 +180,7 @@ protected:
 public:
     RenderComponent(Entity& entity, RenderCamera* camera);
     virtual void render(const SpriteParameter& param);
+    RenderCamera* getCamera();
     virtual ~RenderComponent();
 };
 

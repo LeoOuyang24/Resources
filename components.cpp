@@ -284,6 +284,11 @@ void RenderComponent::render(const SpriteParameter& param) //every rendercompone
 
 }
 
+RenderCamera* RenderComponent::getCamera()
+{
+    return camera;
+}
+
 RenderComponent::~RenderComponent()
 {
 
@@ -518,6 +523,18 @@ bool EntityPosManager::forEachEntity(Entity& entity)
     if (RectComponent* rect = entity.getComponent<RectComponent>())
     {
         QuadTree* old = quadtree->find(*rect);
+        if (old)
+        {
+            auto nearest = old->getNearest(*rect);
+            auto end =nearest.end();
+            for (auto it = nearest.begin(); it != end; ++it)
+            {
+                if ((*it)->collides(rect->getRect()))
+                {
+                    entity.collide(static_cast<RectComponent*>(*it)->getEntity());
+                }
+            }
+        }
         entity.update();
         if (old)
         {

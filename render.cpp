@@ -958,8 +958,10 @@ unsigned int PolyRender::colorVBO = -1;
 unsigned short PolyRender::restart = 65535;
 RenderProgram PolyRender::polyRenderer;
 std::vector<std::pair<glm::vec3,glm::vec4>> PolyRender::lines;
-std::vector<std::pair<int,glm::vec4>> PolyRender::polygons;
-std::vector<glm::vec3> PolyRender::polyPoints;
+PolyStorage<glm::vec4> PolyRender::polyColors;
+PolyStorage<glm::vec3> PolyRender::polyPoints;
+PolyStorage<GLuint> PolyRender::polyIndices;
+int PolyRender::polygonRequests = 0;
 void PolyRender::init(int screenWidth, int screenHeight)
 {
     glGenVertexArrays(1,&VAO);
@@ -1032,11 +1034,18 @@ void PolyRender::requestRect(const glm::vec4& rect, const glm::vec4& color, bool
     }
     if (filled)
     {
-        polygons.push_back({4,color});
+        int size = polyIndices.size() - polygonRequests;
+        for (int i = 0;i < 4; ++i)
+        {
+            polyColors.push_back(color);
+            polyIndices.push_back(size + i);
+        }
+        polyIndices.push_back(restart);
         polyPoints.push_back({topLeft.x,topLeft.y,z});
         polyPoints.push_back({topRight.x,topRight.y,z});
         polyPoints.push_back({botLeft.x,botLeft.y,z});
         polyPoints.push_back({botRight.x,botRight.y,z});
+        polygonRequests++;
     }
     else
     {
@@ -1067,14 +1076,21 @@ void PolyRender::requestNGon(int n, const glm::vec2& center, double side, const 
    {
         glm::vec2 temp;
         polyPoints.push_back({first.x,first.y,z});
+        polyColors.push_back(color);
+        int indicies = polyIndices.size() - polygonRequests;
+        polyIndices.push_back(indicies);
         for (int i = 1; i < n; ++i)
         {
             temp = next;
             next = rotatePoint(first, center,cycleAngle*((i%2)*2-1));
             first = temp;
             polyPoints.push_back({next.x,next.y,z});
+            polyColors.push_back(color);
+            polyIndices.push_back(indicies + i);
         }
-        polygons.push_back({n,color});
+        polyIndices.push_back(restart);
+        polygonRequests++;
+
    }
    else
    {
@@ -1091,12 +1107,16 @@ void PolyRender::requestNGon(int n, const glm::vec2& center, double side, const 
 
 void PolyRender::requestPolygon(const std::vector<glm::vec3>& points, const glm::vec4& color)
 {
-    int size = points.size();
+    int size = points.size() - polygonRequests;
+    int indices= polyIndices.size();
     for (int i = 0; i < size; ++i)
     {
         polyPoints.push_back(points[i]);
+        polyColors.push_back(color);
+        polyIndices.push_back(indices +i);
     }
-    polygons.push_back({size,color});
+    polygonRequests ++;
+    //polygons.push_back({size,color});
 }
 
 void PolyRender::renderLines()
@@ -1141,51 +1161,34 @@ void PolyRender::renderLines()
 void PolyRender::renderPolygons()
 {
     glBindVertexArray(VAO);
-    int size = polygons.size();
-    int pointsSize = polyPoints.size();
-    long vertSize  = pointsSize*3;
-    long colorSize = pointsSize*4;
-    long indSize = pointsSize + size;
-    GLfloat* verticies = new GLfloat[vertSize];
-    GLfloat* colors = new GLfloat[colorSize];
-    GLuint* indicies = new GLuint[indSize];
-    int index = 0;
-    for (int i = 0; i < size; ++i)
-    {
-        for (int j = 0; j < polygons[i].first; ++j)
-        {
-            addPointToBuffer(verticies,polyPoints[index + j], (index+j)*3);
-            addPointToBuffer(colors,polygons[i].second,(index + j)*4);
-            indicies[index + i + j] = index + j;
-        }
-        index += polygons[i].first;
-        indicies[index + i] = restart;
-    }
+
     glBindBuffer(GL_ARRAY_BUFFER,polyVBO);
-    glBufferData(GL_ARRAY_BUFFER,vertSize*sizeof(GLfloat),verticies,GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,polyPoints.size()*sizeof(GLfloat)*3,&polyPoints[0],GL_STATIC_DRAW);
     glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,(void*)0);
     glEnableVertexAttribArray(0);
     //glVertexAttribDivisor(0,1);
 
     glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
-    glBufferData(GL_ARRAY_BUFFER,colorSize*sizeof(GLfloat), colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,polyColors.size()*sizeof(GLfloat)*4, &polyColors[0], GL_STATIC_DRAW);
     glVertexAttribPointer(1,4,GL_FLOAT,GL_FALSE,0,(void*)0);
     glEnableVertexAttribArray(1);
     //glVertexAttribDivisor(1,1);
 
     polyRenderer.use();
-    glDrawElements(GL_TRIANGLE_STRIP,indSize,GL_UNSIGNED_INT,indicies);
+    glDrawElements(GL_TRIANGLE_STRIP,polyIndices.size(),GL_UNSIGNED_INT,&polyIndices[0]);
 
     glBindBuffer(GL_ARRAY_BUFFER,0);
     glBindVertexArray(0);
 
 
     polyPoints.clear();
-    polygons.clear();
+    polyColors.clear();
+    polyIndices.clear();
+    polygonRequests = 0;
 
-    delete[] verticies;
+   /* delete[] verticies;
     delete[] colors;
-    delete[] indicies;
+    delete[] indicies;*/
 
 }
 
@@ -1200,7 +1203,7 @@ void PolyRender::render()
     {
         renderLines();
     }
-    if (polygons.size() > 0)
+    if (polyColors.size() > 0)
     {
         renderPolygons();
     }
