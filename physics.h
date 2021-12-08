@@ -38,10 +38,12 @@ typedef std::shared_ptr<Entity> LinkPtr; //technically, this could just be a poi
 class ChainLinkComponent : public ForcesComponent, public ComponentContainer<ChainLinkComponent>
 {
     LinkPtr down;
-    float linkDist = 0; //distance between points
-    float tension = 0; //proportion of the force between up and down that should affect this component
+
 public:
-    ChainLinkComponent(Entity& entity, const LinkPtr& down_, float linkDist_, float tension_, float friction_ = ForcesComponent::baseFriction);
+    constexpr static float baseTension = .0001f;
+    const float linkDist = 0; //distance between points
+    const float tension = 0; //proportion of the force between up and down that should affect this component
+    ChainLinkComponent(Entity& entity, const LinkPtr& down_, float linkDist_, float tension_ = baseTension, float friction_ = ForcesComponent::baseFriction);
     void setLink(const LinkPtr& link);
     ChainLinkComponent* getNextLink();
     virtual glm::vec2 getLinkPos(); //returns the point of the link, (0,0) if moveComponent is null otherwise the center. Virtual so different links can return different points (such as different points on a rectangle)
@@ -61,10 +63,74 @@ public:
 
 struct Chain
 {
-    LinkPtr top,bottom;
-    Chain(ChainLinkRender renderFunc_, const glm::vec4& color1, const glm::vec4& color2, float linkDist_, float tension_, int length, glm::vec2 start, float angle = 0, float friction = ForcesComponent::baseFriction); //color1 and color2: forms a color gradient along the chain, can be left to glm::vec4(0) if you don't care about color
+    LinkPtr top,//top-most link, primarily used to propagate functions through all the links
+    bottom; //bottom-most link, less used than top since it can't refer to the link above it, but it's sometimes useful to set its position to move the rest of the chain
+    Chain(ChainLinkRender renderFunc_, const glm::vec4& color1, const glm::vec4& color2, float linkDist_,  int length, glm::vec2 start,float tension_ = .00001f, float angle = 0, float friction = ForcesComponent::baseFriction); //color1 and color2: forms a color gradient along the chain, can be left to glm::vec4(0) if you don't care about color
+    template<typename Callable>
+    Chain(Callable func, int length) //customizable constructor; given a callable, (can be a lambda with captures!). Calls func length times.
+    {
+        //func is expected to be a function that takes in the previous (top) LinkPtr and an int (ordinal number of the link) and returns a LinkPtr
+        LinkPtr prev = top;
+        for (int i = 0; i < length; ++i)
+        {
+            prev = func(prev, i);
+            if (i == 0)
+            {
+                bottom = prev;
+            }
+            else if (i == length - 1)
+            {
+                top = prev;
+            }
+        }
+    }
     void setBottomPos(const glm::vec2& pos);
     void update();
+    virtual void collide(Entity& entity);
+    template<typename Callable>
+    void apply(Callable func) // runs a callable on each ChainLinkComponent, starting from top. func is expected to take in a ChainLinkComponent& as parameter, return value is irrelevant
+    {
+        if (top.get())
+        {
+            ChainLinkComponent* link = top->getComponent<ChainLinkComponent>();
+            while (link)
+            {
+                func(*link);
+                link = link->getNextLink();
+            }
+        }
+    }
+    template<typename RetType, typename Callable>
+    RetType fold(RetType start, Callable fun) //Given a starting value, computes a final value based on each ChainLink. Think Fold_left in OCAML.
+    {
+       //fun = callable(RetType, ChainLinkComponent&) -> RetType.
+       //start will be copied, so pass in something that is light to copy
+       RetType val = start;
+        apply([&val, &fun](ChainLinkComponent& link)
+              {
+                  val = fun(val,link);
+              });
+        return val;
+    }
+    template<typename Callable>
+    bool checkAll(Callable fun) //Checks if all chainLinks meet a certain critera, can terminate early if a false is found. Fun has to return something that can be interpreted as a bool (such as a pointer)
+    {
+        //fun = callable(ChainLinkComponent&) -> bool
+        if (top.get())
+        {
+            ChainLinkComponent* link = top->getComponent<ChainLinkComponent>();
+            while (link)
+            {
+                if (!fun(*link))
+                {
+                    return false;
+                }
+                link = link->getNextLink();
+            }
+            return true;
+        }
+        return false;
+    }
 };
 
 #endif // PHYSICS_H_INCLUDED
