@@ -37,9 +37,9 @@ glm::vec2 Positional::getPos() const
     return pos;
 }
 
-RectPositional::RectPositional(const glm::vec4& box, float newTilt) : Positional({box.x,box.y}), rect(box)
+RectPositional::RectPositional(const glm::vec4& box, float tilt) : Positional({box.x,box.y}), rect(box), tilt(tilt)
 {
-    setTilt(newTilt);
+
 }
 
 glm::vec4 RectPositional::getBoundingRect() const
@@ -460,7 +460,7 @@ QuadTree* QuadTree::update(Positional& positional, QuadTree& expected)
 
 BiTree::BiTreeScore BiTree::calculateScore(const BiTreeElement& element, BiTreeNode& node)
 {
-   return {node.vertDimen.x,element.rect.x};//node.vertDimen.x + (element.rect.x - this->region.x)/(this->region.z);
+   return floor(node.vertDimen.x) + (element.rect.x - this->region.x)/(this->region.z);
 }
 
 BiTree::BiTree(const glm::vec4& rect) : region(rect), head({{0,rect.a}})
@@ -468,7 +468,7 @@ BiTree::BiTree(const glm::vec4& rect) : region(rect), head({{0,rect.a}})
 
 }
 
-BiTree::BiTreeStorage::iterator BiTree::insert(const BiTreeElement& element, BiTreeNode& node)
+void BiTree::insert(const BiTreeElement& element, BiTreeNode& node)
 {
     BiTreeScore score = this->calculateScore(element,node); //calculating the score requires that we iterate all the way down to the node we want to insert into
     if (node.size == 0 || score <= node.start->first) //if this is the first element in this node or the new smallest element ...
@@ -476,22 +476,11 @@ BiTree::BiTreeStorage::iterator BiTree::insert(const BiTreeElement& element, BiT
         if (node.size == 0)
             node.start = this->elements.insert({score,element});
         else
-            node.start = (this->elements.insert(node.start,{score,element})); //because inserting with a hint causes the new element to be inserted before our start, we have to also update when the score is equal to our old start
-        node.size++;
-        return node.start;
+            node.start = (this->elements.insert(node.start,{score,element}));
     }
     else
     {
-        node.size++;
-        return this->elements.insert(node.start,{score,element});//we provide node.start as a hint to make insertion a little faster
-    }
-}
-
-void BiTree::updateNode(BiTreeStorage::iterator& it, BiTreeNode& node)
-{
-    if (node.size == 0 || it->first < node.start->first)//note that unlike insert, we only update start if the new node has a score lower than our current one
-    {
-        node.start = it;
+        this->elements.insert(node.start,{score,element});//we provide node.start as a hint to make insertion a little faster
     }
     node.size++;
 }
@@ -501,12 +490,12 @@ void BiTree::insert(Positional& wrap)
     if (vecIntersect(wrap.getBoundingRect(),region))
     {
         processElement([this](const BiTreeElement& element, BiTreeNode& node){
+
                         insert(element,node); //REFACTOR: slightly slow to insert only to remove an element in the event of a split
-                        if (node.size > maxNodeSize && node.vertDimen.y >= 2) //exceeding max capacity, time to split
+                        if (node.size > maxNodeSize) //exceeding max capacity, time to split
                         {
-                            //std::cout << "SPLIT\n";
                             float split = node.vertDimen.x + node.vertDimen.y/2; //y coordinate of the split
-                            node.nodes[0] = new BiTreeNode({{node.vertDimen.x,node.vertDimen.y/2},0,node.start}); //new nodes are born! .
+                            node.nodes[0] = new BiTreeNode({{node.vertDimen.x,node.vertDimen.y/2},0,this->elements.end()}); //new nodes are born! .
                             node.nodes[1] = new BiTreeNode({{split,node.vertDimen.y/2},0,this->elements.end()});
                             int count = 0;
                             auto it= node.start;
@@ -514,12 +503,9 @@ void BiTree::insert(Positional& wrap)
                             {
                                 if (it->second.rect.y < split && it->second.rect.y + it->second.rect.a > split) //if element belongs in both children, split it
                                 {
-
                                     float botHeight = it->second.rect.y + it->second.rect.a - split;
-                                    insert({it->second.positional,glm::vec4(it->second.rect.x,split,it->second.rect.z,botHeight)},*node.nodes[1]); //insert the half that belongs in the new bottom child
+                                    insert({element.positional,glm::vec4(it->second.rect.x,split,it->second.rect.z,botHeight)},*node.nodes[1]); //insert the half that belongs in the new bottom child
                                     it->second.rect.a -= botHeight; //the top half has the same score as the old element, so we just modify its height
-                                    updateNode(it,*node.nodes[0]); //and update the node it belongs in
-                                    ++it;
                                 }
                                 else //otherwise, insert based on where the element is relative to the split
                                 {
@@ -530,11 +516,9 @@ void BiTree::insert(Positional& wrap)
                                     }
                                     else
                                     {
-                                        updateNode(it,*node.nodes[0]);
                                         ++it; //if the element does not belong in the new bottom child, we don't have to remove it because its score remains the same
                                     }
                                 }
-                                //++it;
                                 count ++;
                             }
                         }
@@ -544,30 +528,20 @@ void BiTree::insert(Positional& wrap)
 }
 BiTree::BiTreeStorage::iterator BiTree::remove(Positional& wrap)
 {
-    return processElement([this](const BiTreeElement& element, BiTreeNode& node){
+    return reduceElement([this](const BiTreeElement& element, BiTreeNode& node){
                     BiTreeScore score = calculateScore(element,node); //once we've accurately calculated the score, we...
                     auto range = this->elements.equal_range(score); //use the score to find all elements with the same score (elements may have the same score but point to different positionals)
-                    int count = 0;
                    for (auto it = range.first; it != range.second; ++it)
                    {
                        if (it->second.positional == element.positional) //isolate the element we actually want to remove
                        {
-                           node.size--;
-                           bool wasStart = (it == node.start); //if the element we are removing was the smallest element in this node, we have to update it
-                           auto ret = this->elements.erase(it); //remove and we done
-                           if (wasStart)
-                           {
-                               node.start = ret; //update node.start if we just invalidated the start
-                           }
-                                           //std::cout << element.positional << " " << score.toString() << " " << node.vertDimen.x <<" ";
-                                           //printRect(element.rect);
-                           return  ret;
+                           return this->elements.erase(it); //remove and we done
                        }
                    }
-                   std::cout <<"failed\n";
-                   return this->elements.end(); //should never happen, but we do return the end of the elements if we fail to find the element
+                   return this->elements.end();
                    },wrap,wrap.getBoundingRect(),head);
 }
+
 
 RawQuadTree::RawQuadTree(const glm::vec4& rect)
 {

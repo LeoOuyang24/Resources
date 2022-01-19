@@ -243,6 +243,12 @@ std::string convert(int input) //takes an int and returns the int in string form
     return os.str();
 }
 
+float round(float decimal, int n)
+{
+    int ten = pow(10,n);
+    return ((float)floor(decimal*ten))/ten;
+}
+
 bool angleRange(float rad1, float rad2, float range)
 {
     float clamped =remainder(rad1,2*M_PI);

@@ -105,8 +105,6 @@ public:
 
 class RectComponent : public Component, public ComponentContainer<RectComponent>, public RectPositional
 {
-protected:
-    float tilt = 0; //angle the rect is tilted at. Used for hit box detection
 public:
     RectComponent(const glm::vec4& rect, Entity& entity);
     bool collides(const glm::vec4& rect);
@@ -115,8 +113,7 @@ public:
     void setCenter(const glm::vec2& center);
     glm::vec2 getPos();
     glm::vec2 getCenter();
-    float getTilt();
-    void setTilt(float newTilt);
+
     virtual ~RectComponent();
 };
 
