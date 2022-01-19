@@ -72,21 +72,6 @@ glm::vec2 RectComponent::getCenter()
     return {rect.x + rect.z/2, rect.y + rect.a/2};
 }
 
-
-float RectComponent::getTilt()
-{
-    return tilt;
-}
-
-void RectComponent::setTilt(float newTilt) //clamp to -M_PI - +M_PI, just like C++ trig functions
-{
-    tilt = fmod(newTilt,2*M_PI) + 2*M_PI*(newTilt < 0);
-    if (tilt >M_PI)
-    {
-        tilt -= 2*M_PI;
-    }
-}
-
 RectComponent::~RectComponent()
 {
 
