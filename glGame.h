@@ -175,14 +175,19 @@ class BiTree
     struct BiTreeScore
     {
         constexpr static int roundNth = 4; //nth place to round to
-        float nodeY, elementX; //the 2 elements of our score
+        float nodeY = 0, elementX = 0; //the 2 elements of our score
+        Positional* ptr = 0;
         bool operator < (const BiTreeScore& other) const
         {
-            return round(nodeY,roundNth) == round(other.nodeY,roundNth) ? round(elementX,roundNth) < round(other.elementX,roundNth) : round(nodeY,roundNth) < round(other.nodeY,roundNth);
+            return round(nodeY,roundNth) == round(other.nodeY,roundNth) ?  //if both elements belong in the same node
+                    round(elementX,roundNth) == round(other.elementX,roundNth) ? //if both elements have the same x (after rounding)
+                        ptr < other.ptr :  //return the pointer comparison
+                        round(elementX,roundNth) < round(other.elementX,roundNth) :  //otherwise return who has the smaller x
+                    round(nodeY,roundNth) < round(other.nodeY,roundNth);  //otherwise return who belongs in the smaller node
         }
         bool operator == (const BiTreeScore& other) const
         {
-          return (round(nodeY,roundNth) == round(other.nodeY,roundNth) && round(elementX,roundNth) == round(other.elementX,roundNth));
+          return (round(nodeY,roundNth) == round(other.nodeY,roundNth) && round(elementX,roundNth) == round(other.elementX,roundNth)) && ptr == other.ptr;
         }
         bool operator <= (const BiTreeScore& other) const
         {
@@ -194,8 +199,8 @@ class BiTree
         }
     };
 
-    typedef std::multimap<BiTreeScore,BiTreeElement> BiTreeStorage; //stores all elements. Maps score to element
-    static constexpr int maxNodeSize = 256; //maximum number of elements in a node
+    typedef std::map<BiTreeScore,BiTreeElement> BiTreeStorage; //stores all elements. Maps score to element
+    static constexpr int maxNodeSize = 128; //maximum number of elements in a node
     struct BiTreeNode
     {
         /*BiTreeNodes have 2 modes: Whole and Split
@@ -206,8 +211,10 @@ class BiTree
         int size = 0; //represents size if whole
         BiTreeStorage::iterator start; //the iterator to where in the storage the node begins
         BiTreeNode* nodes[2] = {0,0}; //pointer to children
+        int bigSize = 0;
     };
 
+    //std::unordered_map<Positional*,>
     BiTreeStorage elements;
     BiTreeNode head;
     glm::vec4 region;
@@ -251,6 +258,18 @@ class BiTree
         }
 
     }
+    template<typename Callable>
+    void processNode(Callable func, BiTreeNode& node)
+    {
+        func(node);
+        if (node.nodes[0])
+        {
+            PolyRender::requestLine({region.x,node.vertDimen.x + node.vertDimen.y/2,region.x + region.z,node.vertDimen.x + node.vertDimen.y/2},
+                                    {1,1,0,1},1,1,0);
+            processNode(func,*node.nodes[0]);
+            processNode(func,*node.nodes[1]);
+        }
+    }
     BiTreeScore calculateScore(const BiTreeElement& element, BiTreeNode& node); //given wrapper and the node it belongs in, calculates the score used in scoring
     BiTreeStorage::iterator insert(const BiTreeElement& element, BiTreeNode& node); //inserts element into node. Does not split node
     void updateNode(BiTreeStorage::iterator& it, BiTreeNode& node); //given it, updates a node assuming it is in that node. Doesn't actually insert it
@@ -260,8 +279,19 @@ public:
     {
         return elements.size();
     }
+    unsigned int countNodes()
+    {
+        int count = 0;
+        processNode([&count,this](BiTreeNode& node){count ++;
+        if (node.nodes[0])
+        {
+            PolyRender::requestLine({0,node.vertDimen.x + node.vertDimen.y/2,region.x + region.z,node.vertDimen.x + node.vertDimen.y/2},{1,1,0,1},0,1,0);
+        }
+        },head);
+        return count;
+    }
     void insert(Positional& wrap); //calculates the node wrap belongs in and inserts it, splitting nodes if necesesary
-    BiTreeStorage::iterator remove(Positional& wrap);
+    void remove(Positional& wrap);
     template<typename Callable>
     void processCollisions(Callable func) //func should take in 2 RectPositional&
     { //REFACTOR: currently only works with rect positionals
@@ -304,12 +334,12 @@ public:
     void map(Callable func) //applies func to each element subdivision
     {
         //func should take in a Positional& as its only parameter
-        /*auto end = elements.end();
+        auto end = elements.end();
         for (auto it = elements.begin(); it != end;++it)
         {
             func(*it->second.positional);
-        }*/
-        map(func,head);
+        }
+        //map(func,head);
     }
     void showCollisions()
     {
@@ -339,29 +369,7 @@ public:
         std::cout << i << "\n";
     }
 private:
-    template<typename Callable>
-    void map(Callable func, BiTreeNode& node)
-    {
-        if (node.nodes[0])
-        {
-            map(func,*node.nodes[0]);
-            map(func,*node.nodes[1]);
-        }
-        else
-        {
-            //std::cout << "NEW NODE " << node.vertDimen.x << " " << node.vertDimen.y<< "\n";
-            PolyRender::requestLine({region.x,node.vertDimen.x + node.vertDimen.y/2,region.x + region.z,node.vertDimen.x + node.vertDimen.y/2},
-                                    {1,1,0,1},1,1,0);
-            int count = 0;
-            auto it = node.start;
-            while (count < node.size )
-            {
-                func(*it->second.positional);
-                ++it;
-                count++;
-            }
-        }
-    }
+
 
 };
 
