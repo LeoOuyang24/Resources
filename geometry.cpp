@@ -57,6 +57,9 @@ bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2, float angle1, flo
     {
         return vecIntersect(vec1,vec2);
     }
+    /*printRect(vec1);
+    printRect(vec2);
+    std::cout << angle1 << " " << angle2 << "\n";*/
     glm::vec2 center = {vec2.x + vec2.z/2, vec2.y + vec2.a/2};
     glm::vec2 topLeft = rotatePoint({vec2.x, vec2.y}, center, angle2);
     glm::vec2 topRight = rotatePoint({vec2.x + vec2.z, vec2.y}, center, angle2);
@@ -346,7 +349,7 @@ bool lineInVec(const glm::vec2& point1,const glm::vec2& point2, const glm::vec4&
             lineInLine(topLeft,botLeft,p1,p2) ||
             lineInLine(topRight,botRight,p1,p2) ||
             lineInLine(botLeft,botRight,p1,p2) ||
-            pointInVec(r1,p1,0);
+            pointInVec(r1,p1,0); //only need to check one point because if only one point is in, then there must be a collision between the line and the sides
 }
 
 bool pointInTriangle (const glm::vec2 a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& p)

@@ -44,7 +44,23 @@ RectPositional::RectPositional(const glm::vec4& box, float newTilt) : Positional
 
 glm::vec4 RectPositional::getBoundingRect() const
 {
-    return rect;
+    if (tilt == 0)
+    {
+        return rect;
+    }
+    else
+    {
+        glm::vec2 center = {rect.x + rect.z/2, rect.y + rect.a/2};
+        glm::vec2 topLeft =rotatePoint({rect.x,rect.y},center,tilt),
+                botLeft = rotatePoint({rect.x,rect.y + rect.a},center,tilt),
+                topRight = rotatePoint({rect.x + rect.z,rect.y},center,tilt),
+                botRight = rotatePoint({rect.x + rect.z, rect.y + rect.a},center,tilt);
+        glm::vec2 xy = glm::vec2(std::min(botRight.x,std::min(topRight.x,std::min(topLeft.x,botLeft.x))),
+                                 std::min(botRight.y,std::min(topRight.y,std::min(topLeft.y,botLeft.y))));
+        return glm::vec4(xy.x,xy.y,
+                         std::max(botRight.x,std::max(topRight.x,std::max(topLeft.x,botLeft.x))) - xy.x, //yes I know that I can calculate the dimensions based on xy.x and xy.y without finding the largest x or y but do I care???
+                         std::max(botRight.y,std::max(topRight.y,std::max(topLeft.y,botLeft.y))) - xy.y);
+    }
 }
 
 glm::vec2 RectPositional::getPos() const
@@ -460,7 +476,7 @@ QuadTree* QuadTree::update(Positional& positional, QuadTree& expected)
 
 BiTree::BiTreeScore BiTree::calculateScore(const BiTreeElement& element, BiTreeNode& node)
 {
-   return {node.vertDimen.x,element.rect.x};//node.vertDimen.x + (element.rect.x - this->region.x)/(this->region.z);
+   return {node.vertDimen.x,element.rect.x,element.positional};//node.vertDimen.x + (element.rect.x - this->region.x)/(this->region.z);
 }
 
 BiTree::BiTree(const glm::vec4& rect) : region(rect), head({{0,rect.a}})
@@ -471,19 +487,16 @@ BiTree::BiTree(const glm::vec4& rect) : region(rect), head({{0,rect.a}})
 BiTree::BiTreeStorage::iterator BiTree::insert(const BiTreeElement& element, BiTreeNode& node)
 {
     BiTreeScore score = this->calculateScore(element,node); //calculating the score requires that we iterate all the way down to the node we want to insert into
-    if (node.size == 0 || score <= node.start->first) //if this is the first element in this node or the new smallest element ...
+    if (node.size == 0 || score < node.start->first) //if this is the first element in this node or the new smallest element ...
     {
-        if (node.size == 0)
-            node.start = this->elements.insert({score,element});
-        else
-            node.start = (this->elements.insert(node.start,{score,element})); //because inserting with a hint causes the new element to be inserted before our start, we have to also update when the score is equal to our old start
-        node.size++;
+        node.start = (this->elements.insert({score,element})).first; //because inserting with a hint causes the new element to be inserted before our start, we have to also update when the score is equal to our old start
+        updateNode(node.start,node);
         return node.start;
     }
     else
     {
-        node.size++;
-        return this->elements.insert(node.start,{score,element});//we provide node.start as a hint to make insertion a little faster
+        updateNode(node.start,node);
+        return this->elements.insert({score,element}).first;//we provide node.start as a hint to make insertion a little faster
     }
 }
 
@@ -492,6 +505,11 @@ void BiTree::updateNode(BiTreeStorage::iterator& it, BiTreeNode& node)
     if (node.size == 0 || it->first < node.start->first)//note that unlike insert, we only update start if the new node has a score lower than our current one
     {
         node.start = it;
+    }
+    //update our node statistics. https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
+    if (it->second.rect.a >= node.vertDimen.y/2)
+    {
+        node.bigSize++;
     }
     node.size++;
 }
@@ -502,12 +520,13 @@ void BiTree::insert(Positional& wrap)
     {
         processElement([this](const BiTreeElement& element, BiTreeNode& node){
                         insert(element,node); //REFACTOR: slightly slow to insert only to remove an element in the event of a split
-                        if (node.size > maxNodeSize && node.vertDimen.y >= 2) //exceeding max capacity, time to split
+                        if (node.size > maxNodeSize && node.vertDimen.y >= 2 && node.bigSize < .5*maxNodeSize) //exceeding max capacity, time to split
                         {
-                            //std::cout << "SPLIT\n";
+                            //std::cout << node.bigSize << " " << node.size << " " << node.vertDimen.y<<"\n";
                             float split = node.vertDimen.x + node.vertDimen.y/2; //y coordinate of the split
                             node.nodes[0] = new BiTreeNode({{node.vertDimen.x,node.vertDimen.y/2},0,node.start}); //new nodes are born! .
                             node.nodes[1] = new BiTreeNode({{split,node.vertDimen.y/2},0,this->elements.end()});
+
                             int count = 0;
                             auto it= node.start;
                             while (count < node.size)
@@ -542,13 +561,12 @@ void BiTree::insert(Positional& wrap)
                        },wrap,wrap.getBoundingRect());
     }
 }
-BiTree::BiTreeStorage::iterator BiTree::remove(Positional& wrap)
+void BiTree::remove(Positional& wrap)
 {
-    return processElement([this](const BiTreeElement& element, BiTreeNode& node){
+    processElement([this](const BiTreeElement& element, BiTreeNode& node){
                     BiTreeScore score = calculateScore(element,node); //once we've accurately calculated the score, we...
-                    auto range = this->elements.equal_range(score); //use the score to find all elements with the same score (elements may have the same score but point to different positionals)
-                    int count = 0;
-                   for (auto it = range.first; it != range.second; ++it)
+                    //auto range = this->elements.equal_range(score); //use the score to find all elements with the same score (elements may have the same score but point to different positionals)
+                  /* for (auto it = range.first; it != range.second; ++it)
                    {
                        if (it->second.positional == element.positional) //isolate the element we actually want to remove
                        {
@@ -561,12 +579,22 @@ BiTree::BiTreeStorage::iterator BiTree::remove(Positional& wrap)
                            }
                                            //std::cout << element.positional << " " << score.toString() << " " << node.vertDimen.x <<" ";
                                            //printRect(element.rect);
-                           return  ret;
+                            return;
+                           //return  ret;
                        }
+                   }*/
+                   node.size--;
+                   if (score == node.start->first)
+                   {
+                       node.start = this->elements.erase(this->elements.find(score));
                    }
-                   std::cout <<"failed\n";
-                   return this->elements.end(); //should never happen, but we do return the end of the elements if we fail to find the element
+                   else
+                   {
+                       this->elements.erase(score);
+                   }
+                   //do nothing if we failed to find the element
                    },wrap,wrap.getBoundingRect(),head);
+    //return this->elements.end();
 }
 
 RawQuadTree::RawQuadTree(const glm::vec4& rect)
