@@ -507,7 +507,7 @@ bool EntityPosManager::forEachEntity(Entity& entity)
 {
     if (RectComponent* rect = entity.getComponent<RectComponent>())
     {
-        QuadTree* old = quadtree->find(*rect);
+        /*QuadTree* old = quadtree->find(*rect);
         if (old)
         {
             auto nearest = old->getNearest(*rect);
@@ -524,7 +524,7 @@ bool EntityPosManager::forEachEntity(Entity& entity)
         if (old)
         {
             quadtree->update(*rect,*old);
-        }
+        }*/
     }
     else
     {
@@ -535,20 +535,19 @@ bool EntityPosManager::forEachEntity(Entity& entity)
 
 void EntityPosManager::init(const glm::vec4& rect)
 {
-    quadtree.reset(new QuadTree(rect));
+    bitree.reset(new BiTree(rect));
 }
 
-QuadTree* EntityPosManager::getQuadTree()
+BiTree* EntityPosManager::getBiTree()
 {
-    return quadtree.get();
+    return bitree.get();
 }
 
 void EntityPosManager::addEntity(const std::shared_ptr<Entity>& entity)
 {
-    std::shared_ptr<RectComponent> rect = entity->getComponentPtr<RectComponent>();
-    if (rect.get())
+    if (auto rect = entity->getComponent<RectComponent>())
     {
-        quadtree->add(*(new WeakWrapper(rect)));
+        bitree->insert(*rect);
     }
     EntityManager::addEntity(entity);
 }
@@ -568,7 +567,7 @@ EntityPosManager::EntityIt EntityPosManager::removeEntity(Entity* entity)
     {
         if (RectComponent* rect = entity->getComponent<RectComponent>())
         {
-            quadtree->remove(*rect);
+            bitree->remove(*rect);
         }
         return EntityManager::removeEntity(entity);
     }
@@ -577,6 +576,6 @@ EntityPosManager::EntityIt EntityPosManager::removeEntity(Entity* entity)
 void EntityPosManager::reset()
 {
     entities.clear();
-    quadtree->clear();
+   // bitree->clear();
 }
 

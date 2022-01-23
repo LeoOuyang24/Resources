@@ -273,6 +273,29 @@ class BiTree
     BiTreeScore calculateScore(const BiTreeElement& element, BiTreeNode& node); //given wrapper and the node it belongs in, calculates the score used in scoring
     BiTreeStorage::iterator insert(const BiTreeElement& element, BiTreeNode& node); //inserts element into node. Does not split node
     void updateNode(BiTreeStorage::iterator& it, BiTreeNode& node); //given it, updates a node assuming it is in that node. Doesn't actually insert it
+    template<typename Callable>
+    bool doCollision(Callable func, const BiTreeElement& p1, const BiTreeElement& p2)
+    {
+        ///if p1 and p2 collide, call func on them. Returns whether or not we should process more elements
+        ///func should take in 2 RectPositionals
+           if (p1.positional == p2.positional ||
+            p2.rect.x > p1.rect.x + p1.rect.z ||
+            p2.rect.x + p2.rect.x < p1.rect.x)
+        {
+            return false;
+        }
+        else
+        {
+            RectPositional* r1 = static_cast<RectPositional*>(p1.positional);
+            RectPositional* r2 = static_cast<RectPositional*>(p2.positional);
+            if (vecIntersect(r1->getRect(),r2->getRect(),r1->getTilt(),r2->getTilt()))
+            {
+                func(*r1,*r2);
+               // PolyRender::requestRect(candidate->second.rect,{1,0,0,1},false,0,2);
+            }
+            return true;
+        }
+    }
 public:
     BiTree(const glm::vec4& region_);
     unsigned int size()
@@ -292,6 +315,42 @@ public:
     }
     void insert(Positional& wrap); //calculates the node wrap belongs in and inserts it, splitting nodes if necesesary
     void remove(Positional& wrap);
+
+    template<typename Callable>
+    void findCollision(Positional& wrap, Callable func) //given a positional, finds elements it collides with and calls func
+    {
+        ///func should take in a Positional&
+        processElement([this,&func](const BiTreeElement& element, BiTreeNode& node){
+                          BiTreeScore score = calculateScore(element,node);
+                          auto found = elements.find(score);
+                          if (found == elements.end())
+                          {
+                              std::cout << "failed\n";
+                              return;
+                          }
+                          auto it = std::prev(found);
+                          auto begin = elements.begin(), end = elements.end();
+                          while (it != begin)
+                          {
+                              //PolyRender::requestRect(it->second.rect,{1,0,0,1},false,0,1);
+                                if (!doCollision(func,element,it->second))
+                                {
+                                    break;
+                                }
+                              --it;
+                          }
+                          it = std::next(found);
+                          while (it != end)
+                          {
+                              //  PolyRender::requestRect(it->second.rect,{1,0,0,1},false,0,1);
+                              if (!doCollision(func,element,it->second))
+                              {
+                                  break;
+                              }
+                              ++it;
+                          }
+                          },wrap,wrap.getBoundingRect());
+    }
     template<typename Callable>
     void processCollisions(Callable func) //func should take in 2 RectPositional&
     { //REFACTOR: currently only works with rect positionals
@@ -309,20 +368,9 @@ public:
             {
                // std::cout <<"\t" << candidate->second.positional <<" ";
                // printRect(candidate->second.rect);
-                if (candidate->second.positional == it->second.positional ||
-                    candidate->second.rect.x > xBorder ||
-                    candidate->second.rect.x < it->second.rect.x)
+                if (!doCollision(func,it->second,candidate->second))
                 {
                     break;
-                }
-                else
-                {
-                    RectPositional* r2 = static_cast<RectPositional*>(candidate->second.positional);
-                    if (vecIntersect(r1->getRect(),r2->getRect(),r1->getTilt(),r2->getTilt()))
-                    {
-                        func(*r1,*r2);
-                       // PolyRender::requestRect(candidate->second.rect,{1,0,0,1},false,0,2);
-                    }
                 }
                 ++candidate;
                 count++;
