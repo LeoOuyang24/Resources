@@ -507,24 +507,9 @@ bool EntityPosManager::forEachEntity(Entity& entity)
 {
     if (RectComponent* rect = entity.getComponent<RectComponent>())
     {
-        /*QuadTree* old = quadtree->find(*rect);
-        if (old)
-        {
-            auto nearest = old->getNearest(*rect);
-            auto end =nearest.end();
-            for (auto it = nearest.begin(); it != end; ++it)
-            {
-                if ((*it)->collides(rect->getRect()))
-                {
-                    entity.collide(static_cast<RectComponent*>(*it)->getEntity());
-                }
-            }
-        }
+        bitree->remove(*rect);
         entity.update();
-        if (old)
-        {
-            quadtree->update(*rect,*old);
-        }*/
+        bitree->insert(*rect);
     }
     else
     {
@@ -573,9 +558,20 @@ EntityPosManager::EntityIt EntityPosManager::removeEntity(Entity* entity)
     }
 }
 
+void EntityPosManager::update()
+{
+    EntityManager::update(); //REFACTOR: slightly inefficient to update all entities then find collisions for each entity
+    bitree->processCollisions([](RectPositional& r1, RectPositional& r2){
+                              Entity* e1 = &static_cast<RectComponent&>(r1).getEntity();
+                              Entity* e2 = &static_cast<RectComponent&>(r2).getEntity();
+                              e1->collide(*e2);
+                              e2->collide(*e1);
+                              });
+}
+
 void EntityPosManager::reset()
 {
     entities.clear();
-   // bitree->clear();
+    bitree->clear();
 }
 

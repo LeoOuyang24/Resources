@@ -308,6 +308,7 @@ public:
     virtual void addEntity(const std::shared_ptr<Entity>& ptr);
     virtual void addEntity(Entity& entity, float x, float y, bool centered = true); //sets center position if centered is true, otherwise sets top left corner
     EntityIt removeEntity(Entity* entity);
+    void update();
     void reset();
 };
 

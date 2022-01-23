@@ -259,15 +259,21 @@ class BiTree
 
     }
     template<typename Callable>
-    void processNode(Callable func, BiTreeNode& node)
+    void processNode(Callable func, BiTreeNode& node, bool tail) //calls func on each node, func should take in BiTreeNode& as its only parameter
     {
-        func(node);
+        //tail represents whether or not this function should be tail recursive
+        if (tail)
+        {
+            func(node);
+        }
         if (node.nodes[0])
         {
-            PolyRender::requestLine({region.x,node.vertDimen.x + node.vertDimen.y/2,region.x + region.z,node.vertDimen.x + node.vertDimen.y/2},
-                                    {1,1,0,1},1,1,0);
-            processNode(func,*node.nodes[0]);
-            processNode(func,*node.nodes[1]);
+            processNode(func,*node.nodes[0],tail);
+            processNode(func,*node.nodes[1],tail);
+        }
+        if (!tail)
+        {
+            func(node);
         }
     }
     BiTreeScore calculateScore(const BiTreeElement& element, BiTreeNode& node); //given wrapper and the node it belongs in, calculates the score used in scoring
@@ -296,6 +302,7 @@ class BiTree
             return true;
         }
     }
+    void resetNode(BiTreeNode& node);
 public:
     BiTree(const glm::vec4& region_);
     unsigned int size()
@@ -310,12 +317,12 @@ public:
         {
             PolyRender::requestLine({0,node.vertDimen.x + node.vertDimen.y/2,region.x + region.z,node.vertDimen.x + node.vertDimen.y/2},{1,1,0,1},0,1,0);
         }
-        },head);
+        },head,true);
         return count;
     }
     void insert(Positional& wrap); //calculates the node wrap belongs in and inserts it, splitting nodes if necesesary
     void remove(Positional& wrap);
-
+    void clear(); //removes all elements and nodes
     template<typename Callable>
     void findCollision(Positional& wrap, Callable func) //given a positional, finds elements it collides with and calls func
     {
@@ -414,10 +421,7 @@ public:
             ++i;
         }
         remove(p);
-        std::cout << i << "\n";
     }
-private:
-
 
 };
 

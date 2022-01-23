@@ -514,6 +514,14 @@ void BiTree::updateNode(BiTreeStorage::iterator& it, BiTreeNode& node)
     node.size++;
 }
 
+void BiTree::resetNode(BiTreeNode& node)
+{
+    node.bigSize = 0;
+    node.size = 0;
+    node.start = elements.end();
+    node.vertDimen = {region.y,region.a};
+}
+
 void BiTree::insert(Positional& wrap)
 {
     if (vecIntersect(wrap.getBoundingRect(),region))
@@ -595,6 +603,16 @@ void BiTree::remove(Positional& wrap)
                    //do nothing if we failed to find the element
                    },wrap,wrap.getBoundingRect(),head);
     //return this->elements.end();
+}
+
+void BiTree::clear()
+{
+    elements.clear();
+    processNode([this](BiTreeNode& node){
+                if (&node != &head) //delete all nodes but the head
+                    delete &node;
+                },head,false); //can't be tail recursive because otherwise we'd delete parents before children
+    resetNode(head);
 }
 
 RawQuadTree::RawQuadTree(const glm::vec4& rect)
