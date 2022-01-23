@@ -298,12 +298,12 @@ public:
 
 class EntityPosManager : public EntityManager//Entity Manager that also keeps a quadtree to track entity position
 {
-    std::unique_ptr<QuadTree> quadtree;
+    std::unique_ptr<BiTree> bitree;
 protected:
     virtual bool forEachEntity(Entity& entity);
 public:
     virtual void init(const glm::vec4& rect);
-    QuadTree* getQuadTree(); //can return null, most likely because init was never called
+    BiTree* getBiTree(); //can return null, most likely because init was never called
     using EntityManager::addEntity;
     virtual void addEntity(const std::shared_ptr<Entity>& ptr);
     virtual void addEntity(Entity& entity, float x, float y, bool centered = true); //sets center position if centered is true, otherwise sets top left corner
