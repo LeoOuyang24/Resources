@@ -500,6 +500,24 @@ BiTree::BiTreeStorage::iterator BiTree::insert(const BiTreeElement& element, BiT
     }
 }
 
+unsigned int BiTree::size()
+{
+    return elements.size();
+}
+
+unsigned int BiTree::countNodes()
+{
+    unsigned int count = 0;
+    processNode([&count,this](BiTreeNode& node){count ++;
+    },head,true);
+    return count;
+}
+
+glm::vec4 BiTree::getRegion()
+{
+    return region;
+}
+
 void BiTree::updateNode(BiTreeStorage::iterator& it, BiTreeNode& node)
 {
     if (node.size == 0 || it->first < node.start->first)//note that unlike insert, we only update start if the new node has a score lower than our current one
@@ -520,6 +538,8 @@ void BiTree::resetNode(BiTreeNode& node)
     node.size = 0;
     node.start = elements.end();
     node.vertDimen = {region.y,region.a};
+    node.nodes[0] = nullptr;
+    node.nodes[1] = nullptr;
 }
 
 void BiTree::insert(Positional& wrap)
@@ -569,41 +589,27 @@ void BiTree::insert(Positional& wrap)
                        },wrap,wrap.getBoundingRect());
     }
 }
-void BiTree::remove(Positional& wrap)
+BiTree::BiTreeStorage::iterator BiTree::remove(Positional& wrap)
 {
-    processElement([this](const BiTreeElement& element, BiTreeNode& node){
-                    BiTreeScore score = calculateScore(element,node); //once we've accurately calculated the score, we...
-                    //auto range = this->elements.equal_range(score); //use the score to find all elements with the same score (elements may have the same score but point to different positionals)
-                  /* for (auto it = range.first; it != range.second; ++it)
-                   {
-                       if (it->second.positional == element.positional) //isolate the element we actually want to remove
-                       {
-                           node.size--;
-                           bool wasStart = (it == node.start); //if the element we are removing was the smallest element in this node, we have to update it
-                           auto ret = this->elements.erase(it); //remove and we done
-                           if (wasStart)
-                           {
-                               node.start = ret; //update node.start if we just invalidated the start
-                           }
-                                           //std::cout << element.positional << " " << score.toString() << " " << node.vertDimen.x <<" ";
-                                           //printRect(element.rect);
-                            return;
-                           //return  ret;
-                       }
-                   }*/
+    return processElement([this](const BiTreeElement& element, BiTreeNode& node){
+                    BiTreeScore score = calculateScore(element,node); //once we've accurately calculated the score, we remove the element
                    node.size--;
                    if (score == node.start->first)
                    {
                        node.start = this->elements.erase(this->elements.find(score));
+                       return node.start;
                    }
                    else
                    {
-                       this->elements.erase(score);
+                      // printRect(this->elements.find(score)->second.rect);
+
+                       return this->elements.erase(this->elements.find(score));
                    }
-                   //do nothing if we failed to find the element
                    },wrap,wrap.getBoundingRect(),head);
     //return this->elements.end();
 }
+
+
 
 void BiTree::clear()
 {
