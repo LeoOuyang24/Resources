@@ -163,7 +163,7 @@ public:
     }
 };
 
-#include <set>
+#include <unordered_set>
 class BiTree
 {
     struct BiTreeElement //represents the element plus the rect that represents it
@@ -214,7 +214,12 @@ class BiTree
         int bigSize = 0;
     };
 
+    static constexpr auto pairHasher = [](const std::pair<Positional*,Positional*>& p){
+                                                                return std::hash<Positional*>{}(p.first) ^ std::hash<Positional*>{}(p.second);
+                                                                };
     //std::unordered_map<Positional*,>
+    typedef std::unordered_set<std::pair<Positional*,Positional*>, decltype(pairHasher)> FoundStorage;
+
     BiTreeStorage elements;
     BiTreeNode head;
     glm::vec4 region;
@@ -261,7 +266,7 @@ class BiTree
     template<typename Callable>
     void processNode(Callable func, BiTreeNode& node, bool tail) //calls func on each node, func should take in BiTreeNode& as its only parameter
     {
-        //tail represents whether or not this function should be tail recursive
+        //tail represents whether or not this function should be called before or after recursive calls
         if (tail)
         {
             func(node);
@@ -276,17 +281,20 @@ class BiTree
             func(node);
         }
     }
-    BiTreeScore calculateScore(const BiTreeElement& element, BiTreeNode& node); //given wrapper and the node it belongs in, calculates the score used in scoring
-    BiTreeStorage::iterator insert(const BiTreeElement& element, BiTreeNode& node); //inserts element into node. Does not split node
-    void updateNode(BiTreeStorage::iterator& it, BiTreeNode& node); //given it, updates a node assuming it is in that node. Doesn't actually insert it
-    template<typename Callable>
-    bool doCollision(Callable func, const BiTreeElement& p1, const BiTreeElement& p2)
+
+    bool stopProcessing(const BiTreeElement& p1, const BiTreeElement& p2) //returns whether or not we should keep processing
+    {
+        return (p1.positional == p2.positional ||
+            p2.rect.x > p1.rect.x + p1.rect.z ||
+            p2.rect.x + p2.rect.z < p1.rect.x) ;
+    }
+    template<typename Callable, typename Collides>
+    bool doCollision(Callable func, Collides collided, const BiTreeElement& p1, const BiTreeElement& p2, FoundStorage& storage)
     {
         ///if p1 and p2 collide, call func on them. Returns whether or not we should process more elements
-        ///func should take in 2 RectPositionals
-           if (p1.positional == p2.positional ||
-            p2.rect.x > p1.rect.x + p1.rect.z ||
-            p2.rect.x + p2.rect.x < p1.rect.x)
+        ///func should take in 2 RectPositionals (reference or not)
+        ///collides should take in 2 BiTreeElements (reference or not) and return whether or not we should call func
+        if (stopProcessing(p1,p2))
         {
             return false;
         }
@@ -294,67 +302,92 @@ class BiTree
         {
             RectPositional* r1 = static_cast<RectPositional*>(p1.positional);
             RectPositional* r2 = static_cast<RectPositional*>(p2.positional);
-            if (vecIntersect(r1->getRect(),r2->getRect(),r1->getTilt(),r2->getTilt()))
+            if (collided(p1,p2) && storage.find({r1,r2}) == storage.end())
             {
                 func(*r1,*r2);
+                storage.insert({r1,r2});
                // PolyRender::requestRect(candidate->second.rect,{1,0,0,1},false,0,2);
             }
             return true;
         }
     }
+    BiTreeScore calculateScore(const BiTreeElement& element, BiTreeNode& node); //given wrapper and the node it belongs in, calculates the score used in scoring
+    BiTreeStorage::iterator insert(const BiTreeElement& element, BiTreeNode& node); //inserts element into node. Does not split node
+    void updateNode(BiTreeStorage::iterator& it, BiTreeNode& node); //given it, updates a node assuming it is in that node. Doesn't actually insert it
     void resetNode(BiTreeNode& node);
 public:
+    static constexpr auto defaultCollides = [](const BiTreeElement& e1, const BiTreeElement& e2){
+                        RectPositional* r1 = static_cast<RectPositional*>(e1.positional);
+                        RectPositional* r2 = static_cast<RectPositional*>(e2.positional);
+                        return vecIntersect(r1->getRect(),r2->getRect(),r1->getTilt(),r2->getTilt());
+                       }; //default collisions function
     BiTree(const glm::vec4& region_);
-    unsigned int size()
-    {
-        return elements.size();
-    }
-    unsigned int countNodes()
-    {
-        int count = 0;
-        processNode([&count,this](BiTreeNode& node){count ++;
-        if (node.nodes[0])
-        {
-            PolyRender::requestLine({0,node.vertDimen.x + node.vertDimen.y/2,region.x + region.z,node.vertDimen.x + node.vertDimen.y/2},{1,1,0,1},0,1,0);
-        }
-        },head,true);
-        return count;
-    }
+    unsigned int size();
+    unsigned int countNodes();
+    glm::vec4 getRegion();
     void insert(Positional& wrap); //calculates the node wrap belongs in and inserts it, splitting nodes if necesesary
-    void remove(Positional& wrap);
+    BiTreeStorage::iterator remove(Positional& wrap);  //removes wrap and returns an iterator to the next element, or elements.end() if wrap is not found
+    template<typename UpdateFunc>
+    BiTreeStorage::iterator update(Positional& pos, UpdateFunc func) //given a positional and an update function, update its spot in the bitree. Returns either an iterator pointing to the positional's current position, or the next element
+    {
+        //func should take in a Positional&
+        auto removed = remove(pos);
+        func(pos);
+        insert(pos);
+        return removed;
+    }
+
     void clear(); //removes all elements and nodes
     template<typename Callable>
-    void findCollision(Positional& wrap, Callable func) //given a positional, finds elements it collides with and calls func
+    void findNearest(const glm::vec2& center, float radius, Callable func) //finds all objects within radius distance of center
     {
-        ///func should take in a Positional&
-        processElement([this,&func](const BiTreeElement& element, BiTreeNode& node){
+        //func should take in a single Positional&
+        RectPositional rect({center.x - radius,center.y - radius, radius*2,radius*2});
+       auto collides = [center,radius](const BiTreeElement& e1, const BiTreeElement& e2){
+                                return (e2.positional->distance(center) <= radius);};
+        auto realFunc = [&func](Positional& p1, Positional& p2) //wrap func in a function that takes 2 parameters since that's what doCollision expects
+        {
+            func(p2);
+        };
+       findCollision(rect,realFunc,collides,true);
+    }
+    template<typename Callable, typename Collides>
+    void findCollision(Positional& wrap, Callable func, Collides collides = defaultCollides, bool temporary = false) //given a positional, finds elements it collides with and calls func
+    {
+        ///func should take in 2 Positional&. First parameter will always be wrap. Func should NOT remove wrap, as that would cause undefined behavior
+        FoundStorage storage(maxNodeSize,pairHasher);
+        processElement([this,temporary,&func,&collides,&storage](const BiTreeElement& element, BiTreeNode& node) mutable {
                           BiTreeScore score = calculateScore(element,node);
-                          auto found = elements.find(score);
-                          if (found == elements.end())
+                          auto found = elements.insert({score,element}).first;
+                          if (found != elements.begin())
                           {
-                              std::cout << "failed\n";
-                              return;
+                              auto it = std::make_reverse_iterator(found);
+                              auto rend = elements.rend();
+                              while (it != rend)
+                              {
+                                  //PolyRender::requestRect(it->second.rect,{1,0,0,1},false,0,1);
+                                    if (!doCollision(func,collides,element,it->second,storage))
+                                    {
+                                        break;
+                                    }
+                                  ++it;
+                              }
                           }
-                          auto it = std::prev(found);
-                          auto begin = elements.begin(), end = elements.end();
-                          while (it != begin)
-                          {
-                              //PolyRender::requestRect(it->second.rect,{1,0,0,1},false,0,1);
-                                if (!doCollision(func,element,it->second))
-                                {
-                                    break;
-                                }
-                              --it;
-                          }
-                          it = std::next(found);
+                          auto it = std::next(found);
+                          auto end = elements.end();
                           while (it != end)
                           {
-                              //  PolyRender::requestRect(it->second.rect,{1,0,0,1},false,0,1);
-                              if (!doCollision(func,element,it->second))
+                            //PolyRender::requestRect(it->second.rect,{1,0,0,1},false,0,1);
+                              if (!doCollision(func,collides,element,it->second,storage))
                               {
                                   break;
                               }
                               ++it;
+                          }
+                          if (temporary)
+                          {
+                              elements.erase(found);
+                             // std::cout << elements.size() << "\n";
                           }
                           },wrap,wrap.getBoundingRect());
     }
@@ -363,6 +396,8 @@ public:
     { //REFACTOR: currently only works with rect positionals
         auto it = elements.begin();
         auto end = elements.end();
+        FoundStorage storage(elements.size(),pairHasher);
+
         while (it != end)
         {
             float xBorder = it->second.rect.x + it->second.rect.z; //furthest x coordinate an entity can have before we stop checking
@@ -375,7 +410,7 @@ public:
             {
                // std::cout <<"\t" << candidate->second.positional <<" ";
                // printRect(candidate->second.rect);
-                if (!doCollision(func,it->second,candidate->second))
+                if (!doCollision(func,defaultCollides,it->second,candidate->second,storage))
                 {
                     break;
                 }
@@ -396,6 +431,62 @@ public:
         }
         //map(func,head);
     }
+    template<typename UpdateFunc>
+    void selectUpdate(const glm::vec4& selector, UpdateFunc func)
+    {
+        //func should take in a Positional&
+        std::unordered_set<Positional*> visited;
+        RectPositional rect(selector);
+        processElement([this,&func,&visited](const BiTreeElement& element, BiTreeNode& node) mutable {
+                          BiTreeScore score = calculateScore(element,node);
+                          auto found = elements.insert({score,element}).first;
+                          auto storageEnd = visited.end();
+                          if (found != elements.begin())
+                          {
+                              auto it = std::next(std::make_reverse_iterator(found));
+                              while (it != elements.rend())
+                              {
+                                    if (stopProcessing(element,it->second))
+                                    {
+                                        break;
+                                    }
+                                    if (defaultCollides(element,it->second) && visited.find(it->second.positional) == storageEnd)
+                                    {
+                                        visited.insert(it->second.positional);
+                                        it = std::make_reverse_iterator(update(*it->second.positional,func));
+                                    }
+                                    if (it != elements.rend())
+                                    {
+                                       ++it;//decrement because it either stayed the same or moved up. However, if its the first element, we obviously can't decrement
+                                    }
+                                  //REFACTOR: If an element is reinserted to a spot such that it is now equal to it on the next iteration
+                                  //, that element will be checked again, which is slightly inefficient. Applies to both while loops
+                              }
+                          }
+                          auto it = std::next(found);
+                          auto end = elements.end();
+                          while (it != end)
+                          {
+                                if (stopProcessing(element,it->second))
+                                {
+                                    break;
+                                }
+                                auto old = it;
+                                if (defaultCollides(element,it->second) && visited.find(it->second.positional) == storageEnd)
+                                {
+                                    visited.insert(it->second.positional);
+                                    //PolyRender::requestRect(it->second.rect,{1,0,0,1},true,0,0);
+                                    it = update(*it->second.positional,func);
+                                }
+                                if (it == old) //if we either didn't update or the update function didn't delete the element ...
+                                {
+                                    ++it; //increment
+                                }
+                          }
+                          elements.erase(found);
+                          },rect,selector);
+    }
+
     void showCollisions()
     {
         glm::vec2 mousePos = pairtoVec(MouseManager::getMousePos());
