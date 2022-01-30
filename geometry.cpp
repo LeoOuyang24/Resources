@@ -48,6 +48,10 @@ bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2)
         }
         return vecIntersect(rect1,rect2);
     }
+    bool b1 = vec1.x <= vec2.x + vec2.z;
+    bool b2 = vec1.x + vec1.z>= vec2.x;
+    bool b3 = vec1.y <= vec2.y + vec2.a;
+    bool b4 = vec1.y + vec1.a >= vec2.y;
     return (vec1.x <= vec2.x + vec2.z && vec1.x + vec1.z>= vec2.x && vec1.y <= vec2.y + vec2.a && vec1.y + vec1.a >= vec2.y);
 }
 

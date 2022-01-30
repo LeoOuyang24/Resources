@@ -983,7 +983,7 @@
 	"render.h"
 	"SDLhelper.h"
 
-1643091517 c:\users\leoou\onedrive\desktop\resources\glgame.h
+1643485254 c:\users\leoou\onedrive\desktop\resources\glgame.h
 	<glew.h>
 	<glm.hpp>
 	<gtc/matrix_transform.hpp>
@@ -993,9 +993,10 @@
 	"geometry.h"
 	"render.h"
 	"SDLhelper.h"
+	"FreeTypeHelper.h"
 	<unordered_set>
 
-1643067371 source:c:\users\leoou\onedrive\desktop\resources\glgame.cpp
+1643268381 source:c:\users\leoou\onedrive\desktop\resources\glgame.cpp
 	"SDL.h"
 	"glGame.h"
 	"render.h"

@@ -163,6 +163,8 @@ public:
     }
 };
 
+    #include "FreeTypeHelper.h"
+
 #include <unordered_set>
 class BiTree
 {
@@ -195,12 +197,14 @@ class BiTree
         }
         std::string toString() const
         {
-            return convert(nodeY) + " " + convert(elementX);
+            std::ostringstream stream;
+            stream << nodeY << " " << elementX << " " << ptr;
+            return stream.str();
         }
     };
 
     typedef std::map<BiTreeScore,BiTreeElement> BiTreeStorage; //stores all elements. Maps score to element
-    static constexpr int maxNodeSize = 128; //maximum number of elements in a node
+    static constexpr int maxNodeSize = 30; //maximum number of elements in a node
     struct BiTreeNode
     {
         /*BiTreeNodes have 2 modes: Whole and Split
@@ -246,8 +250,19 @@ class BiTree
             if (rect.y < split && rect.y + rect.a > split) //we have an element that crosses the border, so we have to split it
             {
                 float botHeight = rect.y + rect.a - split; //height of bottomt chunk
-                processElement(func,wrap,{rect.x,split,rect.z,botHeight},*node.nodes[1]); //process bottom chunk
-                return processElement(func,wrap,{rect.x,rect.y,rect.z,rect.a - botHeight},*node.nodes[0]); //process top chunk. Return this value because it must be precede the bottom chunk
+                if constexpr(std::is_void<decltype(processElement(func,wrap,{},*node.nodes[0]))>::value)
+                    {
+                        processElement(func,wrap,{rect.x,rect.y,rect.z,split - rect.y},*node.nodes[0]);
+                        processElement(func,wrap,{rect.x,split,rect.z,botHeight},*node.nodes[1]);
+                        return;
+                    }
+                else
+                {
+                    auto val = processElement(func,wrap,{rect.x,rect.y,rect.z,split - rect.y},*node.nodes[0]); //process top chunk. Return this value because it must be precede the bottom chunk
+                    processElement(func,wrap,{rect.x,split,rect.z,botHeight},*node.nodes[1]); //process bottom chunk
+                    return val;
+                }
+
             }
             else //element doesn't cross border, so just process it in the node it is in
             {
@@ -326,15 +341,49 @@ public:
     unsigned int countNodes();
     glm::vec4 getRegion();
     void insert(Positional& wrap); //calculates the node wrap belongs in and inserts it, splitting nodes if necesesary
-    BiTreeStorage::iterator remove(Positional& wrap);  //removes wrap and returns an iterator to the next element, or elements.end() if wrap is not found
-    template<typename UpdateFunc>
-    BiTreeStorage::iterator update(Positional& pos, UpdateFunc func) //given a positional and an update function, update its spot in the bitree. Returns either an iterator pointing to the positional's current position, or the next element
+    template<typename Iterator>
+    Iterator removeIt(Iterator& it) //this function is effectively the same thing as remove, except it returns the iterator after it. Returns elements.end() if it == elements.end()
     {
+        //'it' can either be a forward or reverse iterator
+        if constexpr (is_reverse_iterator<Iterator>::value)
+        {
+            if (it == this->elements.rend())
+            {
+                return it;
+            }
+        }
+        else
+        {
+            if (it == this->elements.end())
+            {
+                return it;
+            }
+        }
+
+        auto retVal = this->elements.erase(it);
+        remove(*it->second.positional);
+        return retVal;
+    }
+    BiTreeStorage::iterator remove(Positional& wrap);  //removes wrap and returns an iterator to the next element, or elements.end() if wrap is not found
+    void showNodes(RenderCamera* camera = RenderCamera::currentCamera);
+
+    template<typename UpdateFunc>
+    BiTreeStorage::iterator update(Positional& pos, UpdateFunc func,  BiTreeStorage::iterator it)
+    {
+        //given a positional and an update function, update its spot in the bitree. Returns either an iterator pointing to the positional's current position, or the next element
         //func should take in a Positional&
-        auto removed = remove(pos);
+        //'it' is expected to be either a iterator that points to one subelement of pos
+        //if 'it' is not elements.end, it will be passed into remove and the return value will be either 'it' or the iterator after 'it' if it is removed
+       //if 'it' is elements.end, it is ignored
+        auto removed = it == this->elements.end() ? remove(pos) : removeIt(it);
         func(pos);
         insert(pos);
         return removed;
+    }
+    template<typename UpdateFunc>
+    BiTreeStorage::iterator update(Positional& pos, UpdateFunc func)
+    {
+        return update(pos,func,elements.end());
     }
 
     void clear(); //removes all elements and nodes
@@ -361,7 +410,7 @@ public:
                           auto found = elements.insert({score,element}).first;
                           if (found != elements.begin())
                           {
-                              auto it = std::make_reverse_iterator(found);
+                              auto it = (std::make_reverse_iterator(found));
                               auto rend = elements.rend();
                               while (it != rend)
                               {
@@ -443,8 +492,8 @@ public:
                           auto storageEnd = visited.end();
                           if (found != elements.begin())
                           {
-                              auto it = std::next(std::make_reverse_iterator(found));
-                              while (it != elements.rend())
+                              auto it = (std::prev(found));
+                              while (it != elements.begin())
                               {
                                     if (stopProcessing(element,it->second))
                                     {
@@ -453,40 +502,43 @@ public:
                                     if (defaultCollides(element,it->second) && visited.find(it->second.positional) == storageEnd)
                                     {
                                         visited.insert(it->second.positional);
-                                        it = std::make_reverse_iterator(update(*it->second.positional,func));
+                                        it = update(*it->second.positional,func,it);
                                     }
-                                    if (it != elements.rend())
-                                    {
-                                       ++it;//decrement because it either stayed the same or moved up. However, if its the first element, we obviously can't decrement
-                                    }
+                                    --it;//decrement no matter what because it either stayed the same or moved up
                                   //REFACTOR: If an element is reinserted to a spot such that it is now equal to it on the next iteration
-                                  //, that element will be checked again, which is slightly inefficient. Applies to both while loops
+                                  //, that element will be checked again, which is slightly inefficient (but thankfully not updated). Applies to both while loops
+                              }
+                              if (it == elements.begin())
+                              {
+                                if (defaultCollides(element,it->second) && visited.find(it->second.positional) == storageEnd)
+                                {
+                                    visited.insert(it->second.positional);
+                                }
                               }
                           }
                           auto it = std::next(found);
                           auto end = elements.end();
                           while (it != end)
                           {
+
                                 if (stopProcessing(element,it->second))
                                 {
                                     break;
                                 }
-                                auto old = it;
+                                auto old = it->second.positional;
                                 if (defaultCollides(element,it->second) && visited.find(it->second.positional) == storageEnd)
                                 {
                                     visited.insert(it->second.positional);
-                                    //PolyRender::requestRect(it->second.rect,{1,0,0,1},true,0,0);
-                                    it = update(*it->second.positional,func);
+                                    it = update(*it->second.positional,func,it);
                                 }
-                                if (it == old) //if we either didn't update or the update function didn't delete the element ...
+                                if (it != end && it->second.positional == old) //if we either didn't update or the update function didn't delete the element, increment
                                 {
-                                    ++it; //increment
+                                    ++it;
                                 }
                           }
                           elements.erase(found);
                           },rect,selector);
     }
-
     void showCollisions()
     {
         glm::vec2 mousePos = pairtoVec(MouseManager::getMousePos());
