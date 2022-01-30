@@ -1,20 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_layout_file>
 	<FileVersion major="1" minor="0" />
-	<ActiveTarget name="Release" />
-	<File name="..\glInterface.h" open="0" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<ActiveTarget name="Debug" />
+	<File name="..\geometry.h" open="0" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="464" topLine="30" />
-		</Cursor>
-	</File>
-	<File name="..\glInterface.cpp" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3051" topLine="61" />
-		</Cursor>
-	</File>
-	<File name="..\shaders\vertex\vertexShader.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="858" topLine="11" />
+			<Cursor1 position="2260" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="..\glGame.cpp" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -22,54 +12,19 @@
 			<Cursor1 position="2138" topLine="53" />
 		</Cursor>
 	</File>
-	<File name="..\vanilla.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\glInterface.h" open="0" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="10123" topLine="370" />
+			<Cursor1 position="464" topLine="30" />
 		</Cursor>
 	</File>
-	<File name="..\render.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\render.cpp" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="8927" topLine="205" />
+			<Cursor1 position="27670" topLine="783" />
 		</Cursor>
 	</File>
-	<File name="..\components.h" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+	<File name="..\shaders\vertex\vertexShader.h" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="11707" topLine="278" />
-		</Cursor>
-	</File>
-	<File name="..\geometry.cpp" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="12233" topLine="322" />
-		</Cursor>
-	</File>
-	<File name="..\glGame.h" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="5635" topLine="142" />
-		</Cursor>
-	</File>
-	<File name="..\SDLhelper.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="0" topLine="18" />
-		</Cursor>
-	</File>
-	<File name="..\FreeTypeHelper.h" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="2265" topLine="14" />
-		</Cursor>
-	</File>
-	<File name="..\pathfind.h" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="6491" topLine="105" />
-		</Cursor>
-	</File>
-	<File name="..\vanilla.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="12145" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\components.cpp" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="13050" topLine="516" />
+			<Cursor1 position="858" topLine="11" />
 		</Cursor>
 	</File>
 	<File name="..\SDLhelper.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -82,19 +37,64 @@
 			<Cursor1 position="41208" topLine="929" />
 		</Cursor>
 	</File>
-	<File name="..\geometry.h" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\components.cpp" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="2260" topLine="9" />
+			<Cursor1 position="12764" topLine="496" />
 		</Cursor>
 	</File>
-	<File name="..\render.cpp" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\FreeTypeHelper.h" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="27670" topLine="783" />
+			<Cursor1 position="2265" topLine="14" />
+		</Cursor>
+	</File>
+	<File name="..\glGame.h" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="15920" topLine="434" />
 		</Cursor>
 	</File>
 	<File name="..\FreeTypeHelper.cpp" open="0" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="5617" topLine="174" />
+		</Cursor>
+	</File>
+	<File name="..\geometry.cpp" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="12233" topLine="322" />
+		</Cursor>
+	</File>
+	<File name="..\vanilla.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="12145" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\render.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="8927" topLine="205" />
+		</Cursor>
+	</File>
+	<File name="..\vanilla.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="10123" topLine="370" />
+		</Cursor>
+	</File>
+	<File name="..\pathfind.h" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="6491" topLine="105" />
+		</Cursor>
+	</File>
+	<File name="..\SDLhelper.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="0" topLine="18" />
+		</Cursor>
+	</File>
+	<File name="..\components.h" open="1" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="12079" topLine="275" />
+		</Cursor>
+	</File>
+	<File name="..\glInterface.cpp" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="3051" topLine="61" />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>

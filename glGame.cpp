@@ -589,27 +589,40 @@ void BiTree::insert(Positional& wrap)
                        },wrap,wrap.getBoundingRect());
     }
 }
+
 BiTree::BiTreeStorage::iterator BiTree::remove(Positional& wrap)
 {
     return processElement([this](const BiTreeElement& element, BiTreeNode& node){
                     BiTreeScore score = calculateScore(element,node); //once we've accurately calculated the score, we remove the element
                    node.size--;
+                   auto found = this->elements.find(score);
+                   if (found == this->elements.end())
+                   {
+                       return found; //unfortunately we couldn't find element
+                   }
                    if (score == node.start->first)
                    {
-                       node.start = this->elements.erase(this->elements.find(score));
+                       node.start = this->elements.erase(found);
                        return node.start;
                    }
                    else
                    {
-                      // printRect(this->elements.find(score)->second.rect);
-
-                       return this->elements.erase(this->elements.find(score));
+                       return this->elements.erase(found);
                    }
                    },wrap,wrap.getBoundingRect(),head);
     //return this->elements.end();
 }
 
-
+void BiTree::showNodes(RenderCamera* camera)
+{
+    processNode([camera,this](BiTreeNode& node){
+                if (node.nodes[0])
+                {
+                    float mid = node.vertDimen.x + node.vertDimen.y/2;
+                    PolyRender::requestLine(glm::vec4(region.x,mid, region.x + region.z,mid),glm::vec4(1,1,0,1),0,1,camera);
+                }
+                },head,false);
+}
 
 void BiTree::clear()
 {
