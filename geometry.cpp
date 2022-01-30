@@ -48,11 +48,22 @@ bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2)
         }
         return vecIntersect(rect1,rect2);
     }
+    bool b1 = vec1.x <= vec2.x + vec2.z;
+    bool b2 = vec1.x + vec1.z>= vec2.x;
+    bool b3 = vec1.y <= vec2.y + vec2.a;
+    bool b4 = vec1.y + vec1.a >= vec2.y;
     return (vec1.x <= vec2.x + vec2.z && vec1.x + vec1.z>= vec2.x && vec1.y <= vec2.y + vec2.a && vec1.y + vec1.a >= vec2.y);
 }
 
 bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2, float angle1, float angle2)
 {
+    if (angle1 == 0 && angle2 == 0)
+    {
+        return vecIntersect(vec1,vec2);
+    }
+    /*printRect(vec1);
+    printRect(vec2);
+    std::cout << angle1 << " " << angle2 << "\n";*/
     glm::vec2 center = {vec2.x + vec2.z/2, vec2.y + vec2.a/2};
     glm::vec2 topLeft = rotatePoint({vec2.x, vec2.y}, center, angle2);
     glm::vec2 topRight = rotatePoint({vec2.x + vec2.z, vec2.y}, center, angle2);
@@ -65,9 +76,7 @@ bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2, float angle1, flo
     return (lineInVec(topLeft, topRight, vec1, angle1) || //top side
             lineInVec(topLeft, botLeft, vec1, angle1) || //left side
             lineInVec(botLeft, botRight, vec1, angle1) || //bot side
-            lineInVec(topRight, botRight, vec1, angle1)) || //right side
-            pointInVec(vec1,topLeft,angle1) || //if there are no sides intersecting, it's possible for one rect to be within another
-            pointInVec(vec2,{vec1.x,vec1.y},angle2); //we only have to check one point for each rect because if all 4 points have to be in for intersection if there are no side intersections
+            lineInVec(topRight, botRight, vec1, angle1));
 }
 
 glm::vec4 vecIntersectRegion(const glm::vec4& vec1, const glm::vec4& vec2) //returns the region of two colliding rects
@@ -330,13 +339,9 @@ glm::vec2 lineLineIntersectExtend(const glm::vec2& a1, const glm::vec2& a2, cons
 bool lineInVec(const glm::vec2& point1,const glm::vec2& point2, const glm::vec4& r1, double angle)
                                         //given points p1 and p2, with p1 having the lesser x value, this draws a line between the 2 points and checks to
 {                                        //see if that line intersects with any of the sides of r1.
-    if (point1.x > point2.x)
-    {
-        return lineInVec(point2,point1,r1,angle);
-    }
     glm::vec2 center = {r1.x + r1.z/2, r1.y + r1.a/2};
 
-    glm::vec2 p1 = rotatePoint(point1,center,-angle);
+    glm::vec2 p1 = rotatePoint(point1,center,-angle); //slightly more efficient to rotate the line than all 4 points of the rectangle
     glm::vec2 p2 = rotatePoint(point2,center,-angle);
 
     glm::vec2 topLeft = {r1.x, r1.y};
@@ -348,7 +353,7 @@ bool lineInVec(const glm::vec2& point1,const glm::vec2& point2, const glm::vec4&
             lineInLine(topLeft,botLeft,p1,p2) ||
             lineInLine(topRight,botRight,p1,p2) ||
             lineInLine(botLeft,botRight,p1,p2) ||
-            pointInVec(r1,p1,0) || pointInVec(r1,p2,0);
+            pointInVec(r1,p1,0); //only need to check one point because if only one point is in, then there must be a collision between the line and the sides
 }
 
 bool pointInTriangle (const glm::vec2 a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& p)

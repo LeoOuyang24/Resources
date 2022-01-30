@@ -53,6 +53,8 @@
 		<Unit filename="../glInterface.h" />
 		<Unit filename="../pathfind.cpp" />
 		<Unit filename="../pathfind.h" />
+		<Unit filename="../physics.cpp" />
+		<Unit filename="../physics.h" />
 		<Unit filename="../render.cpp" />
 		<Unit filename="../render.h" />
 		<Unit filename="../shaders/fragment/fragmentShader.h" />

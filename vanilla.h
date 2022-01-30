@@ -299,6 +299,7 @@ public:
 
 };
 
+float round(float decimal, int n); //rounds decimal to the nth digit
 bool angleRange(float rad1, float rad2, float range); //returns true if angle rad1 is within range of rad2 (inclusive)
 double randomDecimal(int places); //generates a random decimal between 0 and 1, not including 1. places is the number of decimal places
 int findIntLength(int x);
@@ -603,6 +604,16 @@ public:
 
 template <typename T>
 std::shared_ptr<T> GlobalMount<T>::ptr;
+
+template<typename Iter>
+struct is_reverse_iterator : std::false_type { }; //used to determine if an iterator is reverse or not.
+                                                  //stolen from https://stackoverflow.com/questions/22360697/determine-if-a-c-iterator-is-reverse
+
+template<typename Iter>
+struct is_reverse_iterator<std::reverse_iterator<Iter>>
+: std::integral_constant<bool, !is_reverse_iterator<Iter>::value>
+{ };
+
 
 template <typename T>
 class ReusableVector //not sure what else to call this

@@ -72,21 +72,6 @@ glm::vec2 RectComponent::getCenter()
     return {rect.x + rect.z/2, rect.y + rect.a/2};
 }
 
-
-float RectComponent::getTilt()
-{
-    return tilt;
-}
-
-void RectComponent::setTilt(float newTilt) //clamp to -M_PI - +M_PI, just like C++ trig functions
-{
-    tilt = fmod(newTilt,2*M_PI) + 2*M_PI*(newTilt < 0);
-    if (tilt >M_PI)
-    {
-        tilt -= 2*M_PI;
-    }
-}
-
 RectComponent::~RectComponent()
 {
 
@@ -522,24 +507,9 @@ bool EntityPosManager::forEachEntity(Entity& entity)
 {
     if (RectComponent* rect = entity.getComponent<RectComponent>())
     {
-        QuadTree* old = quadtree->find(*rect);
-        if (old)
-        {
-            auto nearest = old->getNearest(*rect);
-            auto end =nearest.end();
-            for (auto it = nearest.begin(); it != end; ++it)
-            {
-                if ((*it)->collides(rect->getRect()))
-                {
-                    entity.collide(static_cast<RectComponent*>(*it)->getEntity());
-                }
-            }
-        }
+        bitree->remove(*rect);
         entity.update();
-        if (old)
-        {
-            quadtree->update(*rect,*old);
-        }
+        bitree->insert(*rect);
     }
     else
     {
@@ -550,20 +520,19 @@ bool EntityPosManager::forEachEntity(Entity& entity)
 
 void EntityPosManager::init(const glm::vec4& rect)
 {
-    quadtree.reset(new QuadTree(rect));
+    bitree.reset(new BiTree(rect));
 }
 
-QuadTree* EntityPosManager::getQuadTree()
+BiTree* EntityPosManager::getBiTree()
 {
-    return quadtree.get();
+    return bitree.get();
 }
 
 void EntityPosManager::addEntity(const std::shared_ptr<Entity>& entity)
 {
-    std::shared_ptr<RectComponent> rect = entity->getComponentPtr<RectComponent>();
-    if (rect.get())
+    if (auto rect = entity->getComponent<RectComponent>())
     {
-        quadtree->add(*(new WeakWrapper(rect)));
+        bitree->insert(*rect);
     }
     EntityManager::addEntity(entity);
 }
@@ -583,15 +552,26 @@ EntityPosManager::EntityIt EntityPosManager::removeEntity(Entity* entity)
     {
         if (RectComponent* rect = entity->getComponent<RectComponent>())
         {
-            quadtree->remove(*rect);
+            bitree->remove(*rect);
         }
         return EntityManager::removeEntity(entity);
     }
 }
 
+void EntityPosManager::update()
+{
+    EntityManager::update(); //REFACTOR: slightly inefficient to update all entities then find collisions for each entity
+    bitree->processCollisions([](RectPositional& r1, RectPositional& r2){
+                              Entity* e1 = &static_cast<RectComponent&>(r1).getEntity();
+                              Entity* e2 = &static_cast<RectComponent&>(r2).getEntity();
+                              e1->collide(*e2);
+                              e2->collide(*e1);
+                              });
+}
+
 void EntityPosManager::reset()
 {
     entities.clear();
-    quadtree->clear();
+    bitree->clear();
 }
 

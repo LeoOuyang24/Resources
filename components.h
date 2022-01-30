@@ -105,8 +105,6 @@ public:
 
 class RectComponent : public Component, public ComponentContainer<RectComponent>, public RectPositional
 {
-protected:
-    float tilt = 0; //angle the rect is tilted at. Used for hit box detection
 public:
     RectComponent(const glm::vec4& rect, Entity& entity);
     bool collides(const glm::vec4& rect);
@@ -115,8 +113,7 @@ public:
     void setCenter(const glm::vec2& center);
     glm::vec2 getPos();
     glm::vec2 getCenter();
-    float getTilt();
-    void setTilt(float newTilt);
+
     virtual ~RectComponent();
 };
 
@@ -301,16 +298,17 @@ public:
 
 class EntityPosManager : public EntityManager//Entity Manager that also keeps a quadtree to track entity position
 {
-    std::unique_ptr<QuadTree> quadtree;
+    std::unique_ptr<BiTree> bitree;
 protected:
     virtual bool forEachEntity(Entity& entity);
 public:
     virtual void init(const glm::vec4& rect);
-    QuadTree* getQuadTree(); //can return null, most likely because init was never called
+    BiTree* getBiTree(); //can return null, most likely because init was never called
     using EntityManager::addEntity;
     virtual void addEntity(const std::shared_ptr<Entity>& ptr);
     virtual void addEntity(Entity& entity, float x, float y, bool centered = true); //sets center position if centered is true, otherwise sets top left corner
     EntityIt removeEntity(Entity* entity);
+    void update();
     void reset();
 };
 

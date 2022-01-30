@@ -27,14 +27,40 @@ bool Positional::collidesLine(const glm::vec4& line)
     return pointLineDistance(line,pos)==0;
 }
 
+glm::vec4 Positional::getBoundingRect() const
+{
+    return {pos.x,pos.y,0,0};
+}
+
 glm::vec2 Positional::getPos() const
 {
     return pos;
 }
 
-RectPositional::RectPositional(const glm::vec4& box) : Positional({box.x,box.y}), rect(box)
+RectPositional::RectPositional(const glm::vec4& box, float newTilt) : Positional({box.x,box.y}), rect(box)
 {
+    setTilt(newTilt);
+}
 
+glm::vec4 RectPositional::getBoundingRect() const
+{
+    if (tilt == 0)
+    {
+        return rect;
+    }
+    else
+    {
+        glm::vec2 center = {rect.x + rect.z/2, rect.y + rect.a/2};
+        glm::vec2 topLeft =rotatePoint({rect.x,rect.y},center,tilt),
+                botLeft = rotatePoint({rect.x,rect.y + rect.a},center,tilt),
+                topRight = rotatePoint({rect.x + rect.z,rect.y},center,tilt),
+                botRight = rotatePoint({rect.x + rect.z, rect.y + rect.a},center,tilt);
+        glm::vec2 xy = glm::vec2(std::min(botRight.x,std::min(topRight.x,std::min(topLeft.x,botLeft.x))),
+                                 std::min(botRight.y,std::min(topRight.y,std::min(topLeft.y,botLeft.y))));
+        return glm::vec4(xy.x,xy.y,
+                         std::max(botRight.x,std::max(topRight.x,std::max(topLeft.x,botLeft.x))) - xy.x, //yes I know that I can calculate the dimensions based on xy.x and xy.y without finding the largest x or y but do I care???
+                         std::max(botRight.y,std::max(topRight.y,std::max(topLeft.y,botLeft.y))) - xy.y);
+    }
 }
 
 glm::vec2 RectPositional::getPos() const
@@ -47,14 +73,28 @@ const glm::vec4& RectPositional::getRect() const
     return rect;
 }
 
+float RectPositional::getTilt() const
+{
+    return tilt;
+}
+
+void RectPositional::setTilt(float newTilt) //clamp to -M_PI - +M_PI, just like C++ trig functions
+{
+    tilt = fmod(newTilt,2*M_PI) + 2*M_PI*(newTilt < 0);
+    if (tilt >M_PI)
+    {
+        tilt -= 2*M_PI;
+    }
+}
+
 bool RectPositional::collidesLine(const glm::vec4& line)
 {
-    return lineInVec({line.x,line.y},{line.z,line.a},rect);
+    return lineInVec({line.x,line.y},{line.z,line.a},rect,tilt);
 }
 
 bool RectPositional::collides(const glm::vec4& box)
 {
-    return vecIntersect(box,rect);
+    return vecIntersect(box,rect,tilt,0);
 }
 
 glm::vec2 RectPositional::getCenter() const
@@ -432,6 +472,166 @@ QuadTree* QuadTree::update(Positional& positional, QuadTree& expected)
     }
     return newTree;
 
+}
+
+BiTree::BiTreeScore BiTree::calculateScore(const BiTreeElement& element, BiTreeNode& node)
+{
+   return {node.vertDimen.x,element.rect.x,element.positional};//node.vertDimen.x + (element.rect.x - this->region.x)/(this->region.z);
+}
+
+BiTree::BiTree(const glm::vec4& rect) : region(rect), head({{0,rect.a}})
+{
+
+}
+
+BiTree::BiTreeStorage::iterator BiTree::insert(const BiTreeElement& element, BiTreeNode& node)
+{
+    BiTreeScore score = this->calculateScore(element,node); //calculating the score requires that we iterate all the way down to the node we want to insert into
+    if (node.size == 0 || score < node.start->first) //if this is the first element in this node or the new smallest element ...
+    {
+        node.start = (this->elements.insert({score,element})).first; //because inserting with a hint causes the new element to be inserted before our start, we have to also update when the score is equal to our old start
+        updateNode(node.start,node);
+        return node.start;
+    }
+    else
+    {
+        updateNode(node.start,node);
+        return this->elements.insert({score,element}).first;//we provide node.start as a hint to make insertion a little faster
+    }
+}
+
+unsigned int BiTree::size()
+{
+    return elements.size();
+}
+
+unsigned int BiTree::countNodes()
+{
+    unsigned int count = 0;
+    processNode([&count,this](BiTreeNode& node){count ++;
+    },head,true);
+    return count;
+}
+
+glm::vec4 BiTree::getRegion()
+{
+    return region;
+}
+
+void BiTree::updateNode(BiTreeStorage::iterator& it, BiTreeNode& node)
+{
+    if (node.size == 0 || it->first < node.start->first)//note that unlike insert, we only update start if the new node has a score lower than our current one
+    {
+        node.start = it;
+    }
+    //update our node statistics. https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
+    if (it->second.rect.a >= node.vertDimen.y/2)
+    {
+        node.bigSize++;
+    }
+    node.size++;
+}
+
+void BiTree::resetNode(BiTreeNode& node)
+{
+    node.bigSize = 0;
+    node.size = 0;
+    node.start = elements.end();
+    node.vertDimen = {region.y,region.a};
+    node.nodes[0] = nullptr;
+    node.nodes[1] = nullptr;
+}
+
+void BiTree::insert(Positional& wrap)
+{
+    if (vecIntersect(wrap.getBoundingRect(),region))
+    {
+        processElement([this](const BiTreeElement& element, BiTreeNode& node){
+                        insert(element,node); //REFACTOR: slightly slow to insert only to remove an element in the event of a split
+                        if (node.size > maxNodeSize && node.vertDimen.y >= 2 && node.bigSize < .5*maxNodeSize) //exceeding max capacity, time to split
+                        {
+                            //std::cout << node.bigSize << " " << node.size << " " << node.vertDimen.y<<"\n";
+                            float split = node.vertDimen.x + node.vertDimen.y/2; //y coordinate of the split
+                            node.nodes[0] = new BiTreeNode({{node.vertDimen.x,node.vertDimen.y/2},0,node.start}); //new nodes are born! .
+                            node.nodes[1] = new BiTreeNode({{split,node.vertDimen.y/2},0,this->elements.end()});
+
+                            int count = 0;
+                            auto it= node.start;
+                            while (count < node.size)
+                            {
+                                if (it->second.rect.y < split && it->second.rect.y + it->second.rect.a > split) //if element belongs in both children, split it
+                                {
+
+                                    float botHeight = it->second.rect.y + it->second.rect.a - split;
+                                    insert({it->second.positional,glm::vec4(it->second.rect.x,split,it->second.rect.z,botHeight)},*node.nodes[1]); //insert the half that belongs in the new bottom child
+                                    it->second.rect.a -= botHeight; //the top half has the same score as the old element, so we just modify its height
+                                    updateNode(it,*node.nodes[0]); //and update the node it belongs in
+                                    ++it;
+                                }
+                                else //otherwise, insert based on where the element is relative to the split
+                                {
+                                    if (it->second.rect.y >= split) //if element belongs in the new bottom child
+                                    {
+                                      insert(it->second,*node.nodes[1]);
+                                      it = this->elements.erase(it);
+                                    }
+                                    else
+                                    {
+                                        updateNode(it,*node.nodes[0]);
+                                        ++it; //if the element does not belong in the new bottom child, we don't have to remove it because its score remains the same
+                                    }
+                                }
+                                //++it;
+                                count ++;
+                            }
+                        }
+
+                       },wrap,wrap.getBoundingRect());
+    }
+}
+
+BiTree::BiTreeStorage::iterator BiTree::remove(Positional& wrap)
+{
+    return processElement([this](const BiTreeElement& element, BiTreeNode& node){
+                    BiTreeScore score = calculateScore(element,node); //once we've accurately calculated the score, we remove the element
+                   node.size--;
+                   auto found = this->elements.find(score);
+                   if (found == this->elements.end())
+                   {
+                       return found; //unfortunately we couldn't find element
+                   }
+                   if (score == node.start->first)
+                   {
+                       node.start = this->elements.erase(found);
+                       return node.start;
+                   }
+                   else
+                   {
+                       return this->elements.erase(found);
+                   }
+                   },wrap,wrap.getBoundingRect(),head);
+    //return this->elements.end();
+}
+
+void BiTree::showNodes(RenderCamera* camera)
+{
+    processNode([camera,this](BiTreeNode& node){
+                if (node.nodes[0])
+                {
+                    float mid = node.vertDimen.x + node.vertDimen.y/2;
+                    PolyRender::requestLine(glm::vec4(region.x,mid, region.x + region.z,mid),glm::vec4(1,1,0,1),0,1,camera);
+                }
+                },head,false);
+}
+
+void BiTree::clear()
+{
+    elements.clear();
+    processNode([this](BiTreeNode& node){
+                if (&node != &head) //delete all nodes but the head
+                    delete &node;
+                },head,false); //can't be tail recursive because otherwise we'd delete parents before children
+    resetNode(head);
 }
 
 RawQuadTree::RawQuadTree(const glm::vec4& rect)
