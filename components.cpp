@@ -122,6 +122,7 @@ void MoveComponent::update()
 
 bool MoveComponent::atPoint(const glm::vec2& point)
 {
+    glm::vec2 center = getCenter();
     return pointDistance(getCenter(),point) <= distThreshold;
 }
 
@@ -150,8 +151,8 @@ void MoveComponent::setPos(const glm::vec2& pos)
 {
     rect.x =pos.x;
     rect.y = pos.y;
-    target.x = pos.x - rect.z/2;
-    target.y = pos.y - rect.a/2;
+    target.x = pos.x + rect.z/2;
+    target.y = pos.y + rect.a/2;
 }
 
 void MoveComponent::setAngle(float val)
@@ -530,11 +531,11 @@ BiTree* EntityPosManager::getBiTree()
 
 void EntityPosManager::addEntity(const std::shared_ptr<Entity>& entity)
 {
+    EntityManager::addEntity(entity);
     if (auto rect = entity->getComponent<RectComponent>())
     {
         bitree->insert(*rect);
     }
-    EntityManager::addEntity(entity);
 }
 
 void EntityPosManager::addEntity(Entity& entity, float x, float y, bool centered)

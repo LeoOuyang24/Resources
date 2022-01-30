@@ -1045,7 +1045,8 @@ void PathFindComponent::setTarget(const glm::vec2& point)
     {
         NavMesh* meshPtr = mesh.lock().get();
         path = meshPtr->getPath(getCenter(),point,std::max(rect.z,rect.a));
-        MoveComponent::setTarget(point);
+        MoveComponent::setTarget(path.front().point);
+        path.pop_front();
     }
 }
 
@@ -1072,6 +1073,7 @@ void PathFindComponent::update()
            // std::cout << path.size () << "\n";
         }
     }
+
     MoveComponent::update();
     if (adjustTilt)
     {

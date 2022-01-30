@@ -359,9 +359,9 @@ public:
                 return it;
             }
         }
-
+        Positional* pos = it->second.positional;
         auto retVal = this->elements.erase(it);
-        remove(*it->second.positional);
+        remove(*pos);
         return retVal;
     }
     BiTreeStorage::iterator remove(Positional& wrap);  //removes wrap and returns an iterator to the next element, or elements.end() if wrap is not found
