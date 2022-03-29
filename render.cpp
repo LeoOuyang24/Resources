@@ -448,10 +448,15 @@ void Sprite::setTint(glm::vec3 color)
 {
     tint = color;
 }
-void Sprite::init(std::string source)
+void Sprite::init(std::string source_)
     {
-        load(source);
+        load(source_);
+        source = source_;
     }
+std::string Sprite::getSource()
+{
+    return source;
+}
 void Sprite::loadVertices()
 {
            //glBindVertexArray(VAO);
@@ -777,7 +782,7 @@ void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<Sp
     Sprite::renderInstanced(program, params);
 }
 
-std::vector<SpriteWrapper*> SpriteManager::sprites;
+std::unordered_map<std::string,SpriteWrapper*>SpriteManager::sprites;
 std::map<zWrapper,std::list<SpriteParameter>,SpriteManager::ZWrapperComparator> SpriteManager::params;
 void SpriteWrapper::init(std::string source)
 {
@@ -916,12 +921,21 @@ AnimationWrapper::~AnimationWrapper()
 
 void SpriteManager::addSprite(SpriteWrapper& spr)
 {
-    sprites.push_back(&spr);
+    sprites.insert({spr.getSprite()->getSource(),&spr});
 }
 
 void SpriteManager::request(SpriteWrapper& wrapper, const SpriteParameter& param)
 {
     params[{param.z,&wrapper}].push_back(param);
+}
+
+SpriteWrapper* SpriteManager::getSprite(std::string source)
+{
+    if (sprites.find(source) == sprites.end())
+    {
+        return nullptr;
+    }
+    return sprites[source];
 }
 
 void SpriteManager::render()
@@ -1013,7 +1027,7 @@ void PolyRender::requestCircle( const glm::vec4& color,const glm::vec2& center, 
     requestNGon(360,center,radius,color,0,filled,z,true);
 }
 
-glm::vec2 floorVec(const glm::vec2& vec) //shortcut function for requestRect
+glm::vec2 floorVec(const glm::vec2& vec)
 {
     return {floor(vec.x),floor(vec.y)};
 }

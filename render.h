@@ -161,6 +161,7 @@ protected:
     virtual void loadData(GLfloat* data, const SpriteParameter& parameter, int index);
     void draw( RenderProgram& program, GLfloat* data, int instances); //draws the sprite. Assumes ModVBO has already been loaded
     bool transparent = false;
+    std::string source = "";
 public:
     Sprite(std::string source);
     Sprite()
@@ -168,6 +169,7 @@ public:
         texture = -1;
     }
     ~Sprite();
+    std::string getSource();
     void init(std::string source);
     void loadVertices();
     void loadVertices(const std::vector<float>& verticies);
@@ -284,13 +286,14 @@ class SpriteManager
             return a.first < b.first;
         }
     };
-    static std::vector<SpriteWrapper*> sprites;
     static std::map<zWrapper,std::list<SpriteParameter>,ZWrapperComparator> params;
+    static std::unordered_map<std::string,SpriteWrapper*> sprites;
 public:
     constexpr static float zIncrement = .001; //slight increment so sprites don't overlap
 
     static void addSprite(SpriteWrapper& spr);
     static void request(SpriteWrapper& wrapper,const SpriteParameter& param);
+    static SpriteWrapper* getSprite(std::string source); //will attempt to return a spritewrapper with the source loaded, null otherwie
     static void render();
 
 };

@@ -30,6 +30,7 @@ public:
      }
     virtual glm::vec4 getBoundingRect() const;
     virtual glm::vec2 getPos() const;
+    virtual glm::vec2 getCenter() const;
     virtual ~Positional()
     {
     }
@@ -45,7 +46,7 @@ public:
     virtual bool collidesLine(const glm::vec4& line);
     virtual double distance(const glm::vec2& point)
     {
-        return pointVecDistance(rect, point.x, point.y);
+        return pointVecDistance(rect, point.x, point.y,tilt);
     }
     glm::vec4 getBoundingRect() const;
     virtual glm::vec2 getPos() const;
@@ -168,10 +169,16 @@ public:
 #include <unordered_set>
 class BiTree
 {
+    class BiTreeNode;
+    class BiTreeScore;
+    class BiTreeElement;
+    typedef std::map<BiTreeScore,BiTreeElement> BiTreeStorage; //stores all elements. Maps score to element
+    typedef std::unordered_map<Positional*,BiTreeStorage::iterator> addressBook;
     struct BiTreeElement //represents the element plus the rect that represents it
     {
-        Positional* positional;
-        glm::vec4 rect;
+        Positional* positional = 0;
+        glm::vec4 rect = glm::vec4(0);
+        BiTreeNode* node = 0;
     };
 
     struct BiTreeScore
@@ -203,8 +210,7 @@ class BiTree
         }
     };
 
-    typedef std::map<BiTreeScore,BiTreeElement> BiTreeStorage; //stores all elements. Maps score to element
-    static constexpr int maxNodeSize = 30; //maximum number of elements in a node
+    static constexpr int maxNodeSize = 250; //maximum number of elements in a node
     struct BiTreeNode
     {
         /*BiTreeNodes have 2 modes: Whole and Split
@@ -238,11 +244,11 @@ class BiTree
     auto processElement(Callable func, Positional& wrap, const glm::vec4& rect,  BiTreeNode& node)
     {
         /*given a positionwrapper, calls func on it and each of its subdivisons. func should be a function that
-        takes in a const BiTreeElement& and a BiTreeNode. If func has a return value, we return the value for the function call of the
+        takes in a const BiTreeElement&. If func has a return value, we return the value for the function call of the
         lowest scoring subdivision.*/
         if (!node.nodes[0]) //found a leaf, which must be the node the element belongs in
         {
-            return func({&wrap,rect},node);
+            return func({&wrap,rect,&node});
         }
         else //otherwise keep searching
         {
@@ -274,6 +280,7 @@ class BiTree
                 {
                     return processElement(func,wrap,rect,*node.nodes[1]);
                 }
+                //return processElement(func,wrap,rect,*node.nodes[(rect.y >= split)]);
             }
         }
 
@@ -326,8 +333,10 @@ class BiTree
             return true;
         }
     }
-    BiTreeScore calculateScore(const BiTreeElement& element, BiTreeNode& node); //given wrapper and the node it belongs in, calculates the score used in scoring
-    BiTreeStorage::iterator insert(const BiTreeElement& element, BiTreeNode& node); //inserts element into node. Does not split node
+    BiTreeScore calculateScore(const BiTreeElement& element); //given wrapper and the node it belongs in, calculates the score used in scoring
+    BiTreeStorage::iterator insert(const BiTreeElement& element, BiTreeNode& node); //core insertion function. inserts element into node. Does not split node. Updates element's node field
+    BiTreeStorage::iterator remove(const BiTreeStorage::iterator& it); //core removal function
+    void split(BiTreeNode& node); //calls split with updateIt = elements.end()
     void updateNode(BiTreeStorage::iterator& it, BiTreeNode& node); //given it, updates a node assuming it is in that node. Doesn't actually insert it
     void resetNode(BiTreeNode& node);
 public:
@@ -341,43 +350,30 @@ public:
     unsigned int countNodes();
     glm::vec4 getRegion();
     void insert(Positional& wrap); //calculates the node wrap belongs in and inserts it, splitting nodes if necesesary
-    template<typename Iterator>
-    Iterator removeIt(Iterator& it) //this function is effectively the same thing as remove, except it returns the iterator after it. Returns elements.end() if it == elements.end()
-    {
-        //'it' can either be a forward or reverse iterator
-        if constexpr (is_reverse_iterator<Iterator>::value)
-        {
-            if (it == this->elements.rend())
-            {
-                return it;
-            }
-        }
-        else
-        {
-            if (it == this->elements.end())
-            {
-                return it;
-            }
-        }
-        Positional* pos = it->second.positional;
-        auto retVal = this->elements.erase(it);
-        remove(*pos);
-        return retVal;
-    }
     BiTreeStorage::iterator remove(Positional& wrap);  //removes wrap and returns an iterator to the next element, or elements.end() if wrap is not found
     void showNodes(RenderCamera* camera = RenderCamera::currentCamera);
 
     template<typename UpdateFunc>
     BiTreeStorage::iterator update(Positional& pos, UpdateFunc func,  BiTreeStorage::iterator it)
-    {
+    { //CURRENTLY BROKEN. Update may return invalid iteratorss
         //given a positional and an update function, update its spot in the bitree. Returns either an iterator pointing to the positional's current position, or the next element
         //func should take in a Positional&
         //'it' is expected to be either a iterator that points to one subelement of pos
         //if 'it' is not elements.end, it will be passed into remove and the return value will be either 'it' or the iterator after 'it' if it is removed
        //if 'it' is elements.end, it is ignored
-        auto removed = it == this->elements.end() ? remove(pos) : removeIt(it);
+        BiTreeStorage::iterator removed;
+        if (it == this->elements.end())
+        {
+            removed = remove(pos);
+        }
+        else
+        {
+            removed = remove(it);
+            remove(pos);
+        }
         func(pos);
         insert(pos);
+
         return removed;
     }
     template<typename UpdateFunc>
@@ -392,51 +388,61 @@ public:
     {
         //func should take in a single Positional&
         RectPositional rect({center.x - radius,center.y - radius, radius*2,radius*2});
+
        auto collides = [center,radius](const BiTreeElement& e1, const BiTreeElement& e2){
                                 return (e2.positional->distance(center) <= radius);};
         auto realFunc = [&func](Positional& p1, Positional& p2) //wrap func in a function that takes 2 parameters since that's what doCollision expects
         {
             func(p2);
         };
-       findCollision(rect,realFunc,collides,true);
+       findCollision(rect,realFunc,collides);
+    }
+    template<typename Callable>
+    void findNearest(Positional& p, float radius, Callable func) //find all objects within radius distance of p
+    {
+        //func should take in a single Positional&
+        glm::vec2 center = p.getCenter();
+        RectPositional rect({center.x - radius,center.y - radius, radius*2,radius*2});
+
+        auto collides = [center,radius,&p](const BiTreeElement& e1, const BiTreeElement& e2){
+                                return e2.positional != &p && (e2.positional->distance(center) <= radius);};
+        auto realFunc = [&func](Positional& p1, Positional& p2) //wrap func in a function that takes 2 parameters since that's what doCollision expects
+        {
+            func(p2);
+        };
+        findCollision(rect,realFunc,collides);
     }
     template<typename Callable, typename Collides>
-    void findCollision(Positional& wrap, Callable func, Collides collides = defaultCollides, bool temporary = false) //given a positional, finds elements it collides with and calls func
+    void findCollision(Positional& wrap, Callable func, Collides collides = defaultCollides) //given a positional, finds elements it collides with and calls func
     {
+        //CURRENTLY DOESN"T WORK WHEN FINDING ELEMENTS BEFORE wrap
         ///func should take in 2 Positional&. First parameter will always be wrap. Func should NOT remove wrap, as that would cause undefined behavior
         FoundStorage storage(maxNodeSize,pairHasher);
-        processElement([this,temporary,&func,&collides,&storage](const BiTreeElement& element, BiTreeNode& node) mutable {
-                          BiTreeScore score = calculateScore(element,node);
-                          auto found = elements.insert({score,element}).first;
+        processElement([this,&func,&collides,&storage](const BiTreeElement& element) mutable {
+                          BiTreeScore score = calculateScore(element);
+                          auto found = elements.lower_bound(score);
                           if (found != elements.begin())
                           {
                               auto it = (std::make_reverse_iterator(found));
                               auto rend = elements.rend();
                               while (it != rend)
                               {
-                                  //PolyRender::requestRect(it->second.rect,{1,0,0,1},false,0,1);
-                                    if (!doCollision(func,collides,element,it->second,storage))
+                                   if (!doCollision(func,collides,element,it->second,storage))
                                     {
                                         break;
                                     }
                                   ++it;
                               }
                           }
-                          auto it = std::next(found);
+                          auto it = found;
                           auto end = elements.end();
                           while (it != end)
                           {
-                            //PolyRender::requestRect(it->second.rect,{1,0,0,1},false,0,1);
                               if (!doCollision(func,collides,element,it->second,storage))
                               {
                                   break;
                               }
                               ++it;
-                          }
-                          if (temporary)
-                          {
-                              elements.erase(found);
-                             // std::cout << elements.size() << "\n";
                           }
                           },wrap,wrap.getBoundingRect());
     }
@@ -486,11 +492,12 @@ public:
         //func should take in a Positional&
         std::unordered_set<Positional*> visited;
         RectPositional rect(selector);
-        processElement([this,&func,&visited](const BiTreeElement& element, BiTreeNode& node) mutable {
-                          BiTreeScore score = calculateScore(element,node);
-                          auto found = elements.insert({score,element}).first;
+        processElement([this,&func,&visited](const BiTreeElement& element) mutable {
+                       int count = 0;
+                          BiTreeScore score = calculateScore(element);
+                          auto found = elements.lower_bound(score);
                           auto storageEnd = visited.end();
-                          if (found != elements.begin())
+                          if (found != elements.begin() && found != elements.end())
                           {
                               auto it = (std::prev(found));
                               while (it != elements.begin())
@@ -510,17 +517,18 @@ public:
                               }
                               if (it == elements.begin())
                               {
+
                                 if (defaultCollides(element,it->second) && visited.find(it->second.positional) == storageEnd)
                                 {
                                     visited.insert(it->second.positional);
+                                    update(*it->second.positional,func);
                                 }
                               }
                           }
-                          auto it = std::next(found);
+                          auto it = found;
                           auto end = elements.end();
                           while (it != end)
                           {
-
                                 if (stopProcessing(element,it->second))
                                 {
                                     break;
@@ -530,40 +538,31 @@ public:
                                 {
                                     visited.insert(it->second.positional);
                                     it = update(*it->second.positional,func,it);
+
                                 }
-                                if (it != end && it->second.positional == old) //if we either didn't update or the update function didn't delete the element, increment
+                              /*  if (it != end && it->second.positional == old) //if we either didn't update or the update function didn't delete the element, increment
                                 {
                                     ++it;
-                                }
+                                }*/
                           }
-                          elements.erase(found);
                           },rect,selector);
     }
-    void showCollisions()
+    template<typename UpdateFunc>
+    void updateAll(UpdateFunc func) //like selectUpdate but it updates everything func should take in a Positional&
     {
-        glm::vec2 mousePos = pairtoVec(MouseManager::getMousePos());
-        Positional p(mousePos);
-        auto it = elements.begin();
-        processElement([&it,this](const BiTreeElement& element, BiTreeNode& node) mutable {
-                       it = insert(element,node);
-                       },p,glm::vec4(mousePos,10,10));
-        auto candidate = std::next(it);
+        auto end = elements.end();
+        std::unordered_set<Positional*> visited;
+        auto storageEnd = visited.end();
         int i = 0;
-        while (candidate != elements.end())
+        for (auto it = this->elements.begin(); it != end;++it)
         {
-            if (    candidate->second.positional == it->second.positional ||
-                    candidate->second.rect.x > it->second.rect.x + it->second.rect.z ||
-                    candidate->second.rect.x < it->second.rect.x)
-                    {
-                        break;
-                    }
-                PolyRender::requestRect(candidate->second.positional->getBoundingRect(),{1,1,0,1},true,0,1);
-                PolyRender::requestRect(candidate->second.rect,{1,0,0,1},true,0,1);
-
-            ++candidate;
-            ++i;
+            auto old = it->second.positional;
+            if (visited.find(it->second.positional) == storageEnd)
+            {
+                visited.insert(it->second.positional);
+                func(*it->second.positional);
+            }
         }
-        remove(p);
     }
 
 };

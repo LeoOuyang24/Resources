@@ -122,12 +122,13 @@ public:
 
 class PathFindComponent : public MoveComponent, public ComponentContainer<PathFindComponent>
 {
+protected:
     std::weak_ptr<NavMesh> mesh;
     Path path;
     bool adjustTilt = false; //whether to call setTiltToTarget with each update
 public:
     PathFindComponent(bool setAngle, std::shared_ptr<NavMesh>& mesh_,float speed, const glm::vec4& rect, Entity& entity);
-    void setTarget(const glm::vec2& point);
+    virtual void setTarget(const glm::vec2& point);
     virtual bool atTarget(); //returns whether or not we have reached our final target
     void update();
 };

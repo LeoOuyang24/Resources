@@ -280,6 +280,25 @@ RenderComponent::~RenderComponent()
 
 }
 
+RectRenderComponent::RectRenderComponent(Entity& entity, const glm::vec4& color_, RenderCamera* camera) : color(color_),  RenderComponent(entity, camera), ComponentContainer<RectRenderComponent>(entity)
+{
+
+}
+
+void RectRenderComponent::render(const SpriteParameter& param)
+{
+    if (entity)
+    if (RectComponent* rect = entity->getComponent<RectComponent>())
+    {
+        PolyRender::requestRect( camera ? camera->toScreen(rect->getRect()) : rect->getRect(),color*param.tint,true, rect->getTilt(),param.z);
+    }
+}
+
+void RectRenderComponent::update()
+{
+    render({});
+}
+
 SpriteParameter SpriteComponent::defaultRender()
 {
     SpriteParameter param;

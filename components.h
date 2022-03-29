@@ -126,7 +126,7 @@ protected:
     float speed = 0;
     float velocity = 0; //the actual amount moved this frame.
     bool ignoreTarget = 0; //sometimes, we just want to move according to the speed and not worry about target. This allows us to do that
-                            //only speed and angle will be used to
+                            //only speed and angle will be used to calculate movement
     glm::vec2 target; //point to move towards
 public:
     MoveComponent(float speed, const glm::vec4& rect, Entity& entity);
@@ -179,6 +179,15 @@ public:
     virtual void render(const SpriteParameter& param);
     RenderCamera* getCamera();
     virtual ~RenderComponent();
+};
+
+class RectRenderComponent : public RenderComponent, public ComponentContainer<RectRenderComponent>
+{
+    glm::vec4 color;
+public:
+    RectRenderComponent(Entity& entity, const glm::vec4& color_, RenderCamera* camera);
+    virtual void render(const SpriteParameter& param);
+    void update();
 };
 
 class SpriteComponent : public RenderComponent, public ComponentContainer<SpriteComponent> //also handles Animations
