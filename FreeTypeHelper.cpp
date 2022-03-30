@@ -195,7 +195,6 @@ void Font::requestWrite(const FontParameter& param)
         x += param.rect.z/2 - getDimen(param.text,scale,1).x/2;
         break;
     }
-    PolyRender::requestRect(glm::vec4(x,param.rect.y,getDimen(param.text,scale,1)),glm::vec4(0,0,0,1),false,0,5);
 //    PolyRender::requestRect(absRect,{0,1,0,1},false,0,-1);
     //std::cout << length << std::endl;
       //  std::cout << "Start: " << writeRequests.size() << std::endl;
