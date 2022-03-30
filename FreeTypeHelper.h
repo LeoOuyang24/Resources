@@ -71,7 +71,7 @@ public:
     }
     void init(std::string source);
     glm::vec2 getDimen(std::string text, GLfloat hScale, GLfloat vScale); //gets the dimensions on text printed if the text were to be printed. The height is based on the bearing rather than the actual character height
-    void requestWrite(FontParameter&& param);
+    void requestWrite(const FontParameter& param);
     void write(); //renders all the FontWrappers in characters
     void clear();
     ~Font();

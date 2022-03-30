@@ -165,7 +165,7 @@ glm::vec2 Font::getDimen(std::string text, GLfloat hScale, GLfloat vScale)
     return {totalWidth,maxHeight};
 }
 
-void Font::requestWrite(FontParameter&& param)
+void Font::requestWrite(const FontParameter& param)
 {
     float scale;
     glm::vec4 absRect = absoluteValueRect(param.rect);
@@ -189,12 +189,13 @@ void Font::requestWrite(FontParameter&& param)
     switch (param.align)
     {
     case RIGHT:
-        x -= getDimen(param.text,scale,1).x;
+        x += param.rect.z - getDimen(param.text,scale,1).x;
         break;
     case CENTER:
-        x -= getDimen(param.text,scale,1).x/2;
+        x += param.rect.z/2 - getDimen(param.text,scale,1).x/2;
         break;
     }
+    PolyRender::requestRect(glm::vec4(x,param.rect.y,getDimen(param.text,scale,1)),glm::vec4(0,0,0,1),false,0,5);
 //    PolyRender::requestRect(absRect,{0,1,0,1},false,0,-1);
     //std::cout << length << std::endl;
       //  std::cout << "Start: " << writeRequests.size() << std::endl;

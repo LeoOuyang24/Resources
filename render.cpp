@@ -945,7 +945,7 @@ void SpriteManager::render()
     bool shouldBeEnabled = glIsEnabled(GL_DEPTH_TEST) == GL_TRUE;
     if (shouldBeEnabled)
     {
-        glDisable(GL_DEPTH_TEST);
+        //glDisable(GL_DEPTH_TEST);
     }
     for (auto it = params.begin(); it != end; ++it)
     {
