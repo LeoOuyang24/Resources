@@ -23,7 +23,8 @@ public:
     bool timePassed(double passed); //returns whether or not the passed time is greater than or equal to passed in milliseconds
     bool framesPassed(gameFrame passed); //returns whether or not the passed frames have passed
     int getTime(); //gets setTime
-    int getTimePassed(); //gets the time since sent. -1 if not sent
+    int getTimePassed(); //gets the time since setTime. -1 if not set
+    int getFramesPassed(); //gets the frames since setFrame. -1 if not set
 };
 
 class KeyManager //the keymanager stores numbers pressed in order based on the most recent key pressed.

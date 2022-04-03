@@ -51,6 +51,10 @@ int DeltaTime::getTimePassed()
     return setTime == -1 ? -1 : SDL_GetTicks() - setTime;
 }
 
+int DeltaTime::getFramesPassed()
+{
+    return setFrame == -1 ? -1 : currentFrame - setFrame;
+}
 
 SDL_Keycode KeyManager::justPressed = -1;
 std::list<SDL_Keycode> KeyManager::numbers;
