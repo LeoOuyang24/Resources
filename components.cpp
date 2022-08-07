@@ -260,7 +260,7 @@ void RealMoveComponent::update()
     speed = oldSpeed;
 }
 
-RenderComponent::RenderComponent(Entity& entity, RenderCamera* camera) : Component(entity), ComponentContainer<RenderComponent>(&entity), camera(camera)
+RenderComponent::RenderComponent(Entity& entity) : Component(entity), ComponentContainer<RenderComponent>(&entity)
 {
 
 }
@@ -270,17 +270,12 @@ void RenderComponent::render(const SpriteParameter& param) //every rendercompone
 
 }
 
-RenderCamera* RenderComponent::getCamera()
-{
-    return camera;
-}
-
 RenderComponent::~RenderComponent()
 {
 
 }
 
-RectRenderComponent::RectRenderComponent(Entity& entity, const glm::vec4& color_, RenderCamera* camera) : color(color_),  RenderComponent(entity, camera), ComponentContainer<RectRenderComponent>(entity)
+RectRenderComponent::RectRenderComponent(Entity& entity, const glm::vec4& color_) : color(color_),  RenderComponent(entity), ComponentContainer<RectRenderComponent>(entity)
 {
 
 }
@@ -290,7 +285,7 @@ void RectRenderComponent::render(const SpriteParameter& param)
     if (entity)
     if (RectComponent* rect = entity->getComponent<RectComponent>())
     {
-        PolyRender::requestRect( camera ? camera->toScreen(rect->getRect()) : rect->getRect(),color*param.tint,true, rect->getTilt(),param.z);
+        PolyRender::requestRect( RenderCamera::currentCamera ? RenderCamera::currentCamera->toScreen(rect->getRect()) : rect->getRect(),color*param.tint,true, rect->getTilt(),param.z);
     }
 }
 
@@ -305,9 +300,9 @@ SpriteParameter SpriteComponent::defaultRender()
     RectComponent* rect = entity->getComponent<RectComponent>();
     if (rect)
     {
-        if (camera)
+        if (RenderCamera::currentCamera)
         {
-            param.rect = camera->toScreen(rect->getRect());
+            param.rect = RenderCamera::currentCamera->toScreen(rect->getRect());
         }
         else
         {
@@ -318,7 +313,7 @@ SpriteParameter SpriteComponent::defaultRender()
     return param;
 }
 
-SpriteComponent::SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity, RenderCamera* camera) : RenderComponent(entity, camera),
+SpriteComponent::SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity) : RenderComponent(entity),
                                                                                                                 ComponentContainer<SpriteComponent>(entity),
                                                                                                                         sprite(&sprite_),
                                                                                                                         animated(animated_)
@@ -338,17 +333,12 @@ void SpriteComponent::setParam(const SpriteParameter& param, const AnimationPara
 {
     this->sParam = param;
     this->aParam = animeParam;
-    modified = modified_;
 }
 
 void SpriteComponent::update()
 {
     if (sprite)
     {
-        if (!modified) //if sParam.rect was not modified at all, attempt to render at the entity's position, if possible
-        {
-            sParam = defaultRender();
-        }
         if (animated)
         {
             static_cast<AnimationWrapper*>(sprite)->request(sParam,aParam);
@@ -357,8 +347,7 @@ void SpriteComponent::update()
         {
             sprite->request(sParam);
         }
-        setParam(SpriteParameter(),AnimationParameter()); //reset params
-        modified = false;
+        setParam(defaultRender(),AnimationParameter()); //reset params
     }
 }
 
@@ -416,6 +405,15 @@ void Entity::update()
     for (auto i = components.begin(); i != end; ++i)
     {
         i->first->update();
+    }
+}
+
+void Entity::updateOnce(int ID)
+{
+    if (taskID != ID)
+    {
+        update();
+        setTaskID(ID);
     }
 }
 
@@ -527,9 +525,13 @@ bool EntityPosManager::forEachEntity(Entity& entity)
 {
     if (RectComponent* rect = entity.getComponent<RectComponent>())
     {
-        bitree->remove(*rect);
+        glm::vec4 oldPos = rect->getRect();
         entity.update();
-        bitree->insert(*rect);
+        grid->findNearest(*rect,[&entity](Positional& r1){
+                              Entity* e1 = &static_cast<RectComponent&>(r1).getEntity();
+                              e1->collide(entity);
+                              });
+        grid->update(*rect,oldPos);
     }
     else
     {
@@ -538,14 +540,14 @@ bool EntityPosManager::forEachEntity(Entity& entity)
     return false;
 }
 
-void EntityPosManager::init(const glm::vec4& rect)
+void EntityPosManager::init(int gridSize)
 {
-    bitree.reset(new BiTree(rect));
+    grid.reset(new SpatialGrid(gridSize));
 }
 
-BiTree* EntityPosManager::getBiTree()
+SpatialGrid* EntityPosManager::getContainer()
 {
-    return bitree.get();
+    return grid.get();
 }
 
 void EntityPosManager::addEntity(const std::shared_ptr<Entity>& entity)
@@ -553,7 +555,7 @@ void EntityPosManager::addEntity(const std::shared_ptr<Entity>& entity)
     EntityManager::addEntity(entity);
     if (auto rect = entity->getComponent<RectComponent>())
     {
-        bitree->insert(*rect);
+        grid->insert(*rect);
     }
 }
 
@@ -572,7 +574,7 @@ EntityPosManager::EntityIt EntityPosManager::removeEntity(Entity* entity)
     {
         if (RectComponent* rect = entity->getComponent<RectComponent>())
         {
-            bitree->remove(*rect);
+            grid->remove(*rect);
         }
         return EntityManager::removeEntity(entity);
     }
@@ -581,17 +583,11 @@ EntityPosManager::EntityIt EntityPosManager::removeEntity(Entity* entity)
 void EntityPosManager::update()
 {
     EntityManager::update(); //REFACTOR: slightly inefficient to update all entities then find collisions for each entity
-    bitree->processCollisions([](RectPositional& r1, RectPositional& r2){
-                              Entity* e1 = &static_cast<RectComponent&>(r1).getEntity();
-                              Entity* e2 = &static_cast<RectComponent&>(r2).getEntity();
-                              e1->collide(*e2);
-                              e2->collide(*e1);
-                              });
 }
 
 void EntityPosManager::reset()
 {
     entities.clear();
-    bitree->clear();
+    grid->clear();
 }
 

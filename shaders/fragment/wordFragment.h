@@ -12,6 +12,6 @@ void main()
     {
         discard;
     }
-    fragColor = vec4(text.r)*shade;
+    fragColor = vec4(shade.xyz,text.r);
 
 }

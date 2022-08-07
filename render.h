@@ -1,5 +1,5 @@
-#ifndef SPRITES_H_INCLUDED
-#define SPRITES_H_INCLUDED
+#ifndef RENDER_H_INCLUDED
+#define RENDER_H_INCLUDED
 
 #include <iostream>
 
@@ -15,25 +15,21 @@
 #include "vanilla.h"
 
 class RenderProgram;
-void drawLine(RenderProgram& program,glm::vec3 color,const std::vector<glm::vec4>& points);
-void drawCircle(RenderProgram& program, glm::vec3 color,double x, double y, double radius);
-void drawNGon(RenderProgram& program, const glm::vec3& color, const glm::vec2& center, double radius, int n, double angle);
-void drawRectangle(RenderProgram& program, const glm::vec3& color, const glm::vec4& rect, double angle);
 void addPointToBuffer(float buffer[], glm::vec3 point, int index);
 void addPointToBuffer(float buffer[], glm::vec2 point, int index);
 void addPointToBuffer(float buffer[], glm::vec4 point, int index);
 
 struct ViewRange
 {
-    static getXRange(const ViewRange& range)
+    static float getXRange(const ViewRange& range)
     {
         return abs(range.xRange[1] - range.xRange[0]);
     }
-    static getYRange(const ViewRange& range)
+    static float getYRange(const ViewRange& range)
     {
         return abs(range.yRange[1] - range.yRange[0]);
     }
-    static getZRange(const ViewRange& range)
+    static float getZRange(const ViewRange& range)
     {
         return abs(range.zRange[1] - range.zRange[0]);
     }
@@ -210,7 +206,7 @@ struct AnimationParameter//the main difference between this class and SpritePara
     int start = -1; //the frame we start at, with the first frame being 0. -1 to use SDL_Ticks to calculate the start
     float fps = -1; //the fps for the animation. -1 means use the default
     unsigned int repeat = 0; //repeats the animation "repeat" times. 0 instantly ends the animation after one frame.
-    glm::vec4 subSection = glm::vec4(0);
+    glm::vec4 subSection = glm::vec4(0); //the portion of the sprite sheet we want to render
     glm::vec4 (RenderCamera::*transform) (const glm::vec4&) const = nullptr; // a transform function for the render location
     RenderCamera* camera = nullptr; //the camera to use with the transform
 };
@@ -221,7 +217,7 @@ class BaseAnimation : public Sprite //the actual animation object
 {
     int fps = 0;
     glm::vec2 frameDimen; //proportion of the spritesheet of each frame
-    glm::vec4 subSection = {0,0,0,0}; //subsection.xy is the origin of the sprite sheet. subsection.za is the framesPerRow and the number of rows wanted. This is a standardized value (0-1).
+    glm::vec4 subSection = {0,0,0,0}; //subsection.xy is the origin of the sprite sheet. This is a standardized value (0-1). subsection.za is the framesPerRow and the number of rows wanted.
 public:
     BaseAnimation(std::string source, int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0});
     BaseAnimation()
@@ -306,7 +302,7 @@ struct PolyRender
     static PolyStorage<glm::vec4> polyColors; //color of each polygon. Color is repeated once for each edge of the polygon
     static PolyStorage<glm::vec3> polyPoints; //points of polygons
     static PolyStorage<GLuint> polyIndices;
-    static int polygonRequests;
+    static int polygonRequests; //number of requests for a polygon
     static RenderProgram polyRenderer;
     static unsigned int VAO;
     static unsigned int lineVBO;
@@ -315,6 +311,7 @@ struct PolyRender
     static void init(int screenWidth, int screenHeight);
     static void requestLine(const glm::vec4& line, const glm::vec4& color, float z = 0, unsigned int thickness = 1, RenderCamera* camera = 0);
     static void requestGradientLine(const glm::vec4& line, const glm::vec4& color1, const glm::vec4& color2, float z = 0, unsigned int thickness = 1, RenderCamera* camera = 0);
+    static void requestCircleSegment(float segHeight,float angle, const glm::vec4& color,const glm::vec2& center, double radius, bool filled, float z); //draw a CircleSegment. Angle = 0 means that only the top of the circle will be drawn.
     static void requestCircle(const glm::vec4& color,const glm::vec2& center, double radius, bool filled, float z);
     static void requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z);
     static void requestNGon(int n, const glm::vec2& center, double side, const glm::vec4& color, double angle, bool filled, float z, bool radius = false); //draws a regular n gon. Angle is in radians. If radius is true, then side is the radius length rather than the side length
@@ -324,7 +321,15 @@ struct PolyRender
     static void renderLines(); //renders lines. Can be called from other functions to render all lines currently requested
     static void renderPolygons();
 private:
-
+    static int getIndiciesNumber() //number of indicies minus restarts
+    {
+        return polyIndices.size() - polygonRequests;
+    }
+    static void addPointAndIndex(const glm::vec3& point) //adds a point to polyPoints as well as the index based on how many indicies have already been added
+    {
+        polyPoints.push_back(point);
+        polyIndices.push_back(getIndiciesNumber());
+    }
     static unsigned short restart; //restart indice
 };
 
@@ -344,4 +349,4 @@ public:
 };
 
 
-#endif // SPRITES_H_INCLUDED
+#endif // RENDER_H_INCLUDED

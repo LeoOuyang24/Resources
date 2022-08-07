@@ -11,18 +11,6 @@
 #include "render.h"
 #include "SDLhelper.h"
 
-void drawRectangle(RenderProgram& program, const glm::vec3& color, const glm::vec4& rect, double angle)
-{
-    glm::vec2 center = {rect.x+rect.z/2,rect.y+rect.a/2};
-    glm::vec2 topL = rotatePoint({rect.x,rect.y},center,angle);
-    glm::vec2 topR = rotatePoint({rect.x+rect.z,rect.y},center,angle);
-    glm::vec2 botL = rotatePoint({rect.x,rect.y+rect.a},center,angle);
-    glm::vec2 botR = rotatePoint({rect.x+rect.z,rect.y+rect.a},center,angle);
-       drawLine(program,color,{{topL.x,topL.y,topR.x,topR.y},
-                                {topL.x, topL.y, botL.x, botL.y},
-                                {topR.x,topR.y,botR.x,botR.y},
-                                {botL.x, botL.y, botR.x, botR.y}});
-}
 
 void addPointToBuffer(float buffer[], glm::vec4 point, int index)
 {
@@ -42,99 +30,6 @@ void addPointToBuffer(float buffer[], glm::vec2 point, int index)
     addPointToBuffer(buffer, {point.x, point.y, 0}, index);
 }
 
-void drawNGon(RenderProgram& program, const glm::vec3& color, const glm::vec2& center, double radius, int n, double angle)
-{
-    if (n > 2)
-    {
-        //glm::vec2 firstVertex = {center.x -radius*cos(angle),center.y + radius*sin(angle)};
-        {
-            int vertNum = (n*3); //basically the number of points
-            float buffer[vertNum];
-            double subAngle = 2*M_PI/n;
-            double angleFar = std::fmod((M_PI/2 - subAngle/2),subAngle) + angle; //angle from the x-axis of the furthest left point.
-            glm::vec2 firstVertex = {center.x - cos(angleFar)*radius, center.y + sin(angleFar)*radius}; //we subtract horizontally because we want the furthest left
-            addPointToBuffer(buffer,firstVertex,0);
-            addPointToBuffer(buffer,rotatePoint(firstVertex,center,-subAngle),3);
-          for (int i = 2; i < n; ++i)
-            {
-                int modI = 3*i;
-                //addPointToBuffer(buffer,rotatePoint({buffer[modI - 6],buffer[modI - 5]},center,((i%2*-2)+1)*subAngle),modI);
-                addPointToBuffer(buffer,rotatePoint({buffer[modI - 3],buffer[modI - 2]},center,-subAngle),modI);
-            }
-            glBindVertexArray(RenderProgram::VAO);
-    glBindBuffer(GL_ARRAY_BUFFER,RenderProgram::VBO);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(buffer),buffer,GL_STATIC_DRAW);
-     glVertexAttribPointer(
-                0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-                3,                  // size
-                GL_FLOAT,           // type
-                GL_FALSE,           // normalized?
-                0,                  // stride
-                (void*)0            // array buffer offset
-            );
-    glEnableVertexAttribArray(0);
-        program.setVec3fv("color",color);
-        program.use();
-        glDrawArrays(GL_POLYGON,0,n);
-        }
-
-    }
-}
-void drawCircle(RenderProgram& program, glm::vec3 color,double x, double y, double radius)
-{
-    GLfloat data[360*3];
-    double convert = 2*M_PI/360;
-    for (int i = 0; i < 360; i ++)
-    {
-        addPointToBuffer(data,{x + cos(i*convert)*radius, y + sin(i*convert)*radius},i*3);
-    }
-    glBindBuffer(GL_ARRAY_BUFFER,RenderProgram::VBO);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(data),data,GL_STATIC_DRAW);
-     glVertexAttribPointer(
-            0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-            3,                  // size
-            GL_FLOAT,           // type
-            GL_FALSE,           // normalized?
-            0,                  // stride
-            (void*)0            // array buffer offset
-        );
-    glEnableVertexAttribArray(0);
-    program.setVec3fv("color",color);
-    program.use();
-    glDrawArrays(GL_LINE_LOOP,0,360);
-    glBindBuffer(GL_ARRAY_BUFFER,0);
-}
-
-void drawLine(RenderProgram& program, glm::vec3 color, const std::vector<glm::vec4>& points)
-{
-    int size = points.size();
-    GLfloat buffer_data[size*6];
-    for (int i = 0;i < size; i ++)
-    {
-        addPointToBuffer(buffer_data,{points[i].x,points[i].y},i*6);
-        addPointToBuffer(buffer_data,{points[i].z,points[i].a},i*6+3);
-    }
-
-glBindBuffer(GL_ARRAY_BUFFER,RenderProgram::VBO);
-long length = sizeof(buffer_data);
-glBufferData(GL_ARRAY_BUFFER,length,buffer_data,GL_STATIC_DRAW);
-//std::cout << glGetError() << std::endl;
- glVertexAttribPointer(
-            0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-            3,                  // size
-            GL_FLOAT,           // type
-            GL_FALSE,           // normalized?
-            0,                  // stride
-            (void*)0            // array buffer offset
-        );
-glEnableVertexAttribArray(0);
-    program.setVec3fv("color",color);
-    program.use();
-    glDrawArrays(GL_LINES,0,size*2);
-    glBindBuffer(GL_ARRAY_BUFFER,0);
-
-
-}
 int loadShaders(const GLchar* source, GLenum shaderType )
 {
     std::ifstream input;
@@ -470,7 +365,7 @@ void Sprite::loadVertices()
 void Sprite::loadVertices(const std::vector<float>& vert)
 {
         int size = vert.size();
-        float verticies[size];
+        float* verticies = new float[size];
         for (int i = 0; i < size; i ++)
         {
             verticies[i] = vert[i];
@@ -480,6 +375,7 @@ void Sprite::loadVertices(const std::vector<float>& vert)
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0,4,GL_FLOAT,GL_FALSE,0,0);
         defaultVerticies = false;
+        delete[] verticies;
 
 }
 void Sprite::reset()
@@ -700,7 +596,7 @@ glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
 {
         //int current =  SDL_GetTicks();
         glm::vec4 backup = subSection;
-        if (param.subSection.z != 0 || param.subSection.a != 0)
+        if (param.subSection.z != 0 || param.subSection.a != 0) //if the param.subSection is invalid, use our preset subsection
         {
             subSection = param.subSection;
         }
@@ -724,7 +620,7 @@ SpriteParameter BaseAnimation::processParam(const SpriteParameter& sParam,const 
 {
     /*Returns a SpriteParameter that represents what to render. sParam.portion is interpreted as the portion of the sprite sheet to render*/
     SpriteParameter param = sParam;
-    if (aParam.transform && aParam.camera)
+    if (aParam.transform && aParam.camera) //call a camera function on our rect to render it according to the camera
     {
         param.rect = ((aParam.camera)->*(aParam.transform))(param.rect);
     }
@@ -776,7 +672,7 @@ void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<Sp
         SpriteParameter param = parameters[i];
         //double timeSince = current - ptr->start;
        // int framesSince = ((ptr->fps == -1)*fps + (ptr->fps != -1)*ptr->fps)*timeSince; //frames that have passed
-        param.portion = getPortion({SDL_GetTicks(),-1});
+        param.portion = getPortion({(int)SDL_GetTicks(),-1});
         params.push_back({param});
     }
     Sprite::renderInstanced(program, params);
@@ -945,11 +841,11 @@ void SpriteManager::render()
     bool shouldBeEnabled = glIsEnabled(GL_DEPTH_TEST) == GL_TRUE;
     if (shouldBeEnabled)
     {
-        //glDisable(GL_DEPTH_TEST);
+        glDisable(GL_DEPTH_TEST);
     }
     for (auto it = params.begin(); it != end; ++it)
     {
-       it->first.second->render(it->second,0);
+       it->first.second->render(it->second,i/100.0);
        ++i;
     }
     if (shouldBeEnabled)
@@ -1022,6 +918,45 @@ void PolyRender::requestGradientLine(const glm::vec4& line, const glm::vec4& col
         lines.push_back(std::pair<glm::vec3, glm::vec4>(glm::vec3(p2,z),color2));
     }
 }
+
+void PolyRender::requestCircleSegment(float segHeight,float angle, const glm::vec4& color,const glm::vec2& center, double radius, bool filled, float z)
+{
+    /*std::cout << "UNIMPLEMENTED!";
+    if (segHeight == 2*radius)
+    {
+        requestCircle(color,center,radius,filled,z);
+    }
+    else
+    {
+        glm::vec2 topPoint = center - glm::vec2(0,radius); //top most point of the circle
+        float chordLength = 2*(sqrt(segHeight*(2*radius - segHeight))); //length of the chord (https://en.wikipedia.org/wiki/Circular_segment#Chord_length_and_height)
+        glm::vec2 finalPoint = topPoint + glm::vec2(chordLength/2,segHeight); //we will always use this point to form a rectanble
+        glm::vec2 prevPoint = topPoint + glm::vec2(-chordLength/2,segHeight); //previous point that we added to polyPoints
+        float turn = M_PI/180; //cycle angle of 360-gon. Literally 1 degree
+
+        int i = 0; //number of points we've pushed in, also coincides with the index number
+        glm::vec2 temp; //used to store the previous point
+        addPointAndIndex(prevPoint);
+        polyColors.push_back(color);
+        while (prevPoint != finalPoint)
+        {
+            temp = next;
+            glm::vec2 nextPoint = rotatePoint(prevPoint, center,turn*((i%2)*2-1));
+            prevPoint = temp;
+            addPointAndIndex(nextPoint);
+            polyColors.push_back(color);
+        }
+        polyIndices.push_back(restart);
+        polygonRequests++;
+
+        addPointAndIndex(prevPoint);
+        addPointAndIndex()
+
+        polygonRequests++;
+        polyIndicies.push_back(restart);
+    }*/
+}
+
 void PolyRender::requestCircle( const glm::vec4& color,const glm::vec2& center, double radius, bool filled, float z)
 {
     requestNGon(360,center,radius,color,0,filled,z,true);
@@ -1048,7 +983,7 @@ void PolyRender::requestRect(const glm::vec4& rect, const glm::vec4& color, bool
     }
     if (filled)
     {
-        int size = polyIndices.size() - polygonRequests;
+        int size = getIndiciesNumber(); //the number of indicies minus the restart indicies
         for (int i = 0;i < 4; ++i)
         {
             polyColors.push_back(color);
@@ -1091,13 +1026,13 @@ void PolyRender::requestNGon(int n, const glm::vec2& center, double side, const 
         glm::vec2 temp;
         polyPoints.push_back({first.x,first.y,z});
         polyColors.push_back(color);
-        int indicies = polyIndices.size() - polygonRequests;
+        int indicies = getIndiciesNumber(); //number of indicies minus restart indicies
         polyIndices.push_back(indicies);
         for (int i = 1; i < n; ++i)
         {
             temp = next;
-            next = rotatePoint(first, center,cycleAngle*((i%2)*2-1));
-            first = temp;
+            next = rotatePoint(first, center,cycleAngle*((i%2)*2-1)); //calculate the next point by rotating the previous point
+            first = temp; //track the previous point
             polyPoints.push_back({next.x,next.y,z});
             polyColors.push_back(color);
             polyIndices.push_back(indicies + i);

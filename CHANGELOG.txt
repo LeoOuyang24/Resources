@@ -1,0 +1,6 @@
+8/7/2022: 
+	- Added TaskID, which allows SpatialGrid to update entities without updating them more than once
+	- Fixed bug where SpatialGrid::Node wasn't hashing entities correctly. SpatialGrid::normalizeCoord is now available globally, allowing Node to use the function
+	- RenderComponent no longer takes in a camera; it's easier just to use RenderCamera::currentCamera. If RenderComponents need different cameras in the future, just change the current camera. 
+	- SpriteComponent no longer has a modified variable. Instead, sParam is set to defaultRender() immediately after rendering; if it's modified, it is rendered as modified. This is a much simpler solution that allows SpriteComponent to be easy to use while also allowing modifications that only last one frame.
+	- RenderProgram now renders sprites in ascending z order again.

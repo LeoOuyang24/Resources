@@ -299,6 +299,7 @@ public:
 
 };
 
+size_t hashCombine(size_t h1, size_t h2); //combines two hashes https://stackoverflow.com/questions/5889238/why-is-xor-the-default-way-to-combine-hashes
 float round(float decimal, int n); //rounds decimal to the nth digit
 bool angleRange(float rad1, float rad2, float range); //returns true if angle rad1 is within range of rad2 (inclusive)
 double randomDecimal(int places); //generates a random decimal between 0 and 1, not including 1. places is the number of decimal places
@@ -670,4 +671,36 @@ public:
     }
 
 };
+
+template<typename...>
+struct AllSameTypes; //can be used to make sure that a parameter pack is all the same type at compile time
+
+
+template<typename T1>
+struct AllSameTypes<T1>
+{
+  constexpr static bool value = true;
+};
+
+template<typename sameAs, typename t1, typename... ts>
+struct AllSameTypes<sameAs, t1, ts...>
+{
+  constexpr static bool value = std::is_same<sameAs,t1>::value && AllSameTypes<sameAs,ts...>::value;
+};
+
+template<typename...>
+struct AllDerivedFrom; //used to make sure that a parameter pack is all derived from the same type at compile time
+
+template<typename T1>
+struct AllDerivedFrom<T1>
+{
+    constexpr static bool value = true;
+};
+
+template<typename Base, typename Derived, typename ... Ds>
+struct AllDerivedFrom<Base, Derived, Ds...>
+{
+    constexpr static bool value = std::is_base_of<Base, Derived>::value && AllDerivedFrom<Base, Ds...>::value;
+};
+
 #endif // VANILLA_H_INCLUDED

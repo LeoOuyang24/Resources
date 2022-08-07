@@ -118,7 +118,7 @@ void Message::update(float mouseX, float mouseY, float z, const glm::vec4& scale
         {
             print = dynamicString();
         }
-        font->requestWrite({print,renderRect,paper.angle,paper.color,getZ() + z + .1});
+        font->requestWrite({print,renderRect,paper.angle,paper.color,(getZ() + z) + .1f});
     }
     paper = originalPaper;
 

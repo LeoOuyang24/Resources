@@ -40,7 +40,7 @@ bool DeltaTime::framesPassed(gameFrame passed)
 
 bool DeltaTime::timePassed(double passed)
 {
-    return isSet() && SDL_GetTicks() - setTime >= passed;
+    return isSet() && std::max((int)(SDL_GetTicks() - setTime),1) >= passed; //convenient to assume that 1 millesecond has always passed
 }
 int DeltaTime::getTime()
 {

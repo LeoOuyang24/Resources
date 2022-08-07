@@ -983,9 +983,9 @@ void EntityTerrainManager::updateTerrain()
     }
 }
 
-void EntityTerrainManager::init(const glm::vec4& rect)
+void EntityTerrainManager::init(int gridSize, const glm::vec4& rect)
 {
-    EntityPosManager::init(rect);
+    EntityPosManager::init(gridSize);
     mesh.reset(new NavMesh(rect));
 }
 

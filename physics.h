@@ -57,7 +57,7 @@ class ChainRenderComponent : public RenderComponent, public ComponentContainer<C
     ChainLinkRender renderFunc;
 public:
     glm::vec4 color;
-    ChainRenderComponent(const glm::vec4 color_,ChainLinkRender renderFunc_, RenderCamera* camera, Entity& entity);
+    ChainRenderComponent(const glm::vec4 color_,ChainLinkRender renderFunc_,  Entity& entity);
     void update();
 };
 

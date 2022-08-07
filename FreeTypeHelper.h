@@ -17,6 +17,11 @@ enum Align
     RIGHT
 };
 
+enum VertAlign
+{
+    UP,VERTCENTER,DOWN
+};
+
 
 struct FontParameter //Represents all the information  required to call the write function given to a font
 {
@@ -26,6 +31,7 @@ struct FontParameter //Represents all the information  required to call the writ
     glm::vec4 color = {0,0,0,1};
     float z = 0;
     Align align = LEFT;
+    VertAlign vertAlign = UP;
 };
 
 class Font

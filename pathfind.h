@@ -112,7 +112,7 @@ protected:
     std::shared_ptr<NavMesh> mesh;
     virtual void updateTerrain();
 public:
-    virtual void init(const glm::vec4& rect);
+    virtual void init(int gridSize, const glm::vec4& rect);
     void addTerrain(Terrain& box);
     using EntityPosManager::addEntity;
     void addEntity(Entity& entity, float x,float y, bool centered = true);

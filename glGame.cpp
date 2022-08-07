@@ -1,6 +1,7 @@
 #include "SDL.h"
 
 #include "glGame.h"
+#include "components.h"
 #include "render.h"
 
 bool rectPathIntersect(const glm::vec4& oldRect, const glm::vec4& newRect, const glm::vec4& collide)
@@ -950,3 +951,34 @@ RawQuadTree* RawQuadTree::update(Positional& positional, RawQuadTree& expected)
 
 }
 
+void SpatialGrid::updateEntities(const glm::vec4& region)
+{            //func = (Positional&, Positional&) => void;
+        taskID ++;
+        processAllNodes(region,[this](const glm::vec2& point, Node& node) mutable {
+                        int i =0;
+                        glm::vec4 oldPos = glm::vec4(0);
+                        for ( auto it = node.end; i < node.size; i++)
+                        {
+                            RectComponent* r1 = static_cast<RectComponent*>(*it);
+                            oldPos = r1->getRect();
+                            glm::vec4 oldBounding = r1->getBoundingRect();
+                            if (it != positionals.begin()) //if not the literal first element (in which case there are no other positionals to process);
+                            {
+                                int j = i + 1;
+                                for (auto it2 = std::prev(it); j < node.size; j++, --it2) //process all elements after "it" so each pair is only processed once
+                                {
+                                    RectComponent* r2 = static_cast<RectComponent*>(*it2);
+                                    if (vecIntersect(oldPos,r2->getRect(),r1->getTilt(),r2->getTilt()))
+                                    {
+                                        r1->getEntity().collide(r2->getEntity());
+                                        r2->getEntity().collide(r1->getEntity());
+                                    }
+                                }
+                            }
+                            r1->getEntity().updateOnce(taskID);
+                            auto nextIt = std::prev(it); //have to do this because update function might invalidate "it";
+                            update(*r1,oldBounding);
+                            it = nextIt;
+                        }
+                        });
+}

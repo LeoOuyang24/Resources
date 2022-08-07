@@ -172,12 +172,9 @@ public:
 
 class RenderComponent : public Component, public ComponentContainer<RenderComponent>
 {
-protected:
-    RenderCamera* camera = nullptr;
 public:
-    RenderComponent(Entity& entity, RenderCamera* camera);
+    RenderComponent(Entity& entity);
     virtual void render(const SpriteParameter& param);
-    RenderCamera* getCamera();
     virtual ~RenderComponent();
 };
 
@@ -185,26 +182,26 @@ class RectRenderComponent : public RenderComponent, public ComponentContainer<Re
 {
     glm::vec4 color;
 public:
-    RectRenderComponent(Entity& entity, const glm::vec4& color_, RenderCamera* camera);
+    RectRenderComponent(Entity& entity, const glm::vec4& color_);
     virtual void render(const SpriteParameter& param);
     void update();
 };
 
 class SpriteComponent : public RenderComponent, public ComponentContainer<SpriteComponent> //also handles Animations
 {
-    SpriteWrapper* sprite = nullptr;
-    SpriteParameter sParam;
-    AnimationParameter aParam;
     bool animated = false; //whether it's an animation or sprite
     bool modified = false; //by default, the SpriteComponent will attempt to render at the entity's position. If either sParam or aParam are modified, this
                             //component will render according to sParam and aParam
 protected:
+    SpriteWrapper* sprite = nullptr;
+    SpriteParameter sParam;
+    AnimationParameter aParam;
     virtual SpriteParameter defaultRender(); //returns the sprite parameter used if modified is false
 public:
-    SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity, RenderCamera* camera = RenderCamera::currentCamera); //loads a sprite or animation
+    SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity); //loads a sprite or animation
     virtual void render(const SpriteParameter& param);
     void setParam(const SpriteParameter& param, const AnimationParameter& animeParam = AnimationParameter(), bool modified_= true); //set modified to true if you don't want to call default render
-    void update();
+    void update(); //renders the sprite, taking the RenderCamera into account automatically
     virtual ~SpriteComponent()
     {
 
@@ -215,7 +212,7 @@ class BaseHealthComponent : public Component, public ComponentContainer<BaseHeal
 {
 protected:
     DeltaTime invuln;
-    float invulnTime; //how long to be invincible for after taking damage
+    float invulnTime; //how long to be invincible for after taking damage (milliseconds)
     float maxHealth = 0; //set maxHealth to be negative one to basically have no max health limit
     float health = 0;
 public:
@@ -229,13 +226,24 @@ public:
     }
 };
 
+
 class Entity
 {
 protected:
     std::unordered_map<Component*,std::shared_ptr<Component>> components;
+    TASK_ID taskID = 0; //this ID makes it easy to track if an entity has already called update this frame.
 public:
      Entity();
     void update();
+    void updateOnce(TASK_ID ID); //given a task ID, check if this entity matches it; if so, then this entity has already been updated this frame and should not be updated again), otherwise, update() as usual
+    void setTaskID(TASK_ID ID)
+    {
+        taskID = ID;
+    }
+    TASK_ID getTaskID()
+    {
+        return taskID;
+    }
     void collide(Entity& entity);
     template<typename T>
     T* getComponent()
@@ -307,12 +315,12 @@ public:
 
 class EntityPosManager : public EntityManager//Entity Manager that also keeps a quadtree to track entity position
 {
-    std::unique_ptr<BiTree> bitree;
+    std::unique_ptr<SpatialGrid> grid;
 protected:
     virtual bool forEachEntity(Entity& entity);
 public:
-    virtual void init(const glm::vec4& rect);
-    BiTree* getBiTree(); //can return null, most likely because init was never called
+    virtual void init(int gridSize);
+    SpatialGrid* getContainer(); //can return null, most likely because init was never called
     using EntityManager::addEntity;
     virtual void addEntity(const std::shared_ptr<Entity>& ptr);
     virtual void addEntity(Entity& entity, float x, float y, bool centered = true); //sets center position if centered is true, otherwise sets top left corner

@@ -243,6 +243,11 @@ std::string convert(int input) //takes an int and returns the int in string form
     return os.str();
 }
 
+size_t hashCombine( size_t lhs, size_t rhs ) {
+  lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  return lhs;
+}
+
 float round(float decimal, int n)
 {
     int ten = pow(10,n);

@@ -39,4 +39,14 @@ glm::vec4 moveRect(const glm::vec4& rect, const glm::vec4& wall, const glm::vec2
                                                                                             //rects inside the wall will be pushed out
                                                                                             //rotation is the angle rect is rotated at
 
+template<int N>
+glm::vec<N,float> betterNormalize(const glm::vec<N,float>& vec) //given a vector of N floats, normalizes it. Unlike glm::normalize, this function returns a 0 vector if a 0 vector is the input (instead of "nan" vector)
+{
+    if (vec == glm::vec<N,float>(0))
+    {
+        return glm::vec<N,float>(0);
+    }
+    return glm::normalize(vec);
+}
+
 #endif // GEOMETRY_H_INCLUDED

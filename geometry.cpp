@@ -358,7 +358,7 @@ bool lineInVec(const glm::vec2& point1,const glm::vec2& point2, const glm::vec4&
             lineInLine(topLeft,botLeft,p1,p2) ||
             lineInLine(topRight,botRight,p1,p2) ||
             lineInLine(botLeft,botRight,p1,p2) ||
-            pointInVec(r1,p1,0); //only need to check one point because if only one point is in, then there must be a collision between the line and the sides
+            pointInVec(r1,p1,0);
 }
 
 bool pointInTriangle (const glm::vec2 a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& p)

@@ -185,7 +185,7 @@ void Font::requestWrite(const FontParameter& param)
 
     auto screenDimen = (RenderProgram::getScreenDimen()); //we need to find the dimensions of the screen vs the dimensions of the projection matrix and scale accordingly. We will assume that the ortho and screen dimen start at 0
 
-    double x = absRect.x;
+    double x = absRect.x, y = absRect.y;
     switch (param.align)
     {
     case RIGHT:
@@ -193,6 +193,15 @@ void Font::requestWrite(const FontParameter& param)
         break;
     case CENTER:
         x += param.rect.z/2 - getDimen(param.text,scale,1).x/2;
+        break;
+    }
+    switch (param.vertAlign)
+    {
+    case VERTCENTER:
+        y += param.rect.a/2 - getDimen(param.text,1,scale).y/2;
+        break;
+    case DOWN:
+        y += param.rect.a - getDimen(param.text,1,scale).y;
         break;
     }
 //    PolyRender::requestRect(absRect,{0,1,0,1},false,0,-1);
@@ -206,7 +215,7 @@ void Font::requestWrite(const FontParameter& param)
         const glm::vec2* bearing = &ch->getBearing();
         const glm::vec2* chSize = &ch->getSize();
         GLfloat xpos = x +bearing->x*scale;
-        GLfloat ypos = (absRect.y)+ (maxVert.x - bearing->y)*scale;
+        GLfloat ypos = y+ (maxVert.x - bearing->y)*scale;
         //std::cout << c << " " << xpos<< " "<< ypos << std::endl;
         glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
         GLfloat w = chSize->x*scale;

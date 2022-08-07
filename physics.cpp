@@ -102,8 +102,8 @@ void ChainLinkComponent::update()
     }
 }
 
-ChainRenderComponent::ChainRenderComponent(const glm::vec4 color_,ChainLinkRender renderFunc_, RenderCamera* camera, Entity& entity) :
-                                                                                RenderComponent(entity, camera),
+ChainRenderComponent::ChainRenderComponent(const glm::vec4 color_,ChainLinkRender renderFunc_, Entity& entity) :
+                                                                                RenderComponent(entity),
                                                                                 ComponentContainer<ChainRenderComponent>(entity),
                                                                                 renderFunc(renderFunc_),
                                                                                 color(color_)
@@ -134,7 +134,7 @@ Chain::Chain(ChainLinkRender renderFunc_, const glm::vec4& color1, const glm::ve
         glm::vec2 spawn = start + (float)i*tilt;
         link->addComponent(*(new MoveComponent(0,glm::vec4(spawn,1,1),*link.get())));
         link->addComponent(*(new ChainLinkComponent(*link.get(),prev,linkDist_,tension_,friction_)));
-        link->addComponent(*(new ChainRenderComponent(color1 + (float)i/length*gradient,renderFunc_,RenderCamera::currentCamera,*link.get())));
+        link->addComponent(*(new ChainRenderComponent(color1 + (float)i/length*gradient,renderFunc_,*link.get())));
         prev = link;
         if (i == 0)
         {
