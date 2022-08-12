@@ -325,30 +325,33 @@ void SpriteComponent::render(const SpriteParameter& param)
 {
     if (sprite)
     {
-        sprite->request(param);
+            if (animated)
+            {
+                static_cast<AnimationWrapper*>(sprite)->request(param,aParam);
+            }
+            else
+            {
+                sprite->request(param);
+            }
     }
+
 }
 
-void SpriteComponent::setParam(const SpriteParameter& param, const AnimationParameter& animeParam, bool modified_)
+void SpriteComponent::setParam(const SpriteParameter& param, const AnimationParameter& animeParam)
 {
     this->sParam = param;
+    setAParam(animeParam);
+}
+
+void SpriteComponent::setAParam(const AnimationParameter& animeParam)
+{
     this->aParam = animeParam;
 }
 
 void SpriteComponent::update()
 {
-    if (sprite)
-    {
-        if (animated)
-        {
-            static_cast<AnimationWrapper*>(sprite)->request(sParam,aParam);
-        }
-        else
-        {
-            sprite->request(sParam);
-        }
+        render(sParam);
         setParam(defaultRender(),AnimationParameter()); //reset params
-    }
 }
 
 BaseHealthComponent::BaseHealthComponent(float invulnTime_, float health_,float maxHealth_, Entity& entity) :
@@ -360,18 +363,23 @@ BaseHealthComponent::BaseHealthComponent(float invulnTime_, float health_,float 
 
 void BaseHealthComponent::addHealth(float damage)
 {
-    if (maxHealth == -1)
+    if ((damage < 0 && !isInvuln()) || damage > 0) //only modify health if it is positive or if we are taking damage and are not invulnerable
     {
-        health = std::max(0.0f, health + damage);
+        if (maxHealth == -1)
+        {
+            health = std::max(0.0f, health + damage);
+        }
+        else
+        {
+            health = std::max(0.0f, std::min(maxHealth, health + damage));
+        }
+        if (damage < 0)
+        {
+            invuln.set();
+        }
     }
-    else
-    {
-        health = std::max(0.0f, std::min(maxHealth, health + damage));
-    }
-    if (damage < 0)
-    {
-        invuln.set();
-    }
+
+
 }
 
 float BaseHealthComponent::getHealth()
@@ -379,9 +387,9 @@ float BaseHealthComponent::getHealth()
     return health;
 }
 
-bool BaseHealthComponent::getInvuln()
+bool BaseHealthComponent::isInvuln()
 {
-    return invuln.timePassed(invulnTime);
+    return !invuln.timePassed(invulnTime) && invuln.isSet(); //invulnerable if invincibility frames have passed and the timer was set
 }
 
 Entity::Entity()

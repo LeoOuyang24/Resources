@@ -1,5 +1,17 @@
 This document keeps track of all changes as well as considered changes made to the resources as well as why they were made. Consider this a "learning from the past" kind of document. 
 
+
+8/12/2022:
+	- Sequencer now instead of calling a Callable once a frame for a set duration, will now guarantee that a Callable will run its requested number of iterations (unless Callable's function returns true of course). This eliminates the need for a "timePassed" variable, and is instead replaced with "numOfReps" which represents the number of times we've called the Callable. This helps ensure that if the number of repetitions is higher than the time frame, that they will all be run and at a higher rate than before. Previously, a Callable would never be called more times than the time frame; at best it would called the same number of times, since a Callable could at most be called once per frame. Now, a Callable can be called an unlimited number of times a frame.
+
+
+8/7/2022: 
+	- Added TaskID, which allows SpatialGrid to update entities without updating them more than once
+	- Fixed bug where SpatialGrid::Node wasn't hashing entities correctly. SpatialGrid::normalizeCoord is now available globally, allowing Node to use the function
+	- RenderComponent no longer takes in a camera; it's easier just to use RenderCamera::currentCamera. If RenderComponents need different cameras in the future, just change the current camera. 
+	- SpriteComponent no longer has a modified variable. Instead, sParam is set to defaultRender() immediately after rendering; if it's modified, it is rendered as modified. This is a much simpler solution that allows SpriteComponent to be easy to use while also allowing modifications that only last one frame.
+	- RenderProgram now renders sprites in ascending z order again.
+
 12/5/2019:
 	RawQuadTree was changed from a quadtree of raw pointers to weak pointers before being changed back to raw pointers. The reason for changing to weak pointers was to prevent dangling pointers in the case of a master list deleting an object. However, there's no reason to use weak ptr because removal of the object from the master list also removes the pointer from the quadtree. The benefit of a weak_ptr is that it keeps track of whether or not 
 the object still exists but in this case, it wouldn't matter since the pointer would be deleted anyway. The remove function from the quadtree already removes the pointers in the tree, so it makes no sense to have weak_ptr. 

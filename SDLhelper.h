@@ -20,7 +20,7 @@ public:
     void set(); //sets the time to SDL_GetTicks and setFrame to the currentFrame
     virtual void reset(); //sets time to -1
     bool isSet(); //returns whether or not the alarm is set
-    bool timePassed(double passed); //returns whether or not the passed time is greater than or equal to passed in milliseconds
+    bool timePassed(double passed); //returns whether or not the passed time is greater than or equal to passed in milliseconds and the alarm is set
     bool framesPassed(gameFrame passed); //returns whether or not the passed frames have passed
     int getTime(); //gets setTime
     int getTimePassed(); //gets the time since setTime. -1 if not set

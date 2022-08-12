@@ -200,7 +200,8 @@ protected:
 public:
     SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity); //loads a sprite or animation
     virtual void render(const SpriteParameter& param);
-    void setParam(const SpriteParameter& param, const AnimationParameter& animeParam = AnimationParameter(), bool modified_= true); //set modified to true if you don't want to call default render
+    void setParam(const SpriteParameter& param, const AnimationParameter& animeParam = AnimationParameter()); //set modified to true if you don't want to call default render
+    void setAParam(const AnimationParameter& animeParam); //set only aParam so sParam isn't overriden
     void update(); //renders the sprite, taking the RenderCamera into account automatically
     virtual ~SpriteComponent()
     {
@@ -219,7 +220,7 @@ public:
     BaseHealthComponent(float invulnTime_,float health_, float maxHealth_, Entity& entity);
     virtual void addHealth(float damage); //damage can be positive or negative
     float getHealth();
-    bool getInvuln();
+    bool isInvuln(); //return true if still invulnerable
     virtual ~BaseHealthComponent()
     {
 

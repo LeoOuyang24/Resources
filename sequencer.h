@@ -14,7 +14,7 @@ struct Callable //creates a base class for all sequence units to inherit from. R
 {
     int time= 0; //how long to run func
     int repetitions = 0; //number of times to run
-    bool inFrames = true; //true if time is expressed in frames, otherwise, milliseconds
+    bool inFrames = true; //true if "time" is expressed in frames, otherwise, milliseconds
     virtual bool operator()(int) = 0;
 };
 
@@ -22,13 +22,13 @@ template<typename T>
 struct SequenceUnit : public Callable
 {
     T func; //func is a function that will be run for the duration of "time". Returns true if this unit should no longer be processed func: (int) => bool;
-    SequenceUnit(int time_, int repetitions_, int inFrames_, T func_) : func(func_)
+    SequenceUnit(int time_, int repetitions_, bool inFrames_, T func_) : func(func_)
     {
         time = time_;
         repetitions = repetitions_;
         inFrames = inFrames_;
     }
-    bool operator()(int passed) //time spent on this unit, in either milliseconds or frames, is passed to the function
+    bool operator()(int passed) //time spent on this repetition, in either milliseconds or frames, is passed to the function
     {
         if constexpr(std::is_void<decltype(func(passed))>::value) //if you are a big stinky fool and you forget to return something, this unit will run until time is up
         {
@@ -45,29 +45,34 @@ struct SequenceUnit : public Callable
 class Sequencer
 {
     //runs a sequence of Sequence Units
-    //Sequencer moves on after a unit's time frame is up, so there is no guarantee that each unit will actually run the correct number of times due to overhead each frame.
 protected:
     typedef std::shared_ptr<Callable> CallablePtr;
     typedef std::list<CallablePtr> Sequence;
 
     DeltaTime timer;
-    long timePassed = 0; //time spent on a unit so far. Frames or milliseconds depends on unit
-    Sequence sequence;
+    int numOfReps = 0; //number of times we've called the current callable
     Sequence::iterator current; //the unit we are currently on
+    Sequence sequence;
 
     bool durationDone(int time, bool inFrames) //returns if a unit is done
     {
         return (inFrames && timer.framesPassed(time)) || (!inFrames && timer.timePassed(time));
     }
+    int repetitionsElapsed(Callable& callable) //given a callable, returns how many times it should have been called in the time that has elapsed
+    {
+        //return an int because we want to round down
+        float timePerRep = ((float)callable.time/callable.repetitions); //time that should be spent on each repetition
+        return callable.inFrames ? timer.getFramesPassed()/timePerRep
+                                  : timer.getTimePassed()/timePerRep;
+    }
     virtual bool perUnitProcess() //what to run for the current sequenceUnit. Returns whether or not to continue running current
     {
         bool done = false;
-        if (durationDone((*current)->time/(*current)->repetitions,(*current)->inFrames)) //if enough time has passed to run func
+        int repsElapsed = repetitionsElapsed(*current->get());
+        while (repsElapsed > numOfReps && !done) //Call the current Callable the number of times we should've called it since our last time calling. Terminate early if the function returns "true" (meaning it is done)
         {
-            auto timeSpent = (*current)->inFrames ? timer.getFramesPassed() : timer.getTimePassed(); //time since last frame, in either milliseconds or frames
-            timePassed += timeSpent;
-            done = (*(current->get()))(timePassed); //run the function
-            timer.set();
+            done = done || (*(current->get()))((*current)->inFrames ? timer.getFramesPassed() : timer.getTimePassed()); //run the function and update done. Also pass in how many frames/milliseconds since we began running this Callable
+            numOfReps++;
         }
         return done;
     }
@@ -75,7 +80,7 @@ protected:
     {
         std::advance(current,1);
         timer.reset();
-        timePassed = 0;
+        numOfReps = 0;
     }
 
 public:
@@ -85,7 +90,7 @@ public:
     }
     void reset()
     {
-        timePassed = 0;
+        numOfReps = 0;
         timer.reset();
         current = sequence.begin();
     }
@@ -109,18 +114,14 @@ public:
             {
                 current = sequence.begin();
             }
-            if (timer.isSet()) //one sequence is already running
-            {
-                bool done = perUnitProcess();
-
-                if (done || (timePassed >= (*current)->time)) //we've spent enough time on current, move on
-                {
-                    perUnitDone();
-                }
-            }
-            else
+            if (!timer.isSet())
             {
                 timer.set();
+            }
+            bool done = perUnitProcess();
+            if (done || (numOfReps == ((*current)->repetitions))) //we've spent enough time on current, move on
+            {
+                perUnitDone();
             }
         }
     }
