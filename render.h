@@ -12,6 +12,7 @@
 #include "gtc/matrix_transform.hpp"
 #include "gtc/type_ptr.hpp"
 
+#include "SDLhelper.h";
 #include "vanilla.h"
 
 class RenderProgram;
@@ -219,11 +220,16 @@ class BaseAnimation : public Sprite //the actual animation object
     glm::vec2 frameDimen; //proportion of the spritesheet of each frame
     glm::vec4 subSection = {0,0,0,0}; //subsection.xy is the origin of the sprite sheet. This is a standardized value (0-1). subsection.za is the framesPerRow and the number of rows wanted.
 public:
+    static getFrameIndex(int startingFrame, int timePerFrame) //given the frame an animation has started at and the time to spend per frame, return which frame should be rendered
+    {
+        return (DeltaTime::getCurrentFrame() - startingFrame)/timePerFrame;
+    }
     BaseAnimation(std::string source, int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0});
     BaseAnimation()
     {
 
     }
+    int getFPS();
     int getFrames();
     glm::vec2 getDimen(); //does not return the dimensions of the whole spritesheet but rather the size of the portion to be rendered.
     int getDuration(int speed = -1); //returns the duration of the full animation in milliseconds
@@ -333,20 +339,6 @@ private:
     static unsigned short restart; //restart indice
 };
 
-class AnimationSequencer //allows us to more creatively sequence animation frames together
-{
-    int totalFrames = 0;
-    int fullDuration = 0;
-    int infoSize = 0;
-    glm::vec3* info = nullptr; //x value is the duration of the sequence (ms), y is the number of frames should pass during that time, z is the frame that starts at each sequence
-    int getStateIndex(int frameStart, int* timeSince); //gets frameStart AND the left over time, which is placed into timeSince
-public:
-    AnimationSequencer(const std::vector<glm::vec2>& info_);
-    AnimationParameter process(int frameStart);
-    int getStateIndex(int frameStart); //returns -1 if we are done
-    bool isDone(int frameStart);
-    ~AnimationSequencer();
-};
 
 
 #endif // RENDER_H_INCLUDED

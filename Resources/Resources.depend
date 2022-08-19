@@ -571,7 +571,7 @@
 1525706584 c:\users\leoou\onedrive\desktop\glm\glm\gtc\type_ptr.inl
 	<cstring>
 
-1659537704 c:\users\leoou\onedrive\desktop\resources\render.h
+1660929886 c:\users\leoou\onedrive\desktop\resources\render.h
 	<iostream>
 	<vector>
 	<map>
@@ -580,6 +580,7 @@
 	"glm.hpp"
 	"gtc/matrix_transform.hpp"
 	"gtc/type_ptr.hpp"
+	"SDLhelper.h"
 	"vanilla.h"
 
 1654302666 source:c:\users\leoou\onedrive\desktop\resources\geometry.cpp
@@ -936,7 +937,7 @@
 	"SDLhelper.h"
 	"render.h"
 
-1659631239 source:c:\users\leoou\onedrive\desktop\resources\render.cpp
+1660803206 source:c:\users\leoou\onedrive\desktop\resources\render.cpp
 	<sstream>
 	<fstream>
 	"stb_image.h"
@@ -962,7 +963,7 @@
 	<intrin.h>
 	<arm_neon.h>
 
-1649020737 source:c:\users\leoou\onedrive\desktop\resources\sdlhelper.cpp
+1660335988 source:c:\users\leoou\onedrive\desktop\resources\sdlhelper.cpp
 	"SDLhelper.h"
 	<iostream>
 
@@ -973,7 +974,7 @@
 	"render.h"
 	"components.h"
 
-1659911849 c:\users\leoou\onedrive\desktop\resources\components.h
+1660929652 c:\users\leoou\onedrive\desktop\resources\components.h
 	<memory.h>
 	<unordered_map>
 	<unordered_set>
@@ -1024,12 +1025,13 @@
 	"components.h"
 	"glGame.h"
 
-1649781308 source:c:\users\leoou\onedrive\desktop\resources\sequencer.cpp
+1660543548 source:c:\users\leoou\onedrive\desktop\resources\sequencer.cpp
 	"sequencer.h"
 
-1660277669 c:\users\leoou\onedrive\desktop\resources\sequencer.h
+1660804462 c:\users\leoou\onedrive\desktop\resources\sequencer.h
 	<memory>
 	<unordered_set>
 	"vanilla.h"
 	"SDLhelper.h"
+	"render.h"
 

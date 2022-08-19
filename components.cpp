@@ -294,7 +294,7 @@ void RectRenderComponent::update()
     render({});
 }
 
-SpriteParameter SpriteComponent::defaultRender()
+SpriteParameter SpriteComponent::defaultSParam()
 {
     SpriteParameter param;
     RectComponent* rect = entity->getComponent<RectComponent>();
@@ -311,6 +311,17 @@ SpriteParameter SpriteComponent::defaultRender()
         param.radians = rect->getTilt();
     }
     return param;
+}
+
+AnimationParameter SpriteComponent::defaultAParam()
+{
+    AnimationParameter aParam;
+    if (animated && sprite)
+    {
+        BaseAnimation* anime = static_cast<BaseAnimation*>(sprite->getSprite());
+        aParam.start = BaseAnimation::getFrameIndex(startingFrame,anime->getFPS());
+    }
+    return aParam; //does nothing if the sprite is not animated
 }
 
 SpriteComponent::SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity) : RenderComponent(entity),
@@ -351,7 +362,7 @@ void SpriteComponent::setAParam(const AnimationParameter& animeParam)
 void SpriteComponent::update()
 {
         render(sParam);
-        setParam(defaultRender(),AnimationParameter()); //reset params
+        setParam(defaultSParam(),defaultAParam()); //reset params
 }
 
 BaseHealthComponent::BaseHealthComponent(float invulnTime_, float health_,float maxHealth_, Entity& entity) :

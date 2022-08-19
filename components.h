@@ -190,13 +190,13 @@ public:
 class SpriteComponent : public RenderComponent, public ComponentContainer<SpriteComponent> //also handles Animations
 {
     bool animated = false; //whether it's an animation or sprite
-    bool modified = false; //by default, the SpriteComponent will attempt to render at the entity's position. If either sParam or aParam are modified, this
-                            //component will render according to sParam and aParam
 protected:
+    int startingFrame = 0; //this number is useful for calculating which frame to render right now. Used in defaultAParam(); Set to DeltaTime::currentFrame to render the first frame
     SpriteWrapper* sprite = nullptr;
     SpriteParameter sParam;
     AnimationParameter aParam;
-    virtual SpriteParameter defaultRender(); //returns the sprite parameter used if modified is false
+    virtual SpriteParameter defaultSParam(); //returns the sprite parameter used by default
+    virtual AnimationParameter defaultAParam(); //returns the Animation Parameter used by default
 public:
     SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity); //loads a sprite or animation
     virtual void render(const SpriteParameter& param);

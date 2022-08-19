@@ -6,6 +6,7 @@
 
 #include "vanilla.h"
 #include "SDLhelper.h"
+#include "render.h"
 
 //this file helps chain events together(ex: create a hitbox when an animation ends)
 //realistically, it'll probably be used with animations primarily but can be used to do anything that occurs over time
@@ -150,5 +151,7 @@ public:
     }
 
 };
+
+
 
 #endif // SEQUENCER_H_INCLUDED

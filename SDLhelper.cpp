@@ -26,6 +26,7 @@ void DeltaTime::set()
 void DeltaTime::reset()
 {
     setTime = -1;
+    setFrame = -1;
 }
 bool DeltaTime::isSet()
 {

@@ -573,6 +573,11 @@ BaseAnimation::BaseAnimation(std::string source, int speed, int perRow, int rows
     init(source,speed,perRow,rows,  sub);
 }
 
+int BaseAnimation::getFPS()
+{
+    return fps;
+}
+
 int BaseAnimation::getFrames()
 {
     return subSection.z*subSection.a;
@@ -605,11 +610,13 @@ glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
         int framesSince = param.start;
         if (param.start < 0 )
         {
-            framesSince = ((param.fps == -1)*fps + (param.fps != -1)*param.fps)*(SDL_GetTicks() + param.start)/1000.0; //frames that have passed
+            framesSince = ((param.fps == -1)*fps + (param.fps != -1)*param.fps)*(SDL_GetTicks())/1000.0; //frames that have passed
         }
 
         glm::vec4 answer = {frameDimen.x*(framesSince%(perRow)) + subSection.x,
-        (frameDimen.y*((framesSince/perRow)%rows)) + subSection.y,frameDimen.x, frameDimen.y};
+        (frameDimen.y*((framesSince/perRow)%rows)) + subSection.y,
+        frameDimen.x,
+        frameDimen.y};
 
         subSection = backup;
 
@@ -1156,69 +1163,5 @@ void PolyRender::render()
     {
         renderPolygons();
     }
-}
-
-int AnimationSequencer::getStateIndex(int frameStart,int* timeSince_)
-{
-    int timeSince = (SDL_GetTicks() - frameStart)%fullDuration; //normalize our time since our animation started
-    int index = infoSize - 1;
-    for (int i = 0; i < infoSize; ++i)
-    {
-      //  std::cout << info[index].x << " " << timeSince << "\n";
-        if (timeSince - info[i].x <= 0)
-        {
-            index = std::max(i,0);
-            break;
-        }
-        timeSince -= info[i].x;
-    }
-    if (timeSince_)
-    {
-        *timeSince_ = timeSince;
-    }
-    return index;
-}
-
-AnimationSequencer::AnimationSequencer(const std::vector<glm::vec2>& baseInfo)
-{
-    info = new glm::vec3[baseInfo.size()];
-    infoSize = baseInfo.size();
-    for (int i = 0; i < infoSize; ++i)
-    {
-        info[i] = {baseInfo[i].x,baseInfo[i].y,totalFrames};
-        fullDuration += baseInfo[i].x;
-        totalFrames += baseInfo[i].y;
-    }
-}
-
-AnimationParameter AnimationSequencer::process(int frameStart)
-{
-    //std::cout << (SDL_GetTicks() - frameStart) << "\n";
-    int timeSince = 0;
-    int index = getStateIndex(frameStart,&timeSince);
-    AnimationParameter param;
-    param.fps = 1000.0*info[index].y/info[index].x;
-    param.start = fmod((timeSince*info[index].y/info[index].x + info[index].z),totalFrames);
-    //std::cout << timeSince << " " << param.start << " " << index << "\n";
-    return param;
-}
-
-int AnimationSequencer::getStateIndex(int frameStart)
-{
-    if (isDone(frameStart))
-    {
-        return -1;
-    }
-    return getStateIndex(frameStart,nullptr);
-}
-
-bool AnimationSequencer::isDone(int frameStart)
-{
-    return SDL_GetTicks() - frameStart >= fullDuration;
-}
-
-AnimationSequencer::~AnimationSequencer()
-{
-
 }
 
