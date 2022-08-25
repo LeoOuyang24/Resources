@@ -70,7 +70,7 @@ public:
     static void resetRange();
     static glm::mat4 getOrtho(); //gets projection matrix
     static glm::vec2 getScreenDimen();
-    void setMatrix4fv(std::string name, const GLfloat* value);
+    void setMatrix4fv(std::string name, const GLfloat* value); //pass in the address of the first number in the matrix for this to work
     void setVec3fv(std::string name,glm::vec3 value);
     void setVec4fv(std::string name, glm::vec4 value);
     void setVec2fv(std::string name, glm::vec2 value);
@@ -88,6 +88,8 @@ public:
     static RenderCamera* currentCamera; //a pointer to the current camera in use.
     virtual void init(int w, int h); //we use an init instead of constructor since we don't always know what the dimensions are when creating the object.
     const glm::vec4& getRect() const;
+    void setRect(const glm::vec4& rect_);
+    void addVector(const glm::vec2& moveVector); //add vector to topleft corner
     void recenter(const glm::vec2& point);
 
     glm::vec2 toScreen(const glm::vec2& point) const; //converts a rect from the world coordinate to the screen coordinate

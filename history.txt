@@ -1,5 +1,7 @@
 This document keeps track of all changes as well as considered changes made to the resources as well as why they were made. Consider this a "learning from the past" kind of document. 
 
+8/19/2022:
+	Added a startingFrame variable to SpriteComponent that tracks when an animation started running; obviously useless if the sprite is an actual sprite and not a spritesheet, although I think that'll be rare. This variable works with the new BaseAnimation::getFrameIndex() function which returns the current frame that should be run given a startingFrame and the fps. It's a very simple function but is very useful for ensuring that each frame of an animation is run sequentially rather than leaving it to SDL_GetTicks().
 
 8/12/2022:
 	- Sequencer now instead of calling a Callable once a frame for a set duration, will now guarantee that a Callable will run its requested number of iterations (unless Callable's function returns true of course). This eliminates the need for a "timePassed" variable, and is instead replaced with "numOfReps" which represents the number of times we've called the Callable. This helps ensure that if the number of repetitions is higher than the time frame, that they will all be run and at a higher rate than before. Previously, a Callable would never be called more times than the time frame; at best it would called the same number of times, since a Callable could at most be called once per frame. Now, a Callable can be called an unlimited number of times a frame.

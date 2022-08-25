@@ -224,6 +224,16 @@ const glm::vec4& RenderCamera::getRect() const
     return rect;
 }
 
+void RenderCamera::setRect(const glm::vec4& rect_)
+{
+    rect = rect_;
+}
+
+void RenderCamera::addVector(const glm::vec2& pos)
+{
+    setRect(glm::vec4(rect.x + pos.x, rect.y + pos.y,rect.z,rect.a));
+}
+
 void RenderCamera::recenter(const glm::vec2& point)
 {
     rect.x = point.x - rect.z/2;
@@ -607,10 +617,10 @@ glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
         }
         int perRow = subSection.z; //frame per rows
         int rows = subSection.a; //number of rows
-        int framesSince = param.start;
+        int framesSince = BaseAnimation::getFrameIndex(param.start,((param.fps == -1)*fps + (param.fps != -1)*param.fps));
         if (param.start < 0 )
         {
-            framesSince = ((param.fps == -1)*fps + (param.fps != -1)*param.fps)*(SDL_GetTicks())/1000.0; //frames that have passed
+            framesSince = (SDL_GetTicks())/1000.0; //frames that have passed
         }
 
         glm::vec4 answer = {frameDimen.x*(framesSince%(perRow)) + subSection.x,

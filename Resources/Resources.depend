@@ -571,7 +571,7 @@
 1525706584 c:\users\leoou\onedrive\desktop\glm\glm\gtc\type_ptr.inl
 	<cstring>
 
-1660929886 c:\users\leoou\onedrive\desktop\resources\render.h
+1661468352 c:\users\leoou\onedrive\desktop\resources\render.h
 	<iostream>
 	<vector>
 	<map>
@@ -967,7 +967,7 @@
 	"SDLhelper.h"
 	<iostream>
 
-1659981636 source:c:\users\leoou\onedrive\desktop\resources\components.cpp
+1660929876 source:c:\users\leoou\onedrive\desktop\resources\components.cpp
 	<iostream>
 	"vanilla.h"
 	"SDLHelper.h"
