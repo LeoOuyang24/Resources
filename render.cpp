@@ -182,10 +182,16 @@ glm::vec2 RenderProgram::getScreenDimen()
 
 void RenderProgram::use()
 {
-        glm::mat4 mat = RenderProgram::getOrtho();
-       setMatrix4fv("projection",glm::value_ptr(mat));
+    use(value_ptr(glm::mat4(1.0f)));
+}
+
+void RenderProgram::use(const GLfloat* view)
+{
+    setMatrix4fv("view",view);
+    setMatrix4fv("projection",value_ptr(RenderProgram::getOrtho()));
     glUseProgram(program);
 }
+
 void RenderProgram::setMatrix4fv(std::string name, const GLfloat* value)
 {
     glUseProgram(program);
@@ -232,6 +238,11 @@ void RenderCamera::setRect(const glm::vec4& rect_)
 void RenderCamera::addVector(const glm::vec2& pos)
 {
     setRect(glm::vec4(rect.x + pos.x, rect.y + pos.y,rect.z,rect.a));
+}
+
+glm::vec2 RenderCamera::getCenter()
+{
+    return {rect.x + rect.z/2, rect.y + rect.a/2};
 }
 
 void RenderCamera::recenter(const glm::vec2& point)

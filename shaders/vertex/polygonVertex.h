@@ -5,12 +5,13 @@ layout (location = 1) in vec4 color;
 layout (location = 2) in vec3 tri;
 
 uniform mat4 projection;
+uniform mat4 view;
 
 out vec2 texCoord;
 out vec4 shade;
 
 void main()
 {
-    gl_Position = projection*vec4(points.xyz,1);
+    gl_Position = projection*view*vec4(points.xyz,1);
     shade = color;
 }

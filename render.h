@@ -70,10 +70,11 @@ public:
     static void resetRange();
     static glm::mat4 getOrtho(); //gets projection matrix
     static glm::vec2 getScreenDimen();
-    void setMatrix4fv(std::string name, const GLfloat* value); //pass in the address of the first number in the matrix for this to work
+    void setMatrix4fv(std::string name, const GLfloat* value); //pass in the value_ptr of the matrix
     void setVec3fv(std::string name,glm::vec3 value);
     void setVec4fv(std::string name, glm::vec4 value);
     void setVec2fv(std::string name, glm::vec2 value);
+    void use(const GLfloat* ortho); //pass in the ortho matrix
     void use();
 
 
@@ -90,6 +91,7 @@ public:
     const glm::vec4& getRect() const;
     void setRect(const glm::vec4& rect_);
     void addVector(const glm::vec2& moveVector); //add vector to topleft corner
+    glm::vec2 getCenter();
     void recenter(const glm::vec2& point);
 
     glm::vec2 toScreen(const glm::vec2& point) const; //converts a rect from the world coordinate to the screen coordinate

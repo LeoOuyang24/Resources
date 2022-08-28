@@ -117,7 +117,16 @@ public:
     virtual ~RectComponent();
 };
 
-class MoveComponent : public RectComponent, public ComponentContainer<MoveComponent>
+class BasicMoveComponent : public RectComponent, public ComponentContainer<BasicMoveComponent>
+{
+    glm::vec2 moveVec = glm::vec2(0); //the direction we will be moving in this frame, reset every frame
+public:
+    BasicMoveComponent(const glm::vec4& rect, Entity& entity);
+    void setMoveVec(const glm::vec2& moveVec_);
+    void update(); //move moveVec amount and then reset moveVec
+};
+
+class MoveComponent : public BasicMoveComponent, public ComponentContainer<MoveComponent>
 {
     float angle = 0; //Direction we are moving in. This would be calculated every update call if this wasn't a member variable
 protected:
@@ -131,7 +140,7 @@ protected:
 public:
     MoveComponent(float speed, const glm::vec4& rect, Entity& entity);
     void teleport(const glm::vec2& point); //centers the entity at the point and sets it as the new target
-    virtual glm::vec2 getNextPoint(); //gets the next point to move towards. (TOP LEFT CORNER (x,y), not center)
+    virtual glm::vec2 getNextMoveVector(); //gets the next moveVector
     virtual void update();
     virtual bool atPoint(const glm::vec2& point); //whether or not our center is within distThreshold of the point.
     virtual bool atTarget(); //returns atPoint(target);

@@ -1,5 +1,12 @@
 This document keeps track of all changes as well as considered changes made to the resources as well as why they were made. Consider this a "learning from the past" kind of document. 
 
+8/28/2022:
+	ForcesComponent now adds forces once every millisecond, which is calculated using DeltaTime::deltaTime.
+	MoveComponent now has a new parent class called BasicMoveComponent, which simply implements a moveVector that is added to the rect position. Sometimes, MoveComponent's target based movements are just not a good fit, so BasicMoveComponent will provide a much simpler interface.
+
+08/25/2022:
+	Added minor RenderCamera setters that allow the user to more easily modify the camera's position.
+
 8/19/2022:
 	Added a startingFrame variable to SpriteComponent that tracks when an animation started running; obviously useless if the sprite is an actual sprite and not a spritesheet, although I think that'll be rare. This variable works with the new BaseAnimation::getFrameIndex() function which returns the current frame that should be run given a startingFrame and the fps. It's a very simple function but is very useful for ensuring that each frame of an animation is run sequentially rather than leaving it to SDL_GetTicks().
 

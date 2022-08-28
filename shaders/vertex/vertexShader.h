@@ -8,6 +8,7 @@ layout (location = 9) in float depth;
 layout (location = 10) in vec4 portion;
 
 uniform mat4 projection;
+uniform mat4 view;
 
 out vec2 texCoord;
 out vec4 shade;
@@ -32,7 +33,7 @@ void main()
             portionY += portion.a;
         }
     }
-    gl_Position = projection*transform*vec4(values.xy,depth,1);
+    gl_Position = projection*view*transform*vec4(values.xy,depth,1);
    // gl_Position.z = depth;
     texCoord = vec2( portionX + z*portion.z,portionY + a*portion.a);
     shade = color;

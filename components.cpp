@@ -77,7 +77,25 @@ RectComponent::~RectComponent()
 
 }
 
-MoveComponent::MoveComponent(float speed, const glm::vec4& rect, Entity& entity) : RectComponent(rect, entity), ComponentContainer<MoveComponent>(&entity),
+BasicMoveComponent::BasicMoveComponent(const glm::vec4& rect, Entity& entity) : RectComponent(rect, entity), ComponentContainer<BasicMoveComponent>(entity)
+{
+
+}
+
+void BasicMoveComponent::setMoveVec(const glm::vec2& moveVec_)
+{
+    moveVec = moveVec_;
+}
+
+void BasicMoveComponent::update()
+{
+    rect.x += moveVec.x;
+    rect.y += moveVec.y;
+
+    moveVec = glm::vec2(0);
+}
+
+MoveComponent::MoveComponent(float speed, const glm::vec4& rect, Entity& entity) : BasicMoveComponent(rect, entity), ComponentContainer<MoveComponent>(&entity),
                                                                                     baseSpeed(speed),speed(speed)
 {
     target = {rect.x + rect.z/2, rect.y + rect.a/2};
@@ -90,7 +108,7 @@ void MoveComponent::teleport(const glm::vec2& point)
     setTarget(point);
 }
 
-glm::vec2 MoveComponent::getNextPoint()
+glm::vec2 MoveComponent::getNextMoveVector()
 {
     glm::vec2 center = {rect.x + rect.z/2, rect.y + rect.a/2};
     if (!ignoreTarget)
@@ -101,9 +119,9 @@ glm::vec2 MoveComponent::getNextPoint()
 
     if (ignoreTarget)
     {
-        return glm::vec2(rect.x, rect.y) + increment;
+        return increment;
     }
-    return glm::vec2(rect.x + absMin(increment.x,target.x - center.x),rect.y + absMin(increment.y, target.y - center.y));
+    return glm::vec2(absMin(increment.x,target.x - center.x),absMin(increment.y, target.y - center.y));
 }
 
 void MoveComponent::update()
@@ -111,10 +129,8 @@ void MoveComponent::update()
     glm::vec2 center = getCenter();
     if (!atTarget() || ignoreTarget)
     {
-        glm::vec2 nextPoint = getNextPoint();
-
-        rect.x = nextPoint.x;
-        rect.y = nextPoint.y;
+        setMoveVec(getNextMoveVector());
+        BasicMoveComponent::update();
     }
     velocity = pointDistance({rect.x + rect.z/2, rect.y + rect.a/2}, center); //distance between new center vs old center
     speed = baseSpeed;
