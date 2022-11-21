@@ -583,11 +583,10 @@
 	"SDLhelper.h"
 	"vanilla.h"
 
-1668987375 source:c:\users\leoou\onedrive\desktop\resources\geometry.cpp
+1669003547 source:c:\users\leoou\onedrive\desktop\resources\geometry.cpp
 	<math.h>
 	<iostream>
 	"geometry.h"
-	"render.h"
 
 1655161369 source:c:\users\leoou\onedrive\desktop\resources\glinterface.cpp
 	<SDL.h>
@@ -928,8 +927,9 @@
 	"begin_code.h"
 	"close_code.h"
 
-1659896643 c:\users\leoou\onedrive\desktop\resources\sdlhelper.h
+1669003565 c:\users\leoou\onedrive\desktop\resources\sdlhelper.h
 	<list>
+	<unordered_set>
 	"SDL.h"
 
 1634072408 c:\users\leoou\onedrive\desktop\resources\glinterface.h

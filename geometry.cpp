@@ -54,7 +54,6 @@ bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2)
     bool b4 = vec1.y + vec1.a >= vec2.y;
     return (vec1.x <= vec2.x + vec2.z && vec1.x + vec1.z>= vec2.x && vec1.y <= vec2.y + vec2.a && vec1.y + vec1.a >= vec2.y);
 }
-#include "render.h"
 bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2, float angle1, float angle2)
 {
   /*This function does a ghetto version of Separating Axis Theorem. It basically takes one rect to be an axis and transforms the other rect to that

@@ -58,92 +58,38 @@ int DeltaTime::getFramesPassed()
 }
 
 SDL_Keycode KeyManager::justPressed = -1;
-std::list<SDL_Keycode> KeyManager::numbers;
+std::unordered_set<SDL_Keycode> KeyManager::keys;
 Uint32 KeyManager::lastEvent = 0;
 SDL_Keycode KeyManager::lastKey = -1;
 char KeyManager::lastChar = 0;
-char KeyManager::lastLetter = 0;
-double KeyManager::getLatest()
-{
-    if (numbers.size() > 0)
-    {
 
-        return *(std::prev(numbers.end()));
-    }
-    else
-    {
-        return -1;
-    }
-}
-SDL_Keycode KeyManager::getLater(double m, double n) //of m and n, finds which key which pressed later/recently.
+bool KeyManager::isPressed(SDL_Keycode key) //finds the index of n or -1 if n isn't found
 {
-    int size = numbers.size();
-    if (size > 0)
-    {
-        for(std::list<SDL_Keycode>::iterator i = std::prev(numbers.end()); i != numbers.begin(); i --)
-        {
-            if ((*i) == m || (*i) == n)
-                {
-                    return (*i);
-                }
-        }
-    }
-    return -1;
-}
-void KeyManager::addNumber(double key)
-{
-    numbers.push_back(key);
-}
-int KeyManager::findNumber(double n) //finds the index of n or -1 if n isn't found
-{
-    int num = 0;
-    for (std::list<SDL_Keycode>::iterator i = numbers.begin(); i != numbers.end(); i ++)
-    {
-        if ((*i) == n )
-        {
-            return num;
-        }
-        num ++;
-    }
-    return -1;
+    return keys.find(key) != keys.end();
 }
 
-void KeyManager::getKeys(SDL_Event& e)
+void KeyManager::update(SDL_Event& e)
 {
     justPressed = -1;
     lastChar = 0;
-    int sym = e.key.keysym.sym;
-    if (e.type != lastEvent || sym != lastKey || lastLetter != e.text.text[0])
+    SDL_Keycode sym = e.key.keysym.sym;
+    switch(e.type)
     {
-        if (e.type == SDL_KEYDOWN)
-        {
-            if (findNumber(sym) == -1)
+        case SDL_KEYDOWN:
+            if (!isPressed(sym))
             {
-                addNumber(sym);
+                keys.insert(sym);
                 justPressed = sym;
             }
-        }
-        else if (e.type == SDL_KEYUP)
-            {
-                removeNumber(sym);
-            }
-        else if (e.type == SDL_TEXTINPUT)
-        {
+            break;
+        case SDL_KEYUP:
+            keys.erase(sym);
+            break;
+        case SDL_TEXTINPUT:
             lastChar = e.text.text[0];
-        }
+            break;
     }
-    lastLetter = e.text.text[0];
     lastKey = sym;
-    lastEvent = e.type;
-
-}
-void KeyManager::removeNumber(double number)
-{
-    int index = findNumber(number);
-    if (index != -1)
-    {
-        numbers.erase(std::next(numbers.begin(), index));
-    }
 }
 
 SDL_Keycode KeyManager::getJustPressed()
