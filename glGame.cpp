@@ -954,30 +954,34 @@ RawQuadTree* RawQuadTree::update(Positional& positional, RawQuadTree& expected)
 void SpatialGrid::updateEntities(const glm::vec4& region)
 {            //func = (Positional&, Positional&) => void;
         taskID ++;
-        processAllNodes(region,[this](const glm::vec2& point, Node& node) mutable {
+
+        processAllExistingNodes(region,[this](const glm::vec2& point, Node& node) mutable {
                         int i =0;
-                        glm::vec4 oldPos = glm::vec4(0);
                         for ( auto it = node.end; i < node.size; i++)
                         {
                             RectComponent* r1 = static_cast<RectComponent*>(*it);
-                            oldPos = r1->getRect();
-                            glm::vec4 oldBounding = r1->getBoundingRect();
-                            if (it != positionals.begin()) //if not the literal first element (in which case there are no other positionals to process);
+                            auto nextIt = std::prev(it); //have to do this because update function might invalidate "it";
+                            if (r1->getEntity().getTaskID() != taskID) //if we haven't processed this element yet
                             {
-                                int j = i + 1;
-                                for (auto it2 = std::prev(it); j < node.size; j++, --it2) //process all elements after "it" so each pair is only processed once
+                                glm::vec4 oldBounding = r1->getBoundingRect();
+                                if (it != positionals.begin()) //if not the literal first element (in which case there are no other positionals to process)
                                 {
-                                    RectComponent* r2 = static_cast<RectComponent*>(*it2);
-                                    if (vecIntersect(oldPos,r2->getRect(),r1->getTilt(),r2->getTilt()))
+                                    int j = i + 1;
+                                    for (auto it2 = nextIt; j < node.size; j++) //Find collisions with other entities, process all elements after "it" so each pair is only processed once
                                     {
-                                        r1->getEntity().collide(r2->getEntity());
-                                        r2->getEntity().collide(r1->getEntity());
+                                        auto nextIt2 = std::prev(it2); //just in case collision invalidates it2
+                                        RectComponent* r2 = static_cast<RectComponent*>(*it2);
+                                        if (vecIntersect(r1->getRect(),r2->getRect(),r1->getTilt(),r2->getTilt()))
+                                        {
+                                            r1->getEntity().collide(r2->getEntity());
+                                            r2->getEntity().collide(r1->getEntity());
+                                        }
+                                        it2 = nextIt2;
                                     }
                                 }
+                                r1->getEntity().updateOnce(taskID); //slight redudancy here checking taskID twice
+                                update(*r1,oldBounding); //update position
                             }
-                            r1->getEntity().updateOnce(taskID);
-                            auto nextIt = std::prev(it); //have to do this because update function might invalidate "it";
-                            update(*r1,oldBounding);
                             it = nextIt;
                         }
                         });

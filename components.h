@@ -119,10 +119,13 @@ public:
 
 class BasicMoveComponent : public RectComponent, public ComponentContainer<BasicMoveComponent>
 {
+protected:
     glm::vec2 moveVec = glm::vec2(0); //the direction we will be moving in this frame, reset every frame
 public:
     BasicMoveComponent(const glm::vec4& rect, Entity& entity);
+    void addMoveVec(const glm::vec2& moveVec_); //add to moveVec
     void setMoveVec(const glm::vec2& moveVec_);
+    virtual glm::vec2 getNextMoveVector(); //returns the next moveVector to add to position. Usually just moveVec*deltaTime
     void update(); //move moveVec amount and then reset moveVec
 };
 
@@ -204,9 +207,9 @@ protected:
     SpriteWrapper* sprite = nullptr;
     SpriteParameter sParam;
     AnimationParameter aParam;
+public:
     virtual SpriteParameter defaultSParam(); //returns the sprite parameter used by default
     virtual AnimationParameter defaultAParam(); //returns the Animation Parameter used by default
-public:
     SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity); //loads a sprite or animation
     virtual void render(const SpriteParameter& param);
     void setParam(const SpriteParameter& param, const AnimationParameter& animeParam = AnimationParameter()); //set modified to true if you don't want to call default render

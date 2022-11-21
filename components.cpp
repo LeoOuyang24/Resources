@@ -82,15 +82,26 @@ BasicMoveComponent::BasicMoveComponent(const glm::vec4& rect, Entity& entity) : 
 
 }
 
+void BasicMoveComponent::addMoveVec(const glm::vec2& moveVec_)
+{
+    setMoveVec(moveVec + moveVec_);
+}
+
 void BasicMoveComponent::setMoveVec(const glm::vec2& moveVec_)
 {
     moveVec = moveVec_;
 }
 
+glm::vec2 BasicMoveComponent::getNextMoveVector()
+{
+    return (float)(DeltaTime::deltaTime)*moveVec;
+}
+
 void BasicMoveComponent::update()
 {
-    rect.x += moveVec.x;
-    rect.y += moveVec.y;
+    glm::vec2 move = getNextMoveVector();
+    rect.x += move.x;
+    rect.y += move.y;
 
     moveVec = glm::vec2(0);
 }
@@ -129,7 +140,7 @@ void MoveComponent::update()
     glm::vec2 center = getCenter();
     if (!atTarget() || ignoreTarget)
     {
-        setMoveVec(getNextMoveVector());
+        addMoveVec(getNextMoveVector()); //add getNextMoveVector rather than just straight up setting it equal. This helps add it to any other modifiers (such as those from ForcesComponent)
         BasicMoveComponent::update();
     }
     velocity = pointDistance({rect.x + rect.z/2, rect.y + rect.a/2}, center); //distance between new center vs old center
@@ -301,7 +312,7 @@ void RectRenderComponent::render(const SpriteParameter& param)
     if (entity)
     if (RectComponent* rect = entity->getComponent<RectComponent>())
     {
-        PolyRender::requestRect( RenderCamera::currentCamera ? RenderCamera::currentCamera->toScreen(rect->getRect()) : rect->getRect(),color*param.tint,true, rect->getTilt(),param.z);
+        PolyRender::requestRect(  rect->getRect(),color*param.tint,true, rect->getTilt(),param.z);
     }
 }
 
@@ -430,7 +441,6 @@ void Entity::addComponent(Component& comp)
     if (components.find(&comp) == components.end())
     {
         components[&comp] = std::shared_ptr<Component>(&comp);
-
     }
 }
 

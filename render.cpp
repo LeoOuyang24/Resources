@@ -1113,13 +1113,13 @@ void PolyRender::renderLines()
     }
 //std::cout << glGetError() << std::endl;
     glBindBuffer(GL_ARRAY_BUFFER,lineVBO);
-    glBufferData(GL_ARRAY_BUFFER,vertSize*floatSize,verticies,GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,vertSize*floatSize,verticies,GL_DYNAMIC_DRAW);
     glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,(void*)0);
     glEnableVertexAttribArray(0);
     //glVertexAttribDivisor(0,1);
 
     glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
-    glBufferData(GL_ARRAY_BUFFER,colorSize*floatSize, colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,colorSize*floatSize, colors, GL_DYNAMIC_DRAW);
     glVertexAttribPointer(1,4,GL_FLOAT,GL_FALSE,0,(void*)0);
     glEnableVertexAttribArray(1);
     //glVertexAttribDivisor(1,1);
@@ -1140,13 +1140,13 @@ void PolyRender::renderPolygons()
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER,polyVBO);
-    glBufferData(GL_ARRAY_BUFFER,polyPoints.size()*sizeof(GLfloat)*3,&polyPoints[0],GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,polyPoints.size()*sizeof(GLfloat)*3,&polyPoints[0],GL_DYNAMIC_DRAW);
     glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,(void*)0);
     glEnableVertexAttribArray(0);
     //glVertexAttribDivisor(0,1);
 
     glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
-    glBufferData(GL_ARRAY_BUFFER,polyColors.size()*sizeof(GLfloat)*4, &polyColors[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,polyColors.size()*sizeof(GLfloat)*4, &polyColors[0], GL_DYNAMIC_DRAW);
     glVertexAttribPointer(1,4,GL_FLOAT,GL_FALSE,0,(void*)0);
     glEnableVertexAttribArray(1);
     //glVertexAttribDivisor(1,1);

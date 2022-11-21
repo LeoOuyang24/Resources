@@ -713,6 +713,23 @@ class SpatialGrid //Spatial Partitioning data structure (SPDS) that partitions s
             }
         }
     }
+    template<typename T>
+    void processAllExistingNodes(const glm::vec4& rect,T func) //given a function, runs the function on each EXISTING node the positional belongs in.
+    {
+        //func = (const glm::vec2&, Node&) => void
+        int horizLimit = normalizeCoord(rect.r + rect.z);
+        int vertLimit = normalizeCoord(rect.y + rect.a);
+        for (int i = normalizeCoord(rect.r); i <= horizLimit; i += nodeDimen)
+        {
+            for (int j = normalizeCoord(rect.y); j <= vertLimit; j += nodeDimen)
+            {
+                if(nodes.find({i,j}) != nodes.end())
+                    {
+                        func({i,j},nodes[{i,j}]);
+                    }
+            }
+        }
+    }
 public:
     SpatialGrid(int nodeSize_) : nodeDimen(nodeSize_), nodes(0,NodeStorageHasher(nodeSize_))
     {
@@ -729,7 +746,7 @@ public:
     }
     void remove(Positional& positional) //does nothing if positional is not found
     {
-        processAllNodes(positional.getBoundingRect(),[this,&positional](const glm::vec2& point, Node& node){
+        processAllExistingNodes(positional.getBoundingRect(),[this,&positional](const glm::vec2& point, Node& node){
                         removeFromNode(positional,node);
                         });
     }
@@ -745,7 +762,7 @@ public:
                 }
         else//"p" does have to move. Consider old nodes and remove from nodes we no longer intersect from while adding to new nodes we do intersect with
         {
-            processAllNodes(oldPos,[this,&p,&newPos](const glm::vec2& point, Node& node){
+            processAllExistingNodes(oldPos,[this,&p,&newPos](const glm::vec2& point, Node& node){
                             if (!vecIntersect(newPos,glm::vec4(point,nodeDimen,nodeDimen))) //if our new position would intersect with this node, don't remove
                             {
                                 removeFromNode(p,node);
@@ -765,7 +782,7 @@ public:
     void findNearest(Positional& p, T func) //run "func" on every positional "p" shares a node with, "p" doesn't have to be actually in the grid
     {
         //func = (Positional&) => void
-        processAllNodes(p.getBoundingRect(),[this,func, &p](const glm::vec2& point, Node& node) mutable {
+        processAllExistingNodes(p.getBoundingRect(),[this,func, &p](const glm::vec2& point, Node& node) mutable {
                         int i =0;
                         for ( auto it = node.end; i < node.size; i++, --it)
                         {
@@ -781,7 +798,7 @@ public:
     {
         //func = (Positional&) => void
         glm::vec4 rect = glm::vec4(pos - glm::vec2(dist,dist),dist*2,dist*2); //find all positionals that collide with this rect
-        processAllNodes(rect,[this,dist,func,pos](const glm::vec2& point, Node& node) mutable {
+        processAllExistingNodes(rect,[this,dist,func,pos](const glm::vec2& point, Node& node) mutable {
                         int i =0;
                         for ( auto it = node.end; i < node.size; i++, --it)                        {
                             if ((*it)->distance(pos) <= dist)
@@ -796,7 +813,7 @@ public:
     {
         bool answer = true;
         PolyRender::requestRect(RenderCamera::currentCamera->toScreen(p.getBoundingRect()),glm::vec4(0,1,0,1),0,0,1);
-        processAllNodes(p.getBoundingRect(),[&answer,this,&p](const glm::vec2& point, Node& node) mutable {
+        processAllExistingNodes(p.getBoundingRect(),[&answer,this,&p](const glm::vec2& point, Node& node) mutable {
                         if (lookup.find({node,p}) == lookup.end())
                             {
                                 PolyRender::requestRect(RenderCamera::currentCamera->toScreen(glm::vec4(point,nodeDimen,nodeDimen)),glm::vec4(1,0,0,1),0,0,1);
@@ -822,7 +839,7 @@ public:
             glm::vec4 nodeRect = glm::vec4(it->first + glm::vec2(1,1),nodeDimen - 2,nodeDimen - 2); //render nodes slightly smaller to prevent overlap
             if (RenderCamera::currentCamera)
             {
-                nodeRect = RenderCamera::currentCamera->toScreen(nodeRect);
+                //nodeRect = RenderCamera::currentCamera->toScreen(nodeRect);
             }
             glm::vec4 color = it->second.size != 0 ? glm::vec4(1,1,0,1) : glm::vec4(1,0,0,1); //if node has stuff in it, render it yellow, otherwise red
             PolyRender::requestRect(nodeRect,color,false,0,1);

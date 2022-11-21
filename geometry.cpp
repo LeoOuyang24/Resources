@@ -54,16 +54,17 @@ bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2)
     bool b4 = vec1.y + vec1.a >= vec2.y;
     return (vec1.x <= vec2.x + vec2.z && vec1.x + vec1.z>= vec2.x && vec1.y <= vec2.y + vec2.a && vec1.y + vec1.a >= vec2.y);
 }
-
+#include "render.h"
 bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2, float angle1, float angle2)
 {
-    if (angle1 == 0 && angle2 == 0)
+  /*This function does a ghetto version of Separating Axis Theorem. It basically takes one rect to be an axis and transforms the other rect to that
+  rect's local space, then tests if that rect's bounding box collides with the axis rect. It does thsi for both rects and if they both collide, then
+  there is collision between the two rects.
+  */
+   /* if (angle1 == 0 && angle2 == 0)
     {
         return vecIntersect(vec1,vec2);
     }
-    /*printRect(vec1);
-    printRect(vec2);
-    std::cout << angle1 << " " << angle2 << "\n";*/
     glm::vec2 center = {vec2.x + vec2.z/2, vec2.y + vec2.a/2};
     glm::vec2 topLeft = rotatePoint({vec2.x, vec2.y}, center, angle2);
     glm::vec2 topRight = rotatePoint({vec2.x + vec2.z, vec2.y}, center, angle2);
@@ -76,7 +77,24 @@ bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2, float angle1, flo
     return (lineInVec(topLeft, topRight, vec1, angle1) || //top side
             lineInVec(topLeft, botLeft, vec1, angle1) || //left side
             lineInVec(botLeft, botRight, vec1, angle1) || //bot side
-            lineInVec(topRight, botRight, vec1, angle1));
+            lineInVec(topRight, botRight, vec1, angle1));*/
+    auto lambda = [](const glm::vec4& vec, float angle, const glm::vec4& axis, float axisAngle){
+        //"lambda" takes "vec" and transforms it to "axis'" space and checks if its bounding box collides with "axis".
+        float slope = sqrt(pow(vec.z/2,2)+pow(vec.a/2,2)); //Basically the distance from "vec's" center to a vertex
+        float theta = atan2(vec.a,vec.z); //angle of center to vertex.
+        glm::vec2 center = rotatePoint(glm::vec2(vec.x + vec.z/2, vec.y + vec.a/2),glm::vec2(axis.x + axis.z/2, axis.y + axis.a/2),-axisAngle); //the center of "vec", rotated around the center of "axis"
+                                                                                                                                                //we use negative "axisAngle" because we are reverting the rotation of "axis"
+
+        //the way we represent our tranlsated rectangle is as a dispalcement from the center
+        //"angle"  +- "theta" is the angle of the vertice to center. We don't know if it's + or - theta so we take the bigger of the two
+        //we subtract "axisAngle" because rotating "vec" around "axis" also rotates it by "axisAngle"
+        float rightLeft = slope*std::max(abs(cos(angle + theta - axisAngle)),abs(cos(angle  - theta - axisAngle))); //once all rotations are considered, "rightLeft" represents the displacement from the center for the furthest right and left of the bounding box
+        float upDown = slope*std::max(abs(sin(angle + theta - axisAngle)),abs(sin(angle  - theta - axisAngle)));    //same thing but for up and down
+
+        return axis.x + axis.z > center.x - rightLeft && axis.x < center.x + rightLeft &&
+                axis.y + axis.a > center.y - upDown && axis.y < center.y + upDown;
+    };
+    return lambda(vec1,angle1,vec2,angle2) && lambda(vec2,angle2,vec1,angle1);
 }
 
 glm::vec4 vecIntersectRegion(const glm::vec4& vec1, const glm::vec4& vec2) //returns the region of two colliding rects
@@ -182,65 +200,60 @@ double pointLineDistance(const glm::vec4& line, const glm::vec2& point)
 
 }
 
+glm::vec3 bezierNums(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2) //useful helper function for workign with line segments
+{
+    //https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line_segment
+    return {
+    (a1.x - a2.x)*(b1.y - b2.y) - (a1.y - a2.y)*(b1.x - b2.x), //the common demonator, 0 if the lines are parallel
+    (a1.x - b1.x)*(b1.y - b2.y) - (a1.y - b1.y)*(b1.x - b2.x), //t's Numerator. this/denominator = t
+    (a1.x - b1.x)*(a1.y - a2.y) - (a1.y - b1.y)*(a1.x - a2.x) //u's numerator
+    };
+}
+
+glm::vec2 sortFunc(const glm::vec2& p1, const glm::vec2& p2){
+//sorting function helps us find the "most top left" point. p1 if they are the same point.
+//using this sort function is effectively teh same as comparing y coordinates for 2 vertical lines and comparing x coordinates for all other coincident lines
+//very useful for line segment functions
+        if (p1.x < p2.x)
+        {
+            return p1;
+        }
+        else if (p2.x > p1.x)
+        {
+            return p2;
+        }
+        else
+        {
+            return (p1.y <= p2.y ? p1 : p2);
+        }
+}
 bool lineInLine(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2)
 {
-    glm::vec2 intersect = {0,0};
-    glm::vec2 nonVert = {0,0}; //this equals the slope and yInt of the line that is not vertical, or line b1-b2 if neither are vertical.
-    if (a1.x - a2.x == 0 && b1.x - b2.x == 0)
+    //https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line_segment
+    glm::vec3 consts = bezierNums(a1,a2,b1,b2);
+    int denom = consts.x;
+    int tNum = consts.y; //numerator for t
+    //as of right now, I can't for the life of me convince myself that t AND u are necessary, since the existicen of t implies the existence of u. Might change later
+    if (denom == 0)
     {
-        float highest = std::min(a1.y,a2.y);
-        return a1.x == b1.x && abs(highest - std::min(b1.y,b2.y)) >= abs((highest - (a1.y + a2.y - highest)));
-    }
-    else
-    {
-        float slope1 = 0;
-        float yInt1 = 0;
-        if (a1.x - a2.x != 0) //if not vertical line
+        if (tNum == 0) //this means they are the same line (coincident lines)
         {
-            slope1 = (a1.y - a2.y)/(a1.x-a2.x);
-            yInt1 = a1.y - slope1*a1.x;
-            nonVert.x = slope1;
-            nonVert.y = yInt1;
+            glm::vec2 aMost = sortFunc(a1,a2);
+            glm::vec2 bMost = sortFunc(b1,b2);
+
+            return (sortFunc(aMost,bMost) == aMost && sortFunc(bMost,a1 + a2 - aMost) == bMost) || //a1 + a2 - aMost returns the other point that's not aMost
+                   (sortFunc(aMost,bMost) == bMost && sortFunc(aMost, b1 + b2 - bMost) == aMost); //this basically finds if 2nd most point is between the other line
         }
-        else
+        else //if denom == 0 and tNum is not 0, that means the segments don't collide
         {
-            intersect.x = a1.x;
-        }
-        float slope2 = 0;
-        float yInt2 = 0;
-        if (b1.x - b2.x != 0)
-        {
-            slope2 = (b1.y - b2.y)/(b1.x - b2.x);
-            yInt2 = b1.y - slope2*b1.x;
-            nonVert.x = slope2;
-            nonVert.y = yInt2;
-        }
-        else
-        {
-            intersect.x = b1.x;
-        }
-        if (b1.x != b2.x && a1.x != a2.x)
-        {
-            if (slope1 == slope2)
-            {
-                if (yInt1 == yInt2)
-                {
-                    float left = std::min(a1.x, a2.x);
-                    float right = std::max(a1.x, a2.x);
-                    return (b1.x <= right && b1.x >= left) || (b2.x <= right && b2.x >= left);
-                }
-                return false;
-            }
-                intersect.x = (yInt1 - yInt2)/(slope2 - slope1);
+            return false;
         }
     }
-    intersect.y = nonVert.x*intersect.x + nonVert.y;
-    float rounding = 0.03; //the rounding threshold
-    bool val =  intersect.x >= std::min(a1.x, a2.x) - rounding && intersect.x <= std::max(a1.x, a2.x) + rounding &&
-            intersect.x >= std::min(b1.x, b2.x) - rounding && intersect.x <= std::max(b1.x,b2.x) + rounding &&
-            intersect.y >= std::min(a1.y, a2.y) - rounding && intersect.y <= std::max(a1.y, a2.y) + rounding &&
-            intersect.y >= std::min(b1.y, b2.y) - rounding && intersect.y <= std::max(b1.y, b2.y) + rounding;
-    return val;
+    else if ((float)tNum/denom >= 0 && (float)tNum/denom <= 1) //as per the wiki page, 't', or tNum/denom in our case, has to be between 0 and 1
+    {
+        return true;
+    }
+    return false; //the last case is that tNum/denom is not between 0 and 1, and they are both not 0. This means there is no intersection.
 }
 
 bool lineInLineExtend(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2)
@@ -258,43 +271,28 @@ bool lineInLineExtend(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2&
     return true; //if slopes are different, they definitely intersect somewhere
 }
 
-glm::vec2 lineLineIntersect(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2)
+glm::vec3 lineLineIntersect(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2)
 {
     glm::vec2 intersect = {0,0};
-    //glm::vec2 nonVert = {0,0}; //this equals the slope and yInt of the line that is not vertical, or line b1-b2 if neither are vertical.
-     if (lineInLine(a1,a2,b1,b2))
-     {
-         if (a1.x == a2.x && b1.x == b2.x)
-         {
-             intersect = a1;
-         }
-         else
-         {
-             double slope1 = 0;
-             if (b1.x == b2.x)
-             {
-                 slope1 = (a1.y - a2.y)/(a1.x - a2.x);
-                 intersect.x = b1.x;
-                 intersect.y = slope1*b1.x + a1.y - slope1*a1.x;
-             }
-             else if (a1.x == a2.x)
-             {
-                 slope1 = (b1.y - b2.y)/(b1.x - b2.x);
-                 intersect.x = a1.x;
-                 intersect.y = slope1*a1.x + b1.y - slope1*b1.x;    //if both lines are the same, this should return a1.y
-             }
-             else //neigther is vertical
-             {
-                 slope1 = (a1.y - a2.y)/(a1.x - a2.x);
-                 double slope2 = (b1.y - b2.y)/(b1.x - b2.x);
-                 double yInt1 = a1.y - slope1*a1.x;
-                 double yInt2 = b1.y - slope2*b1.x;
-                 intersect.x = (yInt1 - yInt2)/(slope2 - slope1);
-                 intersect.y = intersect.x*slope1 + yInt1;
-             }
-         }
-     }
-    return intersect;
+    bool intersected = lineInLine(a1,a2,b1,b2);
+    if (intersected)
+    {
+        glm::vec3 bezier = bezierNums(a1,a2,b1,b2);
+        float t = bezier.y/bezier.x;
+        if (bezier.x == 0 && bezier.y == 0) //coincident lines
+        {
+            auto invSort = [](const glm::vec2& p1, const glm::vec2& p2) //literally just returns the opposite of sortFunc
+            {
+                return sortFunc(p1,p2) == p1 ? p2 : p1;
+            };
+            intersect = invSort(sortFunc(a1,a2),sortFunc(b1,b2)); //this should get the 2nd most sort point, which should also be the first point of intersection
+        }
+        else if (t >= 0 && t <= 1)
+        {
+            intersect = {t*(a2.x - a1.x) + a1.x,t*(a2.y - a2.y)};
+        }
+    }
+    return glm::vec3(intersect,intersected);
 }
 
 glm::vec2 lineLineIntersectExtend(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, const glm::vec2& b2) //returns the point at which two lines intersect. Returns {0,0} if there is no intersection. Returns a1 if the two lines are the same. The intersection is based on the line segments not the hypothetical infinite lines

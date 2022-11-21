@@ -226,6 +226,10 @@ class BaseAnimation : public Sprite //the actual animation object
 public:
     static getFrameIndex(int startingFrame, int timePerFrame) //given the frame an animation has started at and the time to spend per frame, return which frame should be rendered
     {
+        if (timePerFrame == 0)
+        {
+            return 0;
+        }
         return (DeltaTime::getCurrentFrame() - startingFrame)/timePerFrame;
     }
     BaseAnimation(std::string source, int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0});

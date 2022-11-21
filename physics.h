@@ -9,7 +9,7 @@ class ForcesComponent : public Component, public ComponentContainer<ForcesCompon
 {
 protected:
     ForceVector finalForce = glm::vec2(0); //after applying all forces, this is the final x and y displacement to move
-    MoveComponent* move = nullptr; //forcesComponent will only work if there is a moveComponent on the entity
+    BasicMoveComponent* move = nullptr; //forcesComponent will only work if there is a moveComponent on the entity
     float friction= 0; //how much to decrease finalForce every frame
     static constexpr float MAX_FORCE = 10.0f;
     float maxForce = 10.0f; //the maximum magnitude of the finalForce.
@@ -17,8 +17,8 @@ protected:
 public:
     constexpr static float baseFriction = .999f;
     ForcesComponent(Entity& entity, float friction_ = baseFriction, float maxForce = MAX_FORCE);
-    void setMoveComponent(MoveComponent* move_);
-    MoveComponent* getMove()
+    void setMoveComponent(BasicMoveComponent* move_);
+    BasicMoveComponent* getMove()
     {
         return move;
     }

@@ -6,13 +6,13 @@ void ForcesComponent::applyForce(ForceVector force)
     finalForce += force;
 }
 
-ForcesComponent::ForcesComponent(Entity& entity, float friction_, float maxForce_) : Component(entity), ComponentContainer<ForcesComponent>(&entity), move(entity.getComponent<MoveComponent>()),
+ForcesComponent::ForcesComponent(Entity& entity, float friction_, float maxForce_) : Component(entity), ComponentContainer<ForcesComponent>(&entity), move(entity.getComponent<BasicMoveComponent>()),
                                                                                     friction(friction_), maxForce(maxForce_)
 {
 
 }
 
-void ForcesComponent::setMoveComponent(MoveComponent* move_)
+void ForcesComponent::setMoveComponent(BasicMoveComponent* move_)
 {
     move = move_;
 }
@@ -41,7 +41,7 @@ void ForcesComponent::update()
             frictionFactor = (float)(1.0f - pow(friction,DeltaTime::deltaTime))/(1.0f - friction); //if friction is 1, we set frictionFactor to DeltaTime::deltaTime as that is the amount of friction since last frame.
                                                                                                     //otherwise, use formula of finite geometric series to calculate
         }
-        move->setPos(move->getPos() + frictionFactor*friction*finalForce); //apply finalForce as if it was applied once a millisecond, with friction applied once a millisecond
+        move->addMoveVec(frictionFactor*finalForce); //apply finalForce as if it was applied once a millisecond, with friction applied once a millisecond
         //printRect(glm::vec4(move->getPos(),finalForce));
         finalForce = (float)pow(friction,DeltaTime::deltaTime)*finalForce; //lower friction based on time passed
 
@@ -100,7 +100,7 @@ void ChainLinkComponent::update()
                 if (pointDistance(downPoint,ourPoint) > linkDist)
                 {
                     glm::vec2 disp = linkDist*glm::normalize(downPoint - ourPoint);
-                    move->teleport(downPoint - disp);
+                    move->setPos(downPoint - disp);
                 }
             }
         }
@@ -160,9 +160,9 @@ void Chain::setBottomPos(const glm::vec2& pos)
     if (ChainLinkComponent* link = bottom->getComponent<ChainLinkComponent>())
         {
 
-            if (MoveComponent* move = link->getMove())
+            if (BasicMoveComponent* move = link->getMove())
                 {
-                    move->teleport(pos);
+                    move->setPos(pos);
                 }
         }
 }
