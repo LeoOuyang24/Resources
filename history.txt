@@ -1,5 +1,8 @@
 This document keeps track of all changes as well as considered changes made to the resources as well as why they were made. Consider this a "learning from the past" kind of document. 
 
+11/21/2022:
+	SUccessfully implemented separating axis theorem for collision between rotated rectangles. This nearly halved the run time per frame in SpatialHashGrid. The way it works is a little bit different from how SAT is explained online, but the general mathematical principles are the same. Instead of projecting the vertices onto each rectangles' axis, however, we instead transform one rectangle around the other, essentially converting the other rectangle back into a non-rotate rectangle. From there we compare their bounding boxes, to see if they interesect, then repeat with the other rectangle as the transformed one. If both bounding boxes intersect, we have a collision.
+
 8/28/2022:
 	ForcesComponent now adds forces once every millisecond, which is calculated using DeltaTime::deltaTime.
 	MoveComponent now has a new parent class called BasicMoveComponent, which simply implements a moveVector that is added to the rect position. Sometimes, MoveComponent's target based movements are just not a good fit, so BasicMoveComponent will provide a much simpler interface.

@@ -266,7 +266,12 @@ public:
     }
 };
 
-
+const float DEFAULT_PRECISION = .00001;
+bool floatEquals(float a1, float a2,float precision = DEFAULT_PRECISION); //returns true if "a1" and "a2" are within "precision" of one another. Basically == operator for floats that helps fight floating point precision errors
+#define FLOAT_COMPARE(a1, a2, precision, op) (floatEquals(a1,a2,precision) || (a1 op a2)) //lets you do things like >= but use "floatEquals" instead of the == operator.
+                                                                                          //apparently macros are evil and there are ways to do this with std::logical_operators
+                                                                                          //instead, but I don't care :gigachad:. I have never really used macros before so I'm
+                                                                                          //gonna use it for funsies.
 void printRect(const Rect& r);
 bool PointInRect(const Point& point, const Rect& rect); //returns true if the point is in the rect or on the borders
 

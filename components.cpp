@@ -45,21 +45,19 @@ bool RectComponent::collides(const glm::vec4& target)
     return vecIntersect(target,rect,0,tilt);
 }
 
-void RectComponent::setRect(const glm::vec4& rect)
+void RectComponent::setRect(const glm::vec4& rect_)
 {
-    this->rect = rect;
+    this->rect = rect_;
 }
 
 void RectComponent::setPos(const glm::vec2& pos)
 {
-    this->rect.x = pos.x;
-    this->rect.y = pos.y;
+    setRect(glm::vec4(pos,rect.z,rect.a));
 }
 
 void RectComponent::setCenter(const glm::vec2& center)
 {
-    this->rect.x = center.x - rect.z/2;
-    this->rect.y = center.y - rect.a/2;
+    setPos({rect.x - center.x,rect.y - center.y});
 }
 
 glm::vec2 RectComponent::getPos()
@@ -90,11 +88,15 @@ void BasicMoveComponent::addMoveVec(const glm::vec2& moveVec_)
 void BasicMoveComponent::setMoveVec(const glm::vec2& moveVec_)
 {
     moveVec = moveVec_;
+    if (glm::length(moveVec) > MAX_MOVE)
+    {
+        moveVec = MAX_MOVE*betterNormalize(moveVec);
+    }
 }
 
 glm::vec2 BasicMoveComponent::getNextMoveVector()
 {
-    return (float)(DeltaTime::deltaTime)*moveVec;
+    return moveVec;
 }
 
 void BasicMoveComponent::update()

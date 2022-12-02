@@ -108,7 +108,7 @@ class RectComponent : public Component, public ComponentContainer<RectComponent>
 public:
     RectComponent(const glm::vec4& rect, Entity& entity);
     bool collides(const glm::vec4& rect);
-    void setRect(const glm::vec4& rect);
+    virtual void setRect(const glm::vec4& rect);
     virtual void setPos(const glm::vec2& pos);
     void setCenter(const glm::vec2& center);
     glm::vec2 getPos();
@@ -122,6 +122,7 @@ class BasicMoveComponent : public RectComponent, public ComponentContainer<Basic
 protected:
     glm::vec2 moveVec = glm::vec2(0); //the direction we will be moving in this frame, reset every frame
 public:
+    static constexpr float MAX_MOVE = 10; //you are not allowed to move more than 10 units a frame
     BasicMoveComponent(const glm::vec4& rect, Entity& entity);
     void addMoveVec(const glm::vec2& moveVec_); //add to moveVec
     void setMoveVec(const glm::vec2& moveVec_);
