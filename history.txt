@@ -1,5 +1,8 @@
 This document keeps track of all changes as well as considered changes made to the resources as well as why they were made. Consider this a "learning from the past" kind of document. 
 
+11/30/2022: 
+	Added floatEquals to vanilla.h. Basically a way to check if two floats are equal given a certain precision range. FLOAT_COMPARE is a macro that lets us do things like >= between floats without having to do (a > b) || (floatEquals(a,b). Basically it's shorthand. This can be used to make other parts of the resources library more accurate
+
 11/21/2022:
 	SUccessfully implemented separating axis theorem for collision between rotated rectangles. This nearly halved the run time per frame in SpatialHashGrid. The way it works is a little bit different from how SAT is explained online, but the general mathematical principles are the same. Instead of projecting the vertices onto each rectangles' axis, however, we instead transform one rectangle around the other, essentially converting the other rectangle back into a non-rotate rectangle. From there we compare their bounding boxes, to see if they interesect, then repeat with the other rectangle as the transformed one. If both bounding boxes intersect, we have a collision.
 

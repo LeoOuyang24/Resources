@@ -101,9 +101,9 @@ bool rectIntersectWithinRange(float x1, float y1, float w1, float h1, double dis
 {
     std::cout << p.x << " " << p.y << std::endl;
 }
-bool floatEquals(float a1, float a2,float precision)
+bool floatEquals(float a1, float a2, int precision)
 {
-    return abs(a1 - a2) <= precision;
+    return floor(a1*pow(10,precision)) == floor(a2*pow(10,precision));
 }
 void printRect(const Rect& r)
 {
