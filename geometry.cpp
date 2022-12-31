@@ -230,8 +230,8 @@ bool lineInLine(const glm::vec2& a1, const glm::vec2& a2, const glm::vec2& b1, c
 {
     //https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line_segment
     glm::vec3 consts = bezierNums(a1,a2,b1,b2);
-    float denom = consts.x;
-    float tNum = consts.y; //numerator for t
+    int denom = consts.x;
+    int tNum = consts.y; //numerator for t
     //as of right now, I can't for the life of me convince myself that t AND u are necessary, since the existicen of t implies the existence of u. Might change later
     if (denom == 0)
     {
@@ -277,6 +277,7 @@ glm::vec3 lineLineIntersect(const glm::vec2& a1, const glm::vec2& a2, const glm:
     if (intersected)
     {
         glm::vec3 bezier = bezierNums(a1,a2,b1,b2);
+        float t = bezier.y/bezier.x;
         if (bezier.x == 0 && bezier.y == 0) //coincident lines
         {
             auto invSort = [](const glm::vec2& p1, const glm::vec2& p2) //literally just returns the opposite of sortFunc
@@ -285,10 +286,9 @@ glm::vec3 lineLineIntersect(const glm::vec2& a1, const glm::vec2& a2, const glm:
             };
             intersect = invSort(sortFunc(a1,a2),sortFunc(b1,b2)); //this should get the 2nd most sort point, which should also be the first point of intersection
         }
-        else //it is impossible for bezier.x to be 0 and bezier.y to not be 0, because then they would be parallel and thus we would not even have collision
+        else if (t >= 0 && t <= 1)
         {
-            float t = bezier.y/bezier.x;
-            intersect = {t*(a2.x - a1.x) + a1.x,t*(a2.y - a1.y) + a1.y};
+            intersect = {t*(a2.x - a1.x) + a1.x,t*(a2.y - a2.y)};
         }
     }
     return glm::vec3(intersect,intersected);

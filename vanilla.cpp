@@ -101,10 +101,7 @@ bool rectIntersectWithinRange(float x1, float y1, float w1, float h1, double dis
 {
     std::cout << p.x << " " << p.y << std::endl;
 }
-bool floatEquals(float a1, float a2, int precision)
-{
-    return floor(a1*pow(10,precision)) == floor(a2*pow(10,precision));
-}
+
 void printRect(const Rect& r)
 {
     std::cout << r.x << " " << r.y << " " << r.w << " " << r.h << std::endl;
@@ -244,6 +241,11 @@ std::string convert(int input) //takes an int and returns the int in string form
     std::ostringstream os;
     os << input;
     return os.str();
+}
+
+bool floatEquals(float a, float b, int precision)
+{
+    return (int)(pow(10,precision)*a) == (int)(pow(10,precision)*b);
 }
 
 size_t hashCombine( size_t lhs, size_t rhs ) {

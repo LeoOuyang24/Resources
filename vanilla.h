@@ -266,11 +266,7 @@ public:
     }
 };
 
-bool floatEquals(float a1, float a2,int precision = 3); //returns true if "a1" and "a2" are teh same out to "precision" decimal points. Basically == operator for floats that helps fight floating point precision errors
-#define FLOAT_COMPARE(a1, a2, precision, op) (floatEquals(a1,a2,precision) || (a1 op a2)) //lets you do things like >= but use "floatEquals" instead of the == operator.
-                                                                                          //apparently macros are evil and there are ways to do this with std::logical_operators
-                                                                                          //instead, but I don't care :gigachad:. I have never really used macros before so I'm
-                                                                                          //gonna use it for funsies.
+
 void printRect(const Rect& r);
 bool PointInRect(const Point& point, const Rect& rect); //returns true if the point is in the rect or on the borders
 
@@ -302,6 +298,9 @@ public:
     bool atTarget();
 
 };
+
+bool floatEquals(float a, float b, int precision); //given floats "a" and "b" returns true if they are equivalent up to "precision" decimal points
+#define FLOAT_COMPARE(a,b,precision,op) (floatEquals(a,b,precision) || a op b)
 
 size_t hashCombine(size_t h1, size_t h2); //combines two hashes https://stackoverflow.com/questions/5889238/why-is-xor-the-default-way-to-combine-hashes
 float round(float decimal, int n); //rounds decimal to the nth digit
