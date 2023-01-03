@@ -730,7 +730,7 @@ void SpriteWrapper::reset()
   //  parameters.clear();
 }
 
-void SpriteWrapper::render(const std::list<SpriteParameter>& parameters, float zMod)
+void SpriteWrapper::render(const std::list<SpriteParameter>& parameters, float zMod, RenderCamera* camera)
 {
     if (spr)
     {
@@ -862,7 +862,7 @@ SpriteWrapper* SpriteManager::getSprite(std::string source)
     return sprites[source];
 }
 
-void SpriteManager::render()
+void SpriteManager::render(RenderCamera* camera)
 {
     int i= 0;
     auto end = params.end();

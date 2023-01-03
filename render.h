@@ -74,7 +74,7 @@ public:
     void setVec3fv(std::string name,glm::vec3 value);
     void setVec4fv(std::string name, glm::vec4 value);
     void setVec2fv(std::string name, glm::vec2 value);
-    void use(const GLfloat* ortho); //pass in the ortho matrix
+    void use(const GLfloat* ortho); //pass in the ortho matrix (camera view)
     void use();
 
 
@@ -258,7 +258,7 @@ public:
     virtual void init(std::string source);
     virtual void init(Sprite* spr);
     virtual void reset();
-    virtual void render(const std::list<SpriteParameter>& parameters, float zMod =0); //zMod is a final modifier to the z. Used by spriteManager to decrease the chances of sprites overlapping
+    virtual void render(const std::list<SpriteParameter>& parameters, float zMod =0, RenderCamera* camera = nullptr); //zMod is a final modifier to the z. Used by spriteManager to decrease the chances of sprites overlapping
     Sprite* getSprite();
     glm::vec2 getDimen();
     bool isReady(); //returns whether or not spr is null
@@ -304,7 +304,7 @@ public:
     static void addSprite(SpriteWrapper& spr);
     static void request(SpriteWrapper& wrapper,const SpriteParameter& param);
     static SpriteWrapper* getSprite(std::string source); //will attempt to return a spritewrapper with the source loaded, null otherwie
-    static void render();
+    static void render(RenderCamera* camera = nullptr);
 
 };
 
