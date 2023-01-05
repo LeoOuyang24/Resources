@@ -141,21 +141,21 @@ class Sprite
 protected:
     int width = 0, height = 0;
     unsigned int texture = -1;
-    float texCoord = 1;
-    float values[16] = {
-    -1, 1, 0, texCoord,
-    1, 1, texCoord, texCoord,
+    constexpr static float verticies[16] = { //verticies of the sprite
+    -1, 1, 0, 1,
+    1, 1, 1, 1,
     -1, -1, 0, 0,
-    1, -1, texCoord, 0
+    1, -1, 1, 0
 
     };
-    int indices[6] = {
+    constexpr static int indices[6] = { //order in which to render the vertices
     0,1,3,
     0,2,3
     };
-    bool defaultVerticies = false; //whether or not the last time this image rendered, the values or indices were changed
-    glm::vec3 tint;
-    unsigned int VBO=-1,modVBO = -1, VAO=-1;
+public:
+
+    unsigned int VBO= 0, modVBO, //vbo stores the verticies of our image, modVBO stores the transformation information.
+                VAO=0;
     static const int floats; //the number of floats we pass everytime we render an instance/spriteParameter
     static const size_t floatSize; //size of floats in bytes;
     void load(std::string source);
@@ -163,7 +163,6 @@ protected:
     void draw( RenderProgram& program, GLfloat* data, int instances); //draws the sprite. Assumes ModVBO has already been loaded
     bool transparent = false;
     std::string source = "";
-public:
     Sprite(std::string source);
     Sprite()
     {
@@ -173,20 +172,13 @@ public:
     std::string getSource();
     void init(std::string source);
     void loadVertices();
-    void loadVertices(const std::vector<float>& verticies);
-    template<class T>void loadBuffer(unsigned int& buffer, int location, T arr[], int size, int dataSize, int divisor = 0); //data size is how much data per entry. Divisor is how for glvertexAttribDivisor. Default 0
+
   //  virtual void render(RenderProgram& program, SpriteParameter parameter);
     virtual void renderInstanced(RenderProgram& program, const std::vector<SpriteParameter>& parameters);
     unsigned int getVAO();
     virtual glm::vec2 getDimen();
     virtual int getFloats(); //# of floats per SpriteParameter is different for each class, so this function just returns the version for each child of Sprite
     void reset(); //clears all buffers and resets modified back to values
-    void setTint(glm::vec3 color);
-    void mirror();
-    void flip();
-    static unsigned char* getData(int* w, int* h, int* c);
-    void freeData(unsigned char* data);
-   // void map(RenderProgram& program,double width, double height,const glm::vec4& base, const std::vector<glm::vec2>& points);
 };
 
 class Sprite9 : public Sprite // This sprite has been split into 9 sections that each scale differently. The corners aren't scaled at all, the top and bottom

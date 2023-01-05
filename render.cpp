@@ -357,13 +357,12 @@ Sprite::Sprite( std::string source)
     }
     Sprite::~Sprite()
     {
-
         glDeleteTextures(1,&texture);
+        glDeleteBuffers(1,&VBO);
+        glDeleteBuffers(1,&modVBO);
+        glDeleteVertexArrays(1,&VAO);
     }
-void Sprite::setTint(glm::vec3 color)
-{
-    tint = color;
-}
+
 void Sprite::init(std::string source_)
     {
         load(source_);
@@ -377,56 +376,16 @@ void Sprite::loadVertices()
 {
            //glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER,VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(values),values, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0,4,GL_FLOAT,GL_FALSE,0,0);
-        defaultVerticies = true;
-
-}
-void Sprite::loadVertices(const std::vector<float>& vert)
-{
-        int size = vert.size();
-        float* verticies = new float[size];
-        for (int i = 0; i < size; i ++)
-        {
-            verticies[i] = vert[i];
-        }
-        glBindBuffer(GL_ARRAY_BUFFER,VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(verticies),verticies, GL_STATIC_DRAW);
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0,4,GL_FLOAT,GL_FALSE,0,0);
-        defaultVerticies = false;
-        delete[] verticies;
+        //glVertexAttribDivisor(0,1);
 
 }
 void Sprite::reset()
 {
     glBindVertexArray(0);
 glBindBuffer(GL_ARRAY_BUFFER,0);
-/*modified.clear();
-    for (int i = 0; i < 16; i ++)
-    {
-        modified.push_back(values[i]);
-    }
-modIndices.clear();
-    for (int i = 0; i < 6; i ++)
-    {
-        modIndices.push_back(indices[i]);
-    }*/
-    tint = {1,1,1};
-}
-
-template<class T>
-void Sprite::loadBuffer(unsigned int& buffers,int location, T arr[], int size, int dataSize, int divisor)
-{
-glGenBuffers(1,&buffers);
-glBindBuffer(GL_ARRAY_BUFFER, buffers);
-glBufferData(GL_ARRAY_BUFFER, sizeof(*arr)*size, arr, GL_STATIC_DRAW);
-glEnableVertexAttribArray(location);
-glVertexAttribPointer(location,dataSize,GL_FLOAT,GL_FALSE,0,0);
-glVertexAttribDivisor(location,divisor);
-
-//glDeleteBuffers(1,&buffers);
 }
 
 void Sprite::loadData(GLfloat* data, const SpriteParameter& parameter, int index)
@@ -455,15 +414,7 @@ void Sprite::loadData(GLfloat* data, const SpriteParameter& parameter, int index
             data[index + 20 + 3] = current->portion.y;
             data[index + 20 + 4] = current->portion.z;
             data[index + 20 + 5] = current->portion.a;
-           // std::cout << data[index + 20+ 1]<<"\n";
-           /* int vertAmount = current->indices.size();
-            for (int j = 0; j < vertAmount; j ++)
-            {
-                for (int z = 0; z < 4; z++)
-                {
-                    vec.push_back(current->vertices[current->indices[j]*4+z]);
-                }
-            }*/
+
         }
         else
         {
@@ -479,7 +430,7 @@ void Sprite::draw(RenderProgram& program, GLfloat* data, int instances)
     glBindBuffer(GL_ARRAY_BUFFER,modVBO);
     GLsizei vec4Size = 4*floatSize;
     int stride = floatSize*floats;
-    glBufferData(GL_ARRAY_BUFFER,stride*instances,data,GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,stride*instances,data,GL_DYNAMIC_DRAW);
     glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, (void*)0); //3-6 inclusive are the transformation matrix
     glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, stride, (void*)(vec4Size));
     glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, stride, (void*)(2 * vec4Size));
@@ -740,8 +691,8 @@ void SpriteWrapper::render(const std::list<SpriteParameter>& parameters, float z
         int floats = spr->getFloats();
         GLfloat* data = new GLfloat[size*floats];
         glBindVertexArray(spr->VAO);
-        glBindTexture(GL_TEXTURE_2D,spr->texture);
-        glBindBuffer(GL_ARRAY_BUFFER,spr->modVBO);
+        /*glBindTexture(GL_TEXTURE_2D,spr->texture);
+        glBindBuffer(GL_ARRAY_BUFFER,spr->VBO);*/
         int index = 0;
         int i = 0;
        // bool deleted = false;

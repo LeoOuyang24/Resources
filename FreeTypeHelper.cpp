@@ -11,7 +11,6 @@ Font::Character::Character(char c, FT_Face& face) : Sprite()
 {
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1,&VBO);
-        glGenBuffers(1,&modVBO);
 
         glBindVertexArray(VAO);
 
