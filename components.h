@@ -204,13 +204,13 @@ class SpriteComponent : public RenderComponent, public ComponentContainer<Sprite
     bool animated = false; //whether it's an animation or sprite
 protected:
     int startingFrame = 0; //this number is useful for calculating which frame to render right now. Used in defaultAParam(); Set to DeltaTime::currentFrame to render the first frame
-    SpriteWrapper* sprite = nullptr;
+    Sprite* sprite = nullptr;
     SpriteParameter sParam;
     AnimationParameter aParam;
 public:
     virtual SpriteParameter defaultSParam(); //returns the sprite parameter used by default
     virtual AnimationParameter defaultAParam(); //returns the Animation Parameter used by default
-    SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity); //loads a sprite or animation
+    SpriteComponent(Sprite& sprite_, bool animated_, Entity& entity); //loads a sprite or animation
     virtual void render(const SpriteParameter& param);
     void setParam(const SpriteParameter& param, const AnimationParameter& animeParam = AnimationParameter()); //set modified to true if you don't want to call default render
     void setAParam(const AnimationParameter& animeParam); //set only aParam so sParam isn't overriden

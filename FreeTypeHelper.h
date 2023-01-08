@@ -51,14 +51,7 @@ class Font
 
     };
 
-    class FontWrapper : public SpriteWrapper
-    {
-    public:
-        FontWrapper(Character& sprite);
-        Character& getCharacter();
-    };
-
-    std::unordered_map<GLchar,std::unique_ptr<FontWrapper>> characters;
+    std::unordered_map<GLchar,std::unique_ptr<Character>> characters;
     glm::vec2 maxVert; //x is max bearing.y, y is maximum space underneath the bearing. Sum of x and y is the maximum height we need
     std::string font = "";
     GLuint  VBO,VAO;

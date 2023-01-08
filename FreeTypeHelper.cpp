@@ -68,23 +68,13 @@ GLuint Font::Character::getAdvance()
     return advance;
 }
 
-Font::FontWrapper::FontWrapper(Character& sprite)
-{
-    spr = &sprite;
-}
-
-Font::Character& Font::FontWrapper::getCharacter()
-{
-    return *static_cast<Character*>(spr);
-}
-
 int Font::writeLength(std::string str)
 {
     int length = 0;
     int size = str.size();
     for (int i = 0; i < size; ++i)
     {
-        length += characters[str[i]]->getCharacter().getAdvance() >> 6;
+        length += characters[str[i]]->getAdvance() >> 6;
     }
     return length;
 }
@@ -133,9 +123,8 @@ int Font::writeLength(std::string str)
             }
            // character.bearing.x /= 64;
            // character.bearing.y /=64;
-           FontWrapper* fontWrapper = new FontWrapper(*character);
-           SpriteManager::addSprite(*fontWrapper);
-            characters[c] = std::unique_ptr<FontWrapper>(fontWrapper);
+           //SpriteManager::addSprite(*character);
+            characters[c] = std::unique_ptr<Character>(character);
         }
 
 
@@ -156,7 +145,7 @@ glm::vec2 Font::getDimen(std::string text, GLfloat hScale, GLfloat vScale)
    // std::cout << hScale << " " << vScale << std::endl;
     for (c = text.begin(); c != end; ++c)
     {
-        Character* ch = &(characters[*c].get()->getCharacter());
+        Character* ch = (characters[*c].get());
         GLfloat h = ch->getSize().y * vScale;
         totalWidth += (ch->getAdvance())*hScale/64;
         maxHeight += (h > maxHeight)*(h-maxHeight);
@@ -210,7 +199,7 @@ void Font::requestWrite(const FontParameter& param)
     for (int i = 0; i < size; ++i)
     {
         char c = param.text[i];
-        Character* ch = &(characters[c].get()->getCharacter());
+        Character* ch = (characters[c].get());
         const glm::vec2* bearing = &ch->getBearing();
         const glm::vec2* chSize = &ch->getSize();
         GLfloat xpos = x +bearing->x*scale;
@@ -221,7 +210,8 @@ void Font::requestWrite(const FontParameter& param)
         GLfloat h = (chSize->y)*scale;
       //  PolyRender::requestRect({pos.x,pos.y,w,h},{1,0,0,1},false,0,-1);
      // printRect({pos.x,pos.y,w,h});
-        characters[c]->request({{pos.x,pos.y,w,h},0,NONE,param.color,&wordProgram,param.z});
+        SpriteManager::request(*characters[c],{{pos.x,pos.y,w,h},0,param.z});
+        //characters[c]->request({{pos.x,pos.y,w,h},0,NONE,param.color,&wordProgram,param.z});
         x += (ch->getAdvance() >> 6 )*scale;
     }
 

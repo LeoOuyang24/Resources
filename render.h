@@ -6,6 +6,8 @@
 #include <vector>
 #include <map>
 #include <list>
+#include <set>
+
 #include "glew.h"
 
 #include "glm.hpp"
@@ -41,7 +43,7 @@ struct ViewRange
 
 class RenderProgram
 {
-
+public:
     unsigned int program;
     static int screenWidth, screenHeight;
     static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
@@ -116,25 +118,14 @@ enum RenderEffect
 
 struct SpriteParameter //stores a bunch of information regarding how to render the sprite
 {
-     glm::vec4 rect = {0,0,0,0};
+     glm::vec4 rect = {0,0,1,1};
     float radians = 0;
-    RenderEffect effect = NONE; //effects to do. (mirror, flip, etc)
-    glm::vec4 tint = {1,1,1,1};
-    RenderProgram* program = &RenderProgram::basicProgram;
     float z = 0;
-    glm::vec4 portion = {0,0,1,1};
-    bool operator ==(const SpriteParameter& p2)
-    {
-        return this->rect == p2.rect && this->radians == p2.radians &&
-        this->effect == p2.effect && this->tint == p2.tint &&
-        this->program == p2.program && this->z == p2.z &&
-        this->portion == p2.portion;
-    }
-   // std::vector<float> vertices = {};
-    //std::vector<int> indices = {};
+    RenderEffect effect = NONE; //effects to do. (mirror, flip, etc)
 };
 
 class SpriteWrapper;
+typedef unsigned int Buffer;
 class Sprite
 {
     friend SpriteWrapper;
@@ -154,12 +145,14 @@ protected:
     };
 public:
 
-    unsigned int VBO= 0, modVBO, //vbo stores the verticies of our image, modVBO stores the transformation information.
+    Buffer VBO= 0, modVBO, //vbo stores the verticies of our image, modVBO stores the transformation information.
                 VAO=0;
     static const int floats; //the number of floats we pass everytime we render an instance/spriteParameter
-    static const size_t floatSize; //size of floats in bytes;
     void load(std::string source);
-    virtual void loadData(GLfloat* data, const SpriteParameter& parameter, int index);
+    virtual void loadData(GLfloat* data, const SpriteParameter& parameter, int index); //loads information from SpriteParameter into "data", starting at "index"
+    template<typename Iterator>
+    void loadData(GLfloat* data, const Iterator& a, const Iterator& b, int index); //load a bunch of data from an STL container of SpriteParameters, starting at "a" and going up to "b".
+                                                                                    //"Iterator" is an object that has the ++ and * operators (usually iterators)
     void draw( RenderProgram& program, GLfloat* data, int instances); //draws the sprite. Assumes ModVBO has already been loaded
     bool transparent = false;
     std::string source = "";
@@ -172,9 +165,6 @@ public:
     std::string getSource();
     void init(std::string source);
     void loadVertices();
-
-  //  virtual void render(RenderProgram& program, SpriteParameter parameter);
-    virtual void renderInstanced(RenderProgram& program, const std::vector<SpriteParameter>& parameters);
     unsigned int getVAO();
     virtual glm::vec2 getDimen();
     virtual int getFloats(); //# of floats per SpriteParameter is different for each class, so this function just returns the version for each child of Sprite
@@ -236,67 +226,30 @@ public:
     glm::vec4 getPortion(const AnimationParameter& param); //given animation parameter, returns the portion of the spreadsheet
     SpriteParameter processParam(const SpriteParameter& sParam,const AnimationParameter& aParam); //returns a spriteparameter that represents what to render
     void init(std::string source,int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
-    using Sprite::renderInstanced;
-    void renderInstanced(RenderProgram& program, const std::list<FullAnimationParameter>& parameters);
-    void renderInstanced(RenderProgram& program, const std::vector<SpriteParameter>& parameters);
 };
-
-class SpriteWrapper
-{
-
-protected:
-    Sprite* spr = nullptr;
-public:
-    virtual void init(std::string source);
-    virtual void init(Sprite* spr);
-    virtual void reset();
-    virtual void render(const std::list<SpriteParameter>& parameters, float zMod =0, RenderCamera* camera = nullptr); //zMod is a final modifier to the z. Used by spriteManager to decrease the chances of sprites overlapping
-    Sprite* getSprite();
-    glm::vec2 getDimen();
-    bool isReady(); //returns whether or not spr is null
-    virtual void request(const SpriteParameter& param);
-    virtual ~SpriteWrapper();
-
-};
-
-
-class AnimationWrapper : public SpriteWrapper //this class actually doesn't call BaseAnimation::renderInstanced, but rather converts FullAnimationParameters into SpriteParameters
-{
-    std::list<FullAnimationParameter> aParameters; //we use a linkedList for this because we often times only want to remove some Animation Parameters. We could use forward_list for slight efficiency but I'm too lazy to deal with erase_after :)
-public:
-    BaseAnimation* getAnimation();
-    void init(BaseAnimation* a);
-    void reset();
-    using SpriteWrapper::request;
-    void request(const SpriteParameter& param); //calls requests a default AnimationParameter
-    void request(const SpriteParameter& sparam,const AnimationParameter& aparam);
-    ~AnimationWrapper();
-};
-
-typedef std::pair<float,SpriteWrapper*> zWrapper; //used to sort spriteWrappers
+typedef std::pair<Sprite*,SpriteParameter> SpriteRequest;
 
 class SpriteManager
 {
-    struct ZWrapperComparator
+    struct SpriteRequestComparator
     {
-        bool operator ()(const zWrapper& a, const zWrapper& b) const
+        bool operator()(const SpriteRequest& a, const SpriteRequest& b) const
         {
-            if (a.first == b.first)
+            if (a.second.z == b.second.z)
             {
-                return a.second < b.second;
+                return a.first < b.first; //if we can compare by z, compare by sprite address to ensure that same sprites are always bundeled together.
             }
-            return a.first < b.first;
+            return a.second.z < b.second.z;
         }
     };
-    static std::map<zWrapper,std::list<SpriteParameter>,ZWrapperComparator> params;
-    static std::unordered_map<std::string,SpriteWrapper*> sprites;
+    static Buffer VAO, modVBO;
+    static std::multiset<SpriteRequest,SpriteRequestComparator> params;
+    static std::vector<float> data; //used to store transformations for all the sprite parameters
 public:
     constexpr static float zIncrement = .001; //slight increment so sprites don't overlap
-
-    static void addSprite(SpriteWrapper& spr);
-    static void request(SpriteWrapper& wrapper,const SpriteParameter& param);
-    static SpriteWrapper* getSprite(std::string source); //will attempt to return a spritewrapper with the source loaded, null otherwie
-    static void render(RenderCamera* camera = nullptr);
+    static void init();
+    static void request(Sprite& wrapper,const SpriteParameter& param);
+    static void render(RenderProgram& program, RenderCamera* camera = nullptr);
 
 };
 

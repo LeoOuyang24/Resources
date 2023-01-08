@@ -312,7 +312,7 @@ void RectRenderComponent::render(const SpriteParameter& param)
     if (entity)
     if (RectComponent* rect = entity->getComponent<RectComponent>())
     {
-        PolyRender::requestRect(  rect->getRect(),color*param.tint,true, rect->getTilt(),param.z);
+        PolyRender::requestRect(  rect->getRect(),color,true, rect->getTilt(),param.z);
     }
 }
 
@@ -343,15 +343,11 @@ SpriteParameter SpriteComponent::defaultSParam()
 AnimationParameter SpriteComponent::defaultAParam()
 {
     AnimationParameter aParam;
-    if (animated && sprite)
-    {
-        BaseAnimation* anime = static_cast<BaseAnimation*>(sprite->getSprite());
-        aParam.start = BaseAnimation::getFrameIndex(startingFrame,anime->getFPS());
-    }
+
     return aParam; //does nothing if the sprite is not animated
 }
 
-SpriteComponent::SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity) : RenderComponent(entity),
+SpriteComponent::SpriteComponent(Sprite& sprite_, bool animated_, Entity& entity) : RenderComponent(entity),
                                                                                                                 ComponentContainer<SpriteComponent>(entity),
                                                                                                                         sprite(&sprite_),
                                                                                                                         animated(animated_)
@@ -365,11 +361,11 @@ void SpriteComponent::render(const SpriteParameter& param)
     {
             if (animated)
             {
-                static_cast<AnimationWrapper*>(sprite)->request(param,aParam);
+               // static_cast<AnimationWrapper*>(sprite)->request(param,aParam);
             }
             else
             {
-                sprite->request(param);
+                SpriteManager::request(*sprite,param);
             }
     }
 

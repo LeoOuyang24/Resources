@@ -43,7 +43,6 @@
 		<Linker>
 			<Add option="-O3" />
 		</Linker>
-		<Unit filename="../../projects/Mixer/draw.cpp" />
 		<Unit filename="../FreeTypeHelper.cpp" />
 		<Unit filename="../FreeTypeHelper.h" />
 		<Unit filename="../SDLhelper.cpp" />
