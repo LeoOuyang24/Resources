@@ -110,8 +110,10 @@ void RenderProgram::init(int screenWidth, int screenHeight)
 
 glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     glEnable(GL_BLEND);
-    //glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
     glEnable(GL_PRIMITIVE_RESTART);
+
+    glDepthFunc(GL_LEQUAL);
 
     RenderProgram::lineProgram.init("../../resources/shaders/vertex/simpleVertex.h","../../resources/shaders/fragment/simpleFragment.h");
     glm::mat4 mat = getOrtho();
@@ -292,6 +294,17 @@ glm::vec2 RenderCamera::toAbsolute(const glm::vec2& point) const
     return RenderProgram::toAbsolute(point);
 }
 
+bool isTransluscent(unsigned char* sprite, int width, int height)
+{
+    for (int i = 3; i < width*height; i +=4)
+    {
+        if (sprite[i] != 0 && sprite[i] != 255)
+        {
+            return true;
+        }
+    }
+    return false;
+}
 
 const int Sprite::floats = sizeof(SpriteParameter)/(sizeof(float)) - 4 + 4*4 - 1; //the way this is calculated is total number of floats in SpriteParameter - 4 + 4*4 because "rect" becomes a 4x4 matrix then minus 1 becomes "radians" is also a part of that 4x4 matrix
    void Sprite::load(std::string source)
@@ -356,7 +369,7 @@ const int Sprite::floats = sizeof(SpriteParameter)/(sizeof(float)) - 4 + 4*4 - 1
             break;
         case 4:
             rgb = GL_RGBA;
-            transparent = true;
+            transluscent = isTransluscent(data,width,height);
             break;
         }
 
@@ -398,13 +411,6 @@ void Sprite::init(std::string source_)
 std::string Sprite::getSource()
 {
     return source;
-}
-void Sprite::loadVertices()
-{
-           //glBindVertexArray(VAO);
-
-        //glVertexAttribDivisor(0,1);
-
 }
 void Sprite::reset()
 {
@@ -646,19 +652,16 @@ void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<Sp
     Sprite::renderInstanced(program, params);
 }*/
 
-Buffer SpriteManager::VAO = 0, SpriteManager::modVBO = 0;
 std::vector<float> SpriteManager::data;
 std::multiset<SpriteRequest,SpriteManager::SpriteRequestComparator> SpriteManager::params;
 void SpriteManager::init()
 {
-    glGenBuffers(1,&modVBO);
-    glGenVertexArrays(1,&VAO);
     data.resize(1024); //resize to 64 because it's a safe bet we'll usually use this much space.
 }
 
-void SpriteManager::request(Sprite& wrapper, const SpriteParameter& param)
+void SpriteManager::request(Sprite& sprite, const SpriteParameter& param)
 {
-    params.insert({&wrapper,param});
+    params.insert({&sprite,param});
 }
 void SpriteManager::render(RenderProgram& program, RenderCamera* camera)
 {
@@ -673,16 +676,17 @@ void SpriteManager::render(RenderProgram& program, RenderCamera* camera)
            data.resize(data.size()*2); //double size every time, hopefully will limit resize calls.
        }
        SpriteParameter param = it->second;
-       //param.z += .1*i;
        it->first->loadData(&data[0],param,floats);
        ++i;
        if (it == end || std::next(it)->first != it->first) //render all current sprite parameters in one go
        {
+           std::cout << it->first->getSource() << "\n";
             it->first->draw(program,&data[0],i);
             i = 0;
        }
     }
     params.clear();
+    std::cout << "\n";
 }
 
 unsigned int PolyRender::VAO = -1;

@@ -124,6 +124,8 @@ struct SpriteParameter //stores a bunch of information regarding how to render t
     RenderEffect effect = NONE; //effects to do. (mirror, flip, etc)
 };
 
+bool isTransluscent(unsigned char* sprite, int width, int height); //returns true if sprite has any pixels with an alpha value between 0 and 1, non-inclusive
+
 class SpriteWrapper;
 typedef unsigned int Buffer;
 class Sprite
@@ -154,7 +156,7 @@ public:
     void loadData(GLfloat* data, const Iterator& a, const Iterator& b, int index); //load a bunch of data from an STL container of SpriteParameters, starting at "a" and going up to "b".
                                                                                     //"Iterator" is an object that has the ++ and * operators (usually iterators)
     void draw( RenderProgram& program, GLfloat* data, int instances); //draws the sprite. Assumes ModVBO has already been loaded
-    bool transparent = false;
+    bool transluscent = false;
     std::string source = "";
     Sprite(std::string source);
     Sprite()
@@ -164,7 +166,6 @@ public:
     ~Sprite();
     std::string getSource();
     void init(std::string source);
-    void loadVertices();
     unsigned int getVAO();
     virtual glm::vec2 getDimen();
     virtual int getFloats(); //# of floats per SpriteParameter is different for each class, so this function just returns the version for each child of Sprite
@@ -233,16 +234,27 @@ class SpriteManager
 {
     struct SpriteRequestComparator
     {
-        bool operator()(const SpriteRequest& a, const SpriteRequest& b) const
+        bool operator()(const SpriteRequest& a, const SpriteRequest& b) const //returns true is a < b, which means "a" gets rendered before "b"
         {
-            if (a.second.z == b.second.z)
+            if (a.first->transluscent == b.first->transluscent) //if they are both equally transluscent, compare by z
             {
-                return a.first < b.first; //if we can compare by z, compare by sprite address to ensure that same sprites are always bundeled together.
+                if (!a.first->transluscent) //if a and b are both opaque
+                {
+                    return a.first < b.first; //sort by image address, ensures that the same images will be rendered together
+                }
+                else //otherwise we have to sort by furthest transluscent fragments to nearest
+                {
+                    if (a.second.z == b.second.z)
+                    {
+                        return a.first < b.first; //if we can compare by z, compare by sprite address to ensure that same sprites are always bundeled together.
+                    }
+                    return a.second.z < b.second.z;
+                }
+
             }
-            return a.second.z < b.second.z;
+            return !a.first->transluscent; //opaque sprites are rendered first, so if a is transcluscent but b isn't, then b goes a is greater than b (b is rendered first).
         }
     };
-    static Buffer VAO, modVBO;
     static std::multiset<SpriteRequest,SpriteRequestComparator> params;
     static std::vector<float> data; //used to store transformations for all the sprite parameters
 public:

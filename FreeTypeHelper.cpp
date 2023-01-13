@@ -48,8 +48,6 @@ Font::Character::Character(char c, FT_Face& face) : Sprite()
     bearing =  glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top);
     advance =    face->glyph->advance.x;
 
-    loadVertices();
-
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER,0);
     //load("image.png",true);
