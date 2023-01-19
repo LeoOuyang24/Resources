@@ -6,6 +6,7 @@
 
 #include <unordered_map>
 #include <memory>
+#include <list>
 
 #include "geometry.h"
 #include "render.h"
@@ -55,7 +56,7 @@ class Font
     glm::vec2 maxVert; //x is max bearing.y, y is maximum space underneath the bearing. Sum of x and y is the maximum height we need
     std::string font = "";
     GLuint  VBO,VAO;
-    int indices[6] = {
+    constexpr static int indices[6] = {
         0,1,2,
         3,1,2};
     int writeLength(std::string str);
@@ -71,18 +72,36 @@ public:
     void init(std::string source);
     glm::vec2 getDimen(std::string text, GLfloat hScale, GLfloat vScale); //gets the dimensions on text printed if the text were to be printed. The height is based on the bearing rather than the actual character height
     void requestWrite(const FontParameter& param);
+    Character& getChar(GLchar c)
+    {
+        return *characters[c].get();
+    }
     void write(); //renders all the FontWrappers in characters
     void clear();
     ~Font();
 
     };
 
+struct FontRequest
+{
+    Font* font = nullptr;
+    SpriteParameter param;
+};
+
+class FontProgram : public RenderProgram
+{
+
+};
+
 class FontManager
 {
-    static std::vector<Font*> fonts;
+    Sprite transFish;
+    std::list<SpriteRequest> requests;
+    RenderProgram program;
 public:
-    static void addFont(Font& font);
-    static void update();
+    FontManager(std::string vectorShader, std::string fragmentShader);
+    void request(Font& font, std::string str, const SpriteParameter& request_);
+    void update();
 };
 
 

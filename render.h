@@ -17,7 +17,6 @@
 #include "SDLhelper.h";
 #include "vanilla.h"
 
-class RenderProgram;
 void addPointToBuffer(float buffer[], glm::vec3 point, int index);
 void addPointToBuffer(float buffer[], glm::vec2 point, int index);
 void addPointToBuffer(float buffer[], glm::vec4 point, int index);
@@ -40,24 +39,13 @@ struct ViewRange
     glm::vec2 yRange = {0,0};
     glm::vec2 zRange = {0,0};
 };
+typedef unsigned int Buffer;
 
-class RenderProgram
+struct ViewPort //has data about visible area on screen
 {
-public:
-    unsigned int program;
     static int screenWidth, screenHeight;
     static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
     static ViewRange currentRange; //represents the current range for x,y, and z
-public:
-    static GLuint VBO, VAO;
-    static RenderProgram basicProgram, lineProgram; //basic allows for basic sprite rendering. Line program is simpler and renders lines.
-    static RenderProgram paintProgram; //renders something using only one color
-    RenderProgram(std::string vertexPath, std::string fragmentPath);
-    RenderProgram()
-    {
-
-    }
-    void init(std::string vertexPath, std::string fragmentPath);
     static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
 
     static glm::vec2 toAbsolute(const glm::vec2& point);//given a screen coordinate, renders it to that point on the screen regardless of zoom
@@ -72,12 +60,50 @@ public:
     static void resetRange();
     static glm::mat4 getOrtho(); //gets projection matrix
     static glm::vec2 getScreenDimen();
+};
+
+class Sprite;
+class RenderProgram //represents a shader pipeline (by default only a vertex and a fragment shader).
+{
+private:
+    int dataAmount = 0; //total number of GLfloats passed to shader
+    unsigned int program;
+    void initShaders(std::string vertexPath, std::string fragmentPath);
+    void initBuffers(); //initializes VAO and VBOs as well as loads the verticies into VerticiesVBO
+
+protected:
+    typedef std::initializer_list<int> Numbers; //represents list of numbers where each number is how many GLfloats belong to a vertex attribute
+
+    void initTransforms(int total, Numbers numbers);//initTransforms allows us to specify our vertex attribute data using one function.
+                                                    //"total" is the total amount of numbers(usually floats) we pass
+                                                    //"numbers" is a list of ints to specify how many ints per attribute
+public:
+    int preDataAmount = 0; //total number of GLFloats per request; so called because they have yet to be processed (pre-processed).
+
+    Buffer VBO, //used to store transform data
+    VAO,
+    verticiesVBO; //used to store verticies
+
+    RenderProgram(std::string vertexPath, std::string fragmentPath);
+    RenderProgram()
+    {
+
+    }
+    void init(std::string vertexPath, std::string fragmentPath,int total, Numbers numbers);
+    void init(std::string vertexPath, std::string fragmentPath,int a);
+    void init(std::string vertexPath, std::string fragmentPath);
+
     void setMatrix4fv(std::string name, const GLfloat* value); //pass in the value_ptr of the matrix
     void setVec3fv(std::string name,glm::vec3 value);
     void setVec4fv(std::string name, glm::vec4 value);
     void setVec2fv(std::string name, glm::vec2 value);
     void use(const GLfloat* ortho); //pass in the ortho matrix (camera view)
     void use();
+    void draw(Sprite& sprite, void* data, int instances);
+
+    int getRequestDataAmount();
+
+
 
 
 };
@@ -127,7 +153,6 @@ struct SpriteParameter //stores a bunch of information regarding how to render t
 bool isTransluscent(unsigned char* sprite, int width, int height); //returns true if sprite has any pixels with an alpha value between 0 and 1, non-inclusive
 
 class SpriteWrapper;
-typedef unsigned int Buffer;
 class Sprite
 {
     friend SpriteWrapper;
@@ -155,7 +180,7 @@ public:
     template<typename Iterator>
     void loadData(GLfloat* data, const Iterator& a, const Iterator& b, int index); //load a bunch of data from an STL container of SpriteParameters, starting at "a" and going up to "b".
                                                                                     //"Iterator" is an object that has the ++ and * operators (usually iterators)
-    void draw( RenderProgram& program, GLfloat* data, int instances); //draws the sprite. Assumes ModVBO has already been loaded
+    void draw( RenderProgram& program, float* data, int instances); //draws the sprite. Assumes ModVBO has already been loaded
     bool transluscent = false;
     std::string source = "";
     Sprite(std::string source);
@@ -164,6 +189,7 @@ public:
         texture = -1;
     }
     ~Sprite();
+    unsigned int getTexture();
     std::string getSource();
     void init(std::string source);
     unsigned int getVAO();
@@ -191,12 +217,9 @@ public:
 
 struct AnimationParameter//the main difference between this class and SpriteParameters is that this one provides the time at which the animation started and the fps
 {
-    int start = -1; //the frame we start at, with the first frame being 0. -1 to use SDL_Ticks to calculate the start
-    float fps = -1; //the fps for the animation. -1 means use the default
-    unsigned int repeat = 0; //repeats the animation "repeat" times. 0 instantly ends the animation after one frame.
+    int timeSince = 0; //milliseconds since beginning,
+    int fps = 1;
     glm::vec4 subSection = glm::vec4(0); //the portion of the sprite sheet we want to render
-    glm::vec4 (RenderCamera::*transform) (const glm::vec4&) const = nullptr; // a transform function for the render location
-    RenderCamera* camera = nullptr; //the camera to use with the transform
 };
 
 typedef std::pair<SpriteParameter,AnimationParameter> FullAnimationParameter;
@@ -230,6 +253,15 @@ public:
 };
 typedef std::pair<Sprite*,SpriteParameter> SpriteRequest;
 
+struct OpaqueSpriteRequest
+{
+    Sprite& sprite;
+    RenderProgram& program;
+    int index;
+
+
+};
+
 class SpriteManager
 {
     struct SpriteRequestComparator
@@ -255,12 +287,58 @@ class SpriteManager
             return !a.first->transluscent; //opaque sprites are rendered first, so if a is transcluscent but b isn't, then b goes a is greater than b (b is rendered first).
         }
     };
+    struct OpaqueCompare
+    {
+        bool operator()(const OpaqueSpriteRequest& a, const OpaqueSpriteRequest& b) const //returns true is a < b, which means "a" gets rendered before "b"
+        {
+            return &a.sprite < &b.sprite; //just need to make sure that the same sprites are grouped together
+        }
+    };
     static std::multiset<SpriteRequest,SpriteRequestComparator> params;
-    static std::vector<float> data; //used to store transformations for all the sprite parameters
+    static std::multiset<OpaqueSpriteRequest,OpaqueCompare> opaques;
+    static std::vector<char> data; //used to store transformations for all the sprite parameters
+    static std::vector<char> opaqueData; //used to store all data for opaques
+    static std::vector<float>floatsData;
+    static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes)
+    {
+        if (bytes < program.getRequestDataAmount())
+        {
+            opaqueData.resize( opaqueData.size() + program.getRequestDataAmount() - bytes,0);
+        }
+        for (int i = 0; i < program.getRequestDataAmount(); i += sizeof(float))
+        {
+            float num = 0;
+            memcpy(&num,&opaqueData[opaqueData.size() - program.getRequestDataAmount() + i],sizeof(float));
+        }
+        opaques.insert({sprite,program, opaqueData.size()- program.getRequestDataAmount()});
+    }
+    template<typename T, typename... Args>
+    static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes,T t1, Args... args)
+    {
+        //std::cout << opaqueData.size()/28 << "\n";
+        if (bytes >=program.getRequestDataAmount())
+        {
+            requestWork(sprite,program,bytes); //terminate early if too many arguments were provided
+        }
+        else
+        {
+            char* bytesBuffer = reinterpret_cast<char*>(&t1);
+            opaqueData.insert(opaqueData.end(), bytesBuffer,bytesBuffer + sizeof(t1));
+            //std::cout << opaqueData.size()<< " " << sizeof(t1) << "\n";
+            requestWork(sprite,program,bytes + sizeof(t1), args...);
+        }
+    }
 public:
     constexpr static float zIncrement = .001; //slight increment so sprites don't overlap
     static void init();
     static void request(Sprite& wrapper,const SpriteParameter& param);
+
+    template<typename T, typename... Args>
+    static void request(Sprite& sprite, RenderProgram& program,T t1, Args... args)
+    {
+        requestWork(sprite,program,0,t1,args...);
+    }
+
     static void render(RenderProgram& program, RenderCamera* camera = nullptr);
 
 };

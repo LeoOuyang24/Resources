@@ -1,9 +1,9 @@
 #version 330 core
 
 layout (location = 0) in vec4 values;
-layout (location = 3) in mat4 transform;
-layout (location = 7) in float depth;
-layout (location = 8) in float effect;
+layout (location = 1) in mat4 transform;
+layout (location = 5) in float depth;
+layout (location = 6) in float effect;
 
 
 uniform mat4 projection;
