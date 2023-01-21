@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <list>
 #include <set>
 
@@ -89,6 +90,12 @@ public:
     {
 
     }
+    ~RenderProgram()
+    {
+        glDeleteVertexArrays(1,&VAO);
+        glDeleteBuffers(1,&verticiesVBO);
+        glDeleteBuffers(1,&VBO);
+    }
     void init(std::string vertexPath, std::string fragmentPath,int total, Numbers numbers);
     void init(std::string vertexPath, std::string fragmentPath,int a);
     void init(std::string vertexPath, std::string fragmentPath);
@@ -142,45 +149,15 @@ enum RenderEffect
     HORIZMIRROR
 };
 
-struct SpriteParameter //stores a bunch of information regarding how to render the sprite
-{
-     glm::vec4 rect = {0,0,1,1};
-    float radians = 0;
-    float z = 0;
-    RenderEffect effect = NONE; //effects to do. (mirror, flip, etc)
-};
-
 bool isTransluscent(unsigned char* sprite, int width, int height); //returns true if sprite has any pixels with an alpha value between 0 and 1, non-inclusive
 
-class SpriteWrapper;
 class Sprite
 {
-    friend SpriteWrapper;
 protected:
     int width = 0, height = 0;
     unsigned int texture = -1;
-    constexpr static float verticies[16] = { //verticies of the sprite
-    -1, 1, 0, 1,
-    1, 1, 1, 1,
-    -1, -1, 0, 0,
-    1, -1, 1, 0
-
-    };
-    constexpr static int indices[6] = { //order in which to render the vertices
-    0,1,3,
-    0,2,3
-    };
 public:
-
-    Buffer VBO= 0, modVBO, //vbo stores the verticies of our image, modVBO stores the transformation information.
-                VAO=0;
-    static const int floats; //the number of floats we pass everytime we render an instance/spriteParameter
     void load(std::string source);
-    virtual void loadData(GLfloat* data, const SpriteParameter& parameter, int index); //loads information from SpriteParameter into "data", starting at "index"
-    template<typename Iterator>
-    void loadData(GLfloat* data, const Iterator& a, const Iterator& b, int index); //load a bunch of data from an STL container of SpriteParameters, starting at "a" and going up to "b".
-                                                                                    //"Iterator" is an object that has the ++ and * operators (usually iterators)
-    void draw( RenderProgram& program, float* data, int instances); //draws the sprite. Assumes ModVBO has already been loaded
     bool transluscent = false;
     std::string source = "";
     Sprite(std::string source);
@@ -192,18 +169,14 @@ public:
     unsigned int getTexture();
     std::string getSource();
     void init(std::string source);
-    unsigned int getVAO();
     virtual glm::vec2 getDimen();
-    virtual int getFloats(); //# of floats per SpriteParameter is different for each class, so this function just returns the version for each child of Sprite
-    void reset(); //clears all buffers and resets modified back to values
 };
 
 class Sprite9 : public Sprite // This sprite has been split into 9 sections that each scale differently. The corners aren't scaled at all, the top and bottom
 {                               //are only scaled horizontally, the sides are only scaled vertically, and the center can be scaled any which way.
-    static const int floats9; //the number of floats per SpriteParameter for Sprite9. Each spriteParameter for Sprite9 is rendered 9 different times so this is 9*Sprite::floats
     glm::vec2 widths; //the widths of the frame on either side;
     glm::vec2 heights; //heights of the frame on either side;
-    void loadData(GLfloat* data, const SpriteParameter& parameter, int index);
+    //void loadData(GLfloat* data, const SpriteParameter& parameter, int index);
 public:
     Sprite9(std::string source, glm::vec2 W, glm::vec2 H);
     Sprite9()
@@ -215,14 +188,13 @@ public:
 
 };
 
-struct AnimationParameter//the main difference between this class and SpriteParameters is that this one provides the time at which the animation started and the fps
+/*struct AnimationParameter//the main difference between this class and SpriteParameters is that this one provides the time at which the animation started and the fps
 {
     int timeSince = 0; //milliseconds since beginning,
     int fps = 1;
     glm::vec4 subSection = glm::vec4(0); //the portion of the sprite sheet we want to render
 };
 
-typedef std::pair<SpriteParameter,AnimationParameter> FullAnimationParameter;
 
 class BaseAnimation : public Sprite //the actual animation object
 {
@@ -250,67 +222,34 @@ public:
     glm::vec4 getPortion(const AnimationParameter& param); //given animation parameter, returns the portion of the spreadsheet
     SpriteParameter processParam(const SpriteParameter& sParam,const AnimationParameter& aParam); //returns a spriteparameter that represents what to render
     void init(std::string source,int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
-};
-typedef std::pair<Sprite*,SpriteParameter> SpriteRequest;
-
-struct OpaqueSpriteRequest
-{
-    Sprite& sprite;
-    RenderProgram& program;
-    int index;
-
-
-};
+};*/
 
 class SpriteManager
 {
-    struct SpriteRequestComparator
+    struct OpaquePair
     {
-        bool operator()(const SpriteRequest& a, const SpriteRequest& b) const //returns true is a < b, which means "a" gets rendered before "b"
+        size_t operator()(const std::pair<Sprite&,RenderProgram&>& a) const
         {
-            if (a.first->transluscent == b.first->transluscent) //if they are both equally transluscent, compare by z
-            {
-                if (!a.first->transluscent) //if a and b are both opaque
-                {
-                    return a.first < b.first; //sort by image address, ensures that the same images will be rendered together
-                }
-                else //otherwise we have to sort by furthest transluscent fragments to nearest
-                {
-                    if (a.second.z == b.second.z)
-                    {
-                        return a.first < b.first; //if we can compare by z, compare by sprite address to ensure that same sprites are always bundeled together.
-                    }
-                    return a.second.z < b.second.z;
-                }
-
-            }
-            return !a.first->transluscent; //opaque sprites are rendered first, so if a is transcluscent but b isn't, then b goes a is greater than b (b is rendered first).
+            return std::hash<Sprite*>()(&a.first) ^ std::hash<RenderProgram*>()(&a.second);
         }
     };
-    struct OpaqueCompare
+    struct OpaqueEquals
     {
-        bool operator()(const OpaqueSpriteRequest& a, const OpaqueSpriteRequest& b) const //returns true is a < b, which means "a" gets rendered before "b"
+        bool operator()(const std::pair<Sprite&,RenderProgram&>& a,const std::pair<Sprite&,RenderProgram&>& b) const
         {
-            return &a.sprite < &b.sprite; //just need to make sure that the same sprites are grouped together
+            return &a.first == &b.first && &a.second == &b.second;
         }
     };
-    static std::multiset<SpriteRequest,SpriteRequestComparator> params;
-    static std::multiset<OpaqueSpriteRequest,OpaqueCompare> opaques;
-    static std::vector<char> data; //used to store transformations for all the sprite parameters
-    static std::vector<char> opaqueData; //used to store all data for opaques
-    static std::vector<float>floatsData;
+    static std::unordered_map<std::pair<Sprite&,RenderProgram&>,std::vector<char>,OpaquePair,OpaqueEquals> opaquesMap;
     static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes)
     {
         if (bytes < program.getRequestDataAmount())
         {
-            opaqueData.resize( opaqueData.size() + program.getRequestDataAmount() - bytes,0);
+            std::vector<char>* vec = &opaquesMap[{sprite,program}];
+            vec->resize(vec->size()+ program.getRequestDataAmount() - bytes,0);
+            //opaqueData.resize( opaqueData.size() + program.getRequestDataAmount() - bytes,0);
         }
-        for (int i = 0; i < program.getRequestDataAmount(); i += sizeof(float))
-        {
-            float num = 0;
-            memcpy(&num,&opaqueData[opaqueData.size() - program.getRequestDataAmount() + i],sizeof(float));
-        }
-        opaques.insert({sprite,program, opaqueData.size()- program.getRequestDataAmount()});
+        //opaques.insert({sprite,program, opaqueData.size()- program.getRequestDataAmount()});
     }
     template<typename T, typename... Args>
     static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes,T t1, Args... args)
@@ -323,15 +262,15 @@ class SpriteManager
         else
         {
             char* bytesBuffer = reinterpret_cast<char*>(&t1);
-            opaqueData.insert(opaqueData.end(), bytesBuffer,bytesBuffer + sizeof(t1));
+            //opaqueData.insert(opaqueData.end(), bytesBuffer,bytesBuffer + sizeof(t1));
+            opaquesMap[{sprite,program}].insert(opaquesMap[{sprite,program}].end(),bytesBuffer,bytesBuffer + sizeof(t1));
+
             //std::cout << opaqueData.size()<< " " << sizeof(t1) << "\n";
             requestWork(sprite,program,bytes + sizeof(t1), args...);
         }
     }
 public:
-    constexpr static float zIncrement = .001; //slight increment so sprites don't overlap
     static void init();
-    static void request(Sprite& wrapper,const SpriteParameter& param);
 
     template<typename T, typename... Args>
     static void request(Sprite& sprite, RenderProgram& program,T t1, Args... args)

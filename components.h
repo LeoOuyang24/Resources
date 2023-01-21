@@ -186,7 +186,6 @@ class RenderComponent : public Component, public ComponentContainer<RenderCompon
 {
 public:
     RenderComponent(Entity& entity);
-    virtual void render(const SpriteParameter& param);
     virtual ~RenderComponent();
 };
 
@@ -195,11 +194,11 @@ class RectRenderComponent : public RenderComponent, public ComponentContainer<Re
     glm::vec4 color;
 public:
     RectRenderComponent(Entity& entity, const glm::vec4& color_);
-    virtual void render(const SpriteParameter& param);
+    //virtual void render(const SpriteParameter& param);
     void update();
 };
 
-class SpriteComponent : public RenderComponent, public ComponentContainer<SpriteComponent> //also handles Animations
+/*class SpriteComponent : public RenderComponent, public ComponentContainer<SpriteComponent> //also handles Animations
 {
     bool animated = false; //whether it's an animation or sprite
 protected:
@@ -219,7 +218,7 @@ public:
     {
 
     }
-};
+};*/
 
 class BaseHealthComponent : public Component, public ComponentContainer<BaseHealthComponent>
 {

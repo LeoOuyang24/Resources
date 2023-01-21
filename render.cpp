@@ -387,46 +387,8 @@ bool isTransluscent(unsigned char* sprite, int width, int height)
     return false;
 }
 
-const int Sprite::floats = 7;//sizeof(SpriteParameter)/(sizeof(float)) - 4 + 4*4 - 1; //the way this is calculated is total number of floats in SpriteParameter - 4 + 4*4 because "rect" becomes a 4x4 matrix then minus 1 becomes "radians" is also a part of that 4x4 matrix
    void Sprite::load(std::string source)
     {
-
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1,&VBO);
-        glGenBuffers(1,&modVBO);
-
-        glBindVertexArray(VAO);
-
-
-        glBindBuffer(GL_ARRAY_BUFFER,VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(verticies),verticies, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0,4,GL_FLOAT,GL_FALSE,0,0);
-
-        glBindBuffer(GL_ARRAY_BUFFER,modVBO);
-        int stride = sizeof(float)*floats;
-        size_t vec4Size = sizeof(glm::vec4);
-        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, (void*)0); //3-6 inclusive are the transformation matrix
-        glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, stride, (void*)(vec4Size));
-        glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, stride, (void*)(2 * vec4Size));
-        glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, stride, (void*)(3 * vec4Size));
-        glVertexAttribPointer(7, 1, GL_FLOAT, GL_FALSE, stride, (void*)(4*vec4Size)); //z
-        glVertexAttribPointer(8, 1,GL_FLOAT, GL_FALSE, stride, (void*)(4*vec4Size + sizeof(float))); //effect
-        glVertexAttribDivisor(3, 1);
-        glVertexAttribDivisor(4, 1);
-        glVertexAttribDivisor(5, 1);
-        glVertexAttribDivisor(6, 1);
-        glVertexAttribDivisor(7, 1);
-        glVertexAttribDivisor(8, 1);
-        glEnableVertexAttribArray(3);
-        glEnableVertexAttribArray(4);
-        glEnableVertexAttribArray(5);
-        glEnableVertexAttribArray(6);
-        glEnableVertexAttribArray(7);
-        glEnableVertexAttribArray(8);
-
-
-
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D,texture);
 
@@ -466,13 +428,8 @@ const int Sprite::floats = 7;//sizeof(SpriteParameter)/(sizeof(float)) - 4 + 4*4
         {
             std::cout << "Error loading texture: " << source << std::endl;
         }
-
-
-
         stbi_image_free(data);
 
-        glBindVertexArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER,0);
     }
 
 Sprite::Sprite( std::string source)
@@ -482,9 +439,6 @@ Sprite::Sprite( std::string source)
     Sprite::~Sprite()
     {
         glDeleteTextures(1,&texture);
-        glDeleteBuffers(1,&VBO);
-        glDeleteBuffers(1,&modVBO);
-        glDeleteVertexArrays(1,&VAO);
     }
 
 void Sprite::init(std::string source_)
@@ -500,92 +454,12 @@ std::string Sprite::getSource()
 {
     return source;
 }
-void Sprite::reset()
-{
-    glBindVertexArray(0);
-glBindBuffer(GL_ARRAY_BUFFER,0);
-}
-
-void Sprite::loadData(GLfloat* data, const SpriteParameter& parameter, int index)
-{
-    if (data!= nullptr)
-    {
-            /*glm::mat4 matt = glm::mat4(1.0f);
-            matt = glm::translate(matt,{parameter.rect.x + (parameter.rect.z)/2,parameter.rect.y + (parameter.rect.a)/2,0}); //scaling messes with the position of the object. If the object is being rendered to a size of 2x2, there is no reason to counteract the scaling.
-            if (parameter.radians != 0)
-            {
-                matt = glm::rotate(matt, parameter.radians, glm::vec3(0,0,1));
-            }
-            matt = glm::scale(matt, {parameter.rect.z/2, parameter.rect.a/2,1});
-            for (int j = 0; j < 16; j++)
-            {
-                data[j+index] = matt[j/4][j%4]; //copy matrix
-            }*/
-            data[index + 0] = parameter.rect.x;
-            data[index + 1] =parameter.rect.y;
-            data[index + 2] =parameter.rect.z;
-            data[index + 3] = parameter.rect.a;
-            data[index + 4] = parameter.radians;
-            data[index + 5]= parameter.z;
-            data[index + 6] = parameter.effect;
-
-        }
-        else
-        {
-            throw new std::invalid_argument("null buffer");
-        }
-}
-
-template<typename Iterator>
-void Sprite::loadData(GLfloat* data, const Iterator& a, const Iterator& b, int index)
-{
-    Iterator start = a;
-    int i = 0;
-    while (start != b)
-    {
-        loadData(data,*start,index + i*floats);
-        ++start;
-        i++;
-    }
-    //draw(program,data, size);
-}
-
-void Sprite::draw(RenderProgram& program, float* data, int instances)
-{
-    glBindVertexArray(program.VAO);
-    glBindTexture(GL_TEXTURE_2D,texture);
-
-    glBindBuffer(GL_ARRAY_BUFFER,program.VBO);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(float)*floats*instances,data,GL_DYNAMIC_DRAW);
-
-
-
-    program.use();
-    glDrawArraysInstanced(GL_TRIANGLES,0,24,instances);
-    //glDrawElementsInstanced(GL_TRIANGLES,6,GL_UNSIGNED_INT,indices,instances);
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER,0);
-    //reset();
-
-}
-
-unsigned int Sprite::getVAO()
-{
-    return VAO;
-}
 
 glm::vec2 Sprite::getDimen()
 {
     return {width,height};
 }
 
-int Sprite::getFloats()
-{
-    return floats;
-}
-
-
-const int Sprite9::floats9 = Sprite::floats*9;
 Sprite9::Sprite9(std::string source, glm::vec2 W, glm::vec2 H) : Sprite(source)
 {
     widths = W;
@@ -598,14 +472,10 @@ void Sprite9::init(std::string source,glm::vec2 W, glm::vec2 H)
     heights = H;
 }
 
-int Sprite9::getFloats()
-{
-    return floats9;
-}
 
-void Sprite9::loadData(GLfloat* data, const SpriteParameter& parameter, int index)
+/*void Sprite9::loadData(GLfloat* data, const SpriteParameter& parameter, int index)
 {
-        /*const SpriteParameter* current = &parameter;
+        const SpriteParameter* current = &parameter;
         glm::vec4 rect = current->rect;
         bool tooWide = (widths.x+widths.y>rect.z); //whether or not the requested width is bigger than the frame portion;
         bool tooHigh = (heights.x+heights.y>rect.a);
@@ -626,11 +496,11 @@ void Sprite9::loadData(GLfloat* data, const SpriteParameter& parameter, int inde
                Sprite::loadData(data,{{center.x - r.z/2,center.y - r.a/2,r.z,r.a},
                                    current->radians,parameter.z,NONE,{1.0/3*h,(1.0/3)*g,1.0/3,1.0/3}}, index + (g*3+h)*floats);
             }
-        }*/
-}
+        }
+}*/
 
 
-BaseAnimation::BaseAnimation(std::string source, int speed, int perRow, int rows, const glm::vec4& sub)
+/*BaseAnimation::BaseAnimation(std::string source, int speed, int perRow, int rows, const glm::vec4& sub)
 {
     init(source,speed,perRow,rows,  sub);
 }
@@ -683,12 +553,12 @@ glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
         subSection = backup;
 
         return answer;*/
-}
+/*}
 
 SpriteParameter BaseAnimation::processParam(const SpriteParameter& sParam,const AnimationParameter& aParam)
 {
     /*Returns a SpriteParameter that represents what to render. sParam.portion is interpreted as the portion of the sprite sheet to render*/
-    SpriteParameter param = sParam;
+    //SpriteParameter param = sParam;
     /*if (aParam.transform && aParam.camera) //call a camera function on our rect to render it according to the camera
     {
         param.rect = ((aParam.camera)->*(aParam.transform))(param.rect);
@@ -698,7 +568,7 @@ SpriteParameter BaseAnimation::processParam(const SpriteParameter& sParam,const 
 
     glm::vec4 portion = getPortion(aParam);
     param.portion = {param.portion.x + portion.x, param.portion.y + portion.y, param.portion.z*portion.z, param.portion.a*portion.a};*/
-    return param;
+/*    return param;
 }
 
 void BaseAnimation::init(std::string source, int speed, int perRow, int rows, const glm::vec4& sub)
@@ -747,74 +617,28 @@ void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<Sp
     Sprite::renderInstanced(program, params);
 }*/
 
-std::vector<char> SpriteManager::data;
-std::vector<char> SpriteManager::opaqueData;
-std::vector<float> SpriteManager::floatsData;
-std::multiset<SpriteRequest,SpriteManager::SpriteRequestComparator> SpriteManager::params;
-std::multiset<OpaqueSpriteRequest,SpriteManager::OpaqueCompare> SpriteManager::opaques;
+std::unordered_map<std::pair<Sprite&,RenderProgram&>,std::vector<char>,SpriteManager::OpaquePair,SpriteManager::OpaqueEquals> SpriteManager::opaquesMap;
 void SpriteManager::init()
 {
-    floatsData.resize(1024); //resize to 1024 because it's a safe bet we'll usually use at least this much space.
+
 }
-
-void SpriteManager::request(Sprite& sprite, const SpriteParameter& param)
-{
-    params.insert({&sprite,param});
-}
-
-
 
 void SpriteManager::render(RenderProgram& program, RenderCamera* camera)
 {
-    auto end = params.end();
-    int i= 0;
-    for (auto it = params.begin(); it != end; ++it)
-    {
-       //it->first.second->render(it->second,i/100.0);
-       int floats = i*it->first->getFloats();
-       if (floats + it->first->getFloats() >= floatsData.size()) //not enough room, gotta resize
-       {
-           floatsData.resize(floatsData.size()*2); //double size every time, hopefully will limit resize calls.
-       }
-       SpriteParameter param = it->second;
-       it->first->loadData(&floatsData[0],param,floats);
-       ++i;
-       if (it == end || std::next(it)->first != it->first) //render all current sprite parameters in one go
-       {
-           //std::cout << it->first->getSource() << "\n";
-            //it->first->draw(program,(&floatsData[0]),i);
-            program.draw(*it->first,&floatsData[0],i);
-            i = 0;
-       }
-    }
-    params.clear();
-    auto opaqueEnd = opaques.end();
+    auto opaqueEnd = opaquesMap.end();//opaques.end();
     //std::cout << opaqueData.size()/(28) << "\n";
-   for (auto it = opaques.begin(); it != opaqueEnd; ++it)
+    int size =  opaquesMap.size();
+    int i =0;
+   for (auto it = opaquesMap.begin(); it != opaqueEnd; ++it)
     {
-       //it->first.second->render(it->second,i/100.0);
-       int requestAmount = it->program.getRequestDataAmount();
-       //float num = 0;
-        //memcpy(&num,it->data,sizeof(float));
-       data.insert(data.end(),&opaqueData[it->index],&opaqueData[it->index] + requestAmount);
-
-       if (it == opaqueEnd || &std::next(it)->sprite != &it->sprite || &std::next(it)->program != &it->program) //render all current sprite parameters in one go
+       if (i == size - 1 || &std::next(it)->first.first != &it->first.first || &std::next(it)->first.second != &it->first.second) //render all current sprite parameters in one go
        {
-           /*for (int i = 0; i < data.size(); i += 1)
-           {
-               std::cout << data[i] << " ";
-               if ((i + 1) % (requestAmount/sizeof(float)) == 0)
-               {
-                   std::cout << "\n";
-               }
-           }
-           std::cout<<"\n";*/
-            it->program.draw(it->sprite,&data[0],data.size()/(requestAmount));
-            data.clear();
+            int requestAmount = it->first.second.getRequestDataAmount();
+            it->first.second.draw(it->first.first,&it->second[0],it->second.size()/(requestAmount));
+            it->second.clear();
        }
+       i ++;
     }
-    opaqueData.clear();
-    opaques.clear();
 }
 
 unsigned int PolyRender::VAO = -1;

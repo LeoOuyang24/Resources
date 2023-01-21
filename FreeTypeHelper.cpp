@@ -9,39 +9,6 @@ Font Font::tnr;
 
 Font::Character::Character(char c, FT_Face& face) : Sprite()
 {
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1,&VBO);
-        glGenBuffers(1,&modVBO);
-
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER,VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(verticies),verticies, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0,4,GL_FLOAT,GL_FALSE,0,0);
-
-        glBindBuffer(GL_ARRAY_BUFFER,modVBO);
-        int stride = sizeof(float)*floats;
-        size_t vec4Size = sizeof(glm::vec4);
-        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, (void*)0); //3-6 inclusive are the transformation matrix
-        glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, stride, (void*)(vec4Size));
-        glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, stride, (void*)(2 * vec4Size));
-        glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, stride, (void*)(3 * vec4Size));
-        glVertexAttribPointer(7, 1, GL_FLOAT, GL_FALSE, stride, (void*)(4*vec4Size)); //z
-        glVertexAttribPointer(8, 1,GL_FLOAT, GL_FALSE, stride, (void*)(4*vec4Size + sizeof(float))); //effect
-        glEnableVertexAttribArray(3);
-        glEnableVertexAttribArray(4);
-        glEnableVertexAttribArray(5);
-        glEnableVertexAttribArray(6);
-        glEnableVertexAttribArray(7);
-        glEnableVertexAttribArray(8);
-
-        glVertexAttribDivisor(3, 1);
-        glVertexAttribDivisor(4, 1);
-        glVertexAttribDivisor(5, 1);
-        glVertexAttribDivisor(6, 1);
-        glVertexAttribDivisor(7, 1);
-        glVertexAttribDivisor(8, 1);
-
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D,texture);
 
@@ -155,9 +122,6 @@ int Font::writeLength(std::string str)
 
         FT_Done_Face(face);
         FT_Done_FreeType(library);
-        glGenVertexArrays(1, &VAO);
-        glBindVertexArray(VAO);
-        glGenBuffers(1,&VBO);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
 
@@ -235,7 +199,7 @@ void Font::requestWrite(const FontParameter& param)
         GLfloat h = (chSize->y)*scale;
       //  PolyRender::requestRect({pos.x,pos.y,w,h},{1,0,0,1},false,0,-1);
      // printRect({pos.x,pos.y,w,h});
-        SpriteManager::request(*characters[c],{{pos.x,pos.y,w,h},0,param.z});
+        //SpriteManager::request(*characters[c],{{pos.x,pos.y,w,h},0,param.z});
         //characters[c]->request({{pos.x,pos.y,w,h},0,NONE,param.color,&wordProgram,param.z});
         x += (ch->getAdvance() >> 6 )*scale;
     }
@@ -259,7 +223,7 @@ Font::~Font()
     characters.clear();
 }
 
-FontManager::FontManager(std::string vectorShader, std::string fragmentShader) : transFish("projects/trans_fish.png")
+/*FontManager::FontManager(std::string vectorShader, std::string fragmentShader) : transFish("projects/trans_fish.png")
 {
     program.init(vectorShader,fragmentShader,1);
 }
@@ -317,6 +281,6 @@ void FontManager::update()
             i = 0;
        }
     }
-    params.clear();*/
-}
+    params.clear();
+}*/
 

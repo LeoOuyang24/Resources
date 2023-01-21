@@ -55,10 +55,6 @@ class Font
     std::unordered_map<GLchar,std::unique_ptr<Character>> characters;
     glm::vec2 maxVert; //x is max bearing.y, y is maximum space underneath the bearing. Sum of x and y is the maximum height we need
     std::string font = "";
-    GLuint  VBO,VAO;
-    constexpr static int indices[6] = {
-        0,1,2,
-        3,1,2};
     int writeLength(std::string str);
 public:
     static void init(int screenWidth,int screenHeight); //initializes wordProgram and the default alef font
@@ -81,28 +77,21 @@ public:
     ~Font();
 
     };
-
-struct FontRequest
-{
-    Font* font = nullptr;
-    SpriteParameter param;
-};
-
 class FontProgram : public RenderProgram
 {
 
 };
 
-class FontManager
+/*class FontManager
 {
     Sprite transFish;
-    std::list<SpriteRequest> requests;
+//    std::list<SpriteRequest> requests;
     RenderProgram program;
 public:
     FontManager(std::string vectorShader, std::string fragmentShader);
     void request(Font& font, std::string str, const SpriteParameter& request_);
     void update();
-};
+};*/
 
 
 #endif // FREETYPEHELPER_H_INCLUDED
