@@ -291,12 +291,6 @@ RenderComponent::RenderComponent(Entity& entity) : Component(entity), ComponentC
 {
 
 }
-
-void RenderComponent::render(const SpriteParameter& param) //every rendercomponent can take in a SpriteParameter and render it accordingly
-{
-
-}
-
 RenderComponent::~RenderComponent()
 {
 
@@ -307,21 +301,12 @@ RectRenderComponent::RectRenderComponent(Entity& entity, const glm::vec4& color_
 
 }
 
-void RectRenderComponent::render(const SpriteParameter& param)
-{
-    if (entity)
-    if (RectComponent* rect = entity->getComponent<RectComponent>())
-    {
-        PolyRender::requestRect(  rect->getRect(),color*param.tint,true, rect->getTilt(),param.z);
-    }
-}
-
 void RectRenderComponent::update()
 {
-    render({});
+//    render({});
 }
 
-SpriteParameter SpriteComponent::defaultSParam()
+/*SpriteParameter SpriteComponent::defaultSParam()
 {
     SpriteParameter param;
     RectComponent* rect = entity->getComponent<RectComponent>();
@@ -338,20 +323,9 @@ SpriteParameter SpriteComponent::defaultSParam()
         param.radians = rect->getTilt();
     }
     return param;
-}
+}*/
 
-AnimationParameter SpriteComponent::defaultAParam()
-{
-    AnimationParameter aParam;
-    if (animated && sprite)
-    {
-        BaseAnimation* anime = static_cast<BaseAnimation*>(sprite->getSprite());
-        aParam.start = BaseAnimation::getFrameIndex(startingFrame,anime->getFPS());
-    }
-    return aParam; //does nothing if the sprite is not animated
-}
-
-SpriteComponent::SpriteComponent(SpriteWrapper& sprite_, bool animated_, Entity& entity) : RenderComponent(entity),
+/*SpriteComponent::SpriteComponent(Sprite& sprite_, bool animated_, Entity& entity) : RenderComponent(entity),
                                                                                                                 ComponentContainer<SpriteComponent>(entity),
                                                                                                                         sprite(&sprite_),
                                                                                                                         animated(animated_)
@@ -365,11 +339,11 @@ void SpriteComponent::render(const SpriteParameter& param)
     {
             if (animated)
             {
-                static_cast<AnimationWrapper*>(sprite)->request(param,aParam);
+               // static_cast<AnimationWrapper*>(sprite)->request(param,aParam);
             }
             else
             {
-                sprite->request(param);
+                SpriteManager::request(*sprite,param);
             }
     }
 
@@ -391,7 +365,7 @@ void SpriteComponent::update()
         render(sParam);
         setParam(defaultSParam(),defaultAParam()); //reset params
 }
-
+*/
 BaseHealthComponent::BaseHealthComponent(float invulnTime_, float health_,float maxHealth_, Entity& entity) :
                                                                 Component(entity), ComponentContainer<BaseHealthComponent>(entity),
                                                                 invulnTime(invulnTime_), health(health_), maxHealth(maxHealth_) //health

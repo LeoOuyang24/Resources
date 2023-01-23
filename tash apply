@@ -1,0 +1,8 @@
+stash@{0}: WIP on RenderOptimize: 718942e small optimization to ensure opaque sprites are not sorted by z
+stash@{1}: WIP on RenderOptimize: 718942e small optimization to ensure opaque sprites are not sorted by z
+stash@{2}: filter-branch: rewrite
+stash@{3}: WIP on master: 869573e New Physics section. ForcesComponent now no longer keeps track of all your forces but just has a single forces vector which decays over time; more realistic this way. Chain physics have been added although they currenlty function like they are underwater
+stash@{4}: WIP on master: 869573e New Physics section. ForcesComponent now no longer keeps track of all your forces but just has a single forces vector which decays over time; more realistic this way. Chain physics have been added although they currenlty function like they are underwater
+stash@{5}: WIP on master: 41df00e PolyRender no longer creates new arrays on the heap every iteration and instead uses the same vector, which is a slight optimization
+stash@{6}: WIP on master: 869573e New Physics section. ForcesComponent now no longer keeps track of all your forces but just has a single forces vector which decays over time; more realistic this way. Chain physics have been added although they currenlty function like they are underwater
+stash@{7}: WIP on master: 869573e New Physics section. ForcesComponent now no longer keeps track of all your forces but just has a single forces vector which decays over time; more realistic this way. Chain physics have been added although they currenlty function like they are underwater

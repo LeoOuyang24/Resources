@@ -43,7 +43,6 @@
 		<Linker>
 			<Add option="-O3" />
 		</Linker>
-		<Unit filename="../../projects/Mixer/draw.cpp" />
 		<Unit filename="../FreeTypeHelper.cpp" />
 		<Unit filename="../FreeTypeHelper.h" />
 		<Unit filename="../SDLhelper.cpp" />
@@ -53,8 +52,12 @@
 		<Unit filename="../geometry.cpp" />
 		<Unit filename="../geometry.h" />
 		<Unit filename="../glGame.cpp" />
-		<Unit filename="../glGame.h" />
-		<Unit filename="../glInterface.cpp" />
+		<Unit filename="../glGame.h">
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="../glInterface.cpp">
+			<Option target="Release" />
+		</Unit>
 		<Unit filename="../glInterface.h" />
 		<Unit filename="../pathfind.cpp" />
 		<Unit filename="../pathfind.h" />

@@ -6,6 +6,7 @@
 
 #include <unordered_map>
 #include <memory>
+#include <list>
 
 #include "geometry.h"
 #include "render.h"
@@ -28,7 +29,6 @@ struct FontParameter //Represents all the information  required to call the writ
     std::string text = "";
     glm::vec4 rect = {0,0,0,0}; //if the width is negative, the height is assumed to be the font size
     double angle = 0;
-    glm::vec4 color = {0,0,0,1};
     float z = 0;
     Align align = LEFT;
     VertAlign vertAlign = UP;
@@ -51,20 +51,9 @@ class Font
 
     };
 
-    class FontWrapper : public SpriteWrapper
-    {
-    public:
-        FontWrapper(Character& sprite);
-        Character& getCharacter();
-    };
-
-    std::unordered_map<GLchar,std::unique_ptr<FontWrapper>> characters;
+    std::unordered_map<GLchar,std::unique_ptr<Character>> characters;
     glm::vec2 maxVert; //x is max bearing.y, y is maximum space underneath the bearing. Sum of x and y is the maximum height we need
     std::string font = "";
-    GLuint  VBO,VAO;
-    int indices[6] = {
-        0,1,2,
-        3,1,2};
     int writeLength(std::string str);
 public:
     static void init(int screenWidth,int screenHeight); //initializes wordProgram and the default alef font
@@ -78,19 +67,29 @@ public:
     void init(std::string source);
     glm::vec2 getDimen(std::string text, GLfloat hScale, GLfloat vScale); //gets the dimensions on text printed if the text were to be printed. The height is based on the bearing rather than the actual character height
     void requestWrite(const FontParameter& param);
-    void write(); //renders all the FontWrappers in characters
+    Character& getChar(GLchar c)
+    {
+        return *characters[c].get();
+    }
     void clear();
     ~Font();
 
     };
-
-class FontManager
+class FontProgram : public RenderProgram
 {
-    static std::vector<Font*> fonts;
-public:
-    static void addFont(Font& font);
-    static void update();
+
 };
+
+/*class FontManager
+{
+    Sprite transFish;
+//    std::list<SpriteRequest> requests;
+    RenderProgram program;
+public:
+    FontManager(std::string vectorShader, std::string fragmentShader);
+    void request(Font& font, std::string str, const SpriteParameter& request_);
+    void update();
+};*/
 
 
 #endif // FREETYPEHELPER_H_INCLUDED

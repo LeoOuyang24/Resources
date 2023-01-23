@@ -9,11 +9,6 @@ Font Font::tnr;
 
 Font::Character::Character(char c, FT_Face& face) : Sprite()
 {
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1,&VBO);
-
-        glBindVertexArray(VAO);
-
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D,texture);
 
@@ -48,11 +43,6 @@ Font::Character::Character(char c, FT_Face& face) : Sprite()
     bearing =  glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top);
     advance =    face->glyph->advance.x;
 
-    loadVertices();
-
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER,0);
-    //load("image.png",true);
 }
 
 const glm::vec2& Font::Character::getBearing()
@@ -68,31 +58,20 @@ GLuint Font::Character::getAdvance()
     return advance;
 }
 
-Font::FontWrapper::FontWrapper(Character& sprite)
-{
-    spr = &sprite;
-}
-
-Font::Character& Font::FontWrapper::getCharacter()
-{
-    return *static_cast<Character*>(spr);
-}
-
 int Font::writeLength(std::string str)
 {
     int length = 0;
     int size = str.size();
     for (int i = 0; i < size; ++i)
     {
-        length += characters[str[i]]->getCharacter().getAdvance() >> 6;
+        length += characters[str[i]]->getAdvance() >> 6;
     }
     return length;
 }
 
     void Font::init(int screenWidth, int screenHeight)
     {
-        wordProgram.init("../../resources/shaders/vertex/vertexShader.h","../../resources/shaders/fragment/wordFragment.h");
-        wordProgram.setMatrix4fv("projection", glm::value_ptr(RenderProgram::getOrtho()));
+        wordProgram.init("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/wordFragment.h",7,{4,1,1,1});
 
         tnr.init("../../resources/tnr.ttf");
     }
@@ -133,17 +112,13 @@ int Font::writeLength(std::string str)
             }
            // character.bearing.x /= 64;
            // character.bearing.y /=64;
-           FontWrapper* fontWrapper = new FontWrapper(*character);
-           SpriteManager::addSprite(*fontWrapper);
-            characters[c] = std::unique_ptr<FontWrapper>(fontWrapper);
+           //SpriteManager::addSprite(*character);
+            characters[c] = std::unique_ptr<Character>(character);
         }
 
 
         FT_Done_Face(face);
         FT_Done_FreeType(library);
-        glGenVertexArrays(1, &VAO);
-        glBindVertexArray(VAO);
-        glGenBuffers(1,&VBO);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
 
@@ -156,7 +131,7 @@ glm::vec2 Font::getDimen(std::string text, GLfloat hScale, GLfloat vScale)
    // std::cout << hScale << " " << vScale << std::endl;
     for (c = text.begin(); c != end; ++c)
     {
-        Character* ch = &(characters[*c].get()->getCharacter());
+        Character* ch = (characters[*c].get());
         GLfloat h = ch->getSize().y * vScale;
         totalWidth += (ch->getAdvance())*hScale/64;
         maxHeight += (h > maxHeight)*(h-maxHeight);
@@ -182,7 +157,7 @@ void Font::requestWrite(const FontParameter& param)
     }
     glm::vec2 center = {absRect.x + absRect.z/2, absRect.y + absRect.a/2};
 
-    auto screenDimen = (RenderProgram::getScreenDimen()); //we need to find the dimensions of the screen vs the dimensions of the projection matrix and scale accordingly. We will assume that the ortho and screen dimen start at 0
+    auto screenDimen = (ViewPort::getScreenDimen()); //we need to find the dimensions of the screen vs the dimensions of the projection matrix and scale accordingly. We will assume that the ortho and screen dimen start at 0
 
     double x = absRect.x, y = absRect.y;
     switch (param.align)
@@ -210,7 +185,7 @@ void Font::requestWrite(const FontParameter& param)
     for (int i = 0; i < size; ++i)
     {
         char c = param.text[i];
-        Character* ch = &(characters[c].get()->getCharacter());
+        Character* ch = (characters[c].get());
         const glm::vec2* bearing = &ch->getBearing();
         const glm::vec2* chSize = &ch->getSize();
         GLfloat xpos = x +bearing->x*scale;
@@ -219,23 +194,15 @@ void Font::requestWrite(const FontParameter& param)
         glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
         GLfloat w = chSize->x*scale;
         GLfloat h = (chSize->y)*scale;
+        SpriteManager::request(*characters[c],wordProgram,{glm::vec4(pos.x,pos.y,w,h),param.z});
       //  PolyRender::requestRect({pos.x,pos.y,w,h},{1,0,0,1},false,0,-1);
      // printRect({pos.x,pos.y,w,h});
-        characters[c]->request({{pos.x,pos.y,w,h},0,NONE,param.color,&wordProgram,param.z});
+        //SpriteManager::request(*characters[c],{{pos.x,pos.y,w,h},0,param.z});
+        //characters[c]->request({{pos.x,pos.y,w,h},0,NONE,param.color,&wordProgram,param.z});
         x += (ch->getAdvance() >> 6 )*scale;
     }
 
    // std::cout << "End: " << writeRequests.size() << std::endl;
-}
-void Font::write()
-{
-    /*auto end = characters.end();
-    for (auto it = characters.begin(); it != end; ++it)
-    {
-   //     it->second.get()->render();
-    //    it->second.get()->reset();
-    }*/
-
 }
 
 Font::~Font()
@@ -244,28 +211,64 @@ Font::~Font()
     characters.clear();
 }
 
-std::vector<Font*> FontManager::fonts;
-
-void FontManager::addFont(Font& font)
+/*FontManager::FontManager(std::string vectorShader, std::string fragmentShader) : transFish("projects/trans_fish.png")
 {
-    fonts.push_back(&font);
+    program.init(vectorShader,fragmentShader,1);
+}
+
+void FontManager::request(Font& font, std::string str, const SpriteParameter& request)
+{
+    for (int i =0; i < str.size(); ++i)
+    {
+        requests.push_front({&font.getChar(str[i]),request});
+        //requests.push_front({&transFish,request});
+    }
+    //requests.push_front(request);
 }
 
 void FontManager::update()
 {
-    int size = fonts.size();
-    for (int i = 0; i < size; ++i)
+    std::vector<float> data;
+    data.resize(32);
+    int  i= 0;
+    while (requests.size() > 0)
     {
-        fonts[i]->write();
+       auto it = requests.begin();
+       int floats = i*it->first->getFloats();
+       if (floats + it->first->getFloats() >= data.size()) //not enough room, gotta resize
+       {
+           data.resize((data.size())*2); //double size every time, hopefully will limit resize calls.
+       }
+
+       it->first->loadData(&data[0],it->second,floats);
+       ++i;
+       if (requests.size() == 1 || std::next(it)->first != it->first) //render all current sprite parameters in one go
+       {
+            //it->first->draw(program,&data[0],i);
+            i = 0;
+       }
+       requests.pop_front();
        // fonts[i]->reset();
     }
-}
-/*glm::vec2 Font::write(RenderProgram& p,std::string text, GLfloat x, GLfloat y,GLfloat z, GLfloat scale,glm::vec3 color)
-{
-    // Activate corresponding render state
-  //  p.use();
-    //p.setVec3fv("textColor",color);
-
-
-};*/
+    /*auto end = params.end();
+    int i= 0;
+    for (auto it = params.begin(); it != end; ++it)
+    {
+       //it->first.second->render(it->second,i/100.0);
+       int floats = i*it->first->getFloats();
+       if (floats + it->first->getFloats() >= data.size()) //not enough room, gotta resize
+       {
+           data.resize(data.size()*2); //double size every time, hopefully will limit resize calls.
+       }
+       SpriteParameter param = it->second;
+       it->first->loadData(&data[0],param,floats);
+       ++i;
+       if (it == end || std::next(it)->first != it->first) //render all current sprite parameters in one go
+       {
+            it->first->draw(program,&data[0],i);
+            i = 0;
+       }
+    }
+    params.clear();
+}*/
 
