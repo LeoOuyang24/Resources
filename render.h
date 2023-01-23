@@ -92,8 +92,11 @@ public:
     }
     ~RenderProgram()
     {
+        if (VAO)
         glDeleteVertexArrays(1,&VAO);
+        if (VBO)
         glDeleteBuffers(1,&verticiesVBO);
+        if (verticiesVBO)
         glDeleteBuffers(1,&VBO);
     }
     void init(std::string vertexPath, std::string fragmentPath,int total, Numbers numbers);
@@ -156,9 +159,9 @@ class Sprite
 protected:
     int width = 0, height = 0;
     unsigned int texture = -1;
+    bool transluscent = false;
 public:
     void load(std::string source);
-    bool transluscent = false;
     std::string source = "";
     Sprite(std::string source);
     Sprite()
@@ -168,6 +171,7 @@ public:
     ~Sprite();
     unsigned int getTexture();
     std::string getSource();
+    bool getTransluscent();
     void init(std::string source);
     virtual glm::vec2 getDimen();
 };
@@ -224,61 +228,115 @@ public:
     void init(std::string source,int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
 };*/
 
-class SpriteManager
+class OpaqueManager //manages storing opaque (non-transluscent) fragment render requests
 {
-    struct OpaquePair
+    //opaques can be rendered in any order, since they can't be blended, so OpaqueManager simply allocates contiguous memory for
+    //each Sprite-RenderProgram pair and renders all the data at once
+    struct OpaquePair //hash a pair of Sprite and RenderPrograms by XOring their hashes
     {
-        size_t operator()(const std::pair<Sprite&,RenderProgram&>& a) const
+        size_t operator()(const std::pair<Sprite&,RenderProgram&>& a) const //we don't have to worry about commutativity because they have different memory addresses
         {
             return std::hash<Sprite*>()(&a.first) ^ std::hash<RenderProgram*>()(&a.second);
         }
     };
-    struct OpaqueEquals
+    struct OpaqueEquals //how to determine if two pairs are the same (can't believe I had to specify this tbh)
     {
         bool operator()(const std::pair<Sprite&,RenderProgram&>& a,const std::pair<Sprite&,RenderProgram&>& b) const
         {
             return &a.first == &b.first && &a.second == &b.second;
         }
     };
-    static std::unordered_map<std::pair<Sprite&,RenderProgram&>,std::vector<char>,OpaquePair,OpaqueEquals> opaquesMap;
-    static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes)
+public:
+    std::unordered_map<std::pair<Sprite&,RenderProgram&>,std::vector<char>,OpaquePair,OpaqueEquals> opaquesMap;
+    //for each sprite-renderprogram pairing, they have a unique bytes buffer
+    void render(); //pass each bytes buffer to rendering pipeline
+};
+
+typedef int ZType; //used to represent z values
+struct TransManager //handles transluscent fragment render requests.
+{
+     //Transluscents must be rendered after opaques and sorted by distance from the screen from furthest
+     //(smallest z) to closest (largest z) to prevent fragments from being discarded via the depth test
+    struct TransRequest //bare bones info for each request: what sprite is being rendered, how to render it, the z value (for sorting) and the index in "data" where the transformations are stored
     {
-        if (bytes < program.getRequestDataAmount())
+        Sprite& sprite;
+        RenderProgram& program;
+        ZType z;
+        int index;
+    };
+    void request(Sprite& sprite, RenderProgram& program, ZType z);
+    void render();
+    std::vector<char> data; //buffer used to store all vertex attributes. Unsorted.
+private:
+    struct TransRequestCompare //returns true if "a" is "less than" b, and thus should be rendered first
+    {
+        bool operator()(const TransRequest& a, const TransRequest& b) const //sort by z,then by program, then by sprite
         {
-            std::vector<char>* vec = &opaquesMap[{sprite,program}];
-            vec->resize(vec->size()+ program.getRequestDataAmount() - bytes,0);
-            //opaqueData.resize( opaqueData.size() + program.getRequestDataAmount() - bytes,0);
+            if (a.z == b.z)
+            {
+                if (&a.program == &b.program)
+                {
+                    return &a.sprite < &b.sprite;
+                }
+                return &a.program < &b.program;
+            }
+            return a.z < b.z; //fragments with smaller zs get rendered first
         }
-        //opaques.insert({sprite,program, opaqueData.size()- program.getRequestDataAmount()});
+    };
+    std::vector<char> buffer; //reusable buffer for sorting data. Used to compile all data one sprite-renderprogram pairing.
+    std::multiset<TransRequest,TransRequestCompare> requests;
+};
+
+struct FullPosition //every request, regardless of sprite or render program is going to have a position (rect.xy), dimensions (rect.za), and a z coordinate (z)
+{
+    glm::vec4 rect;
+    ZType z;
+};
+
+class SpriteManager //handles all sprite requests
+{
+    static OpaqueManager opaques;
+    static TransManager trans;
+    static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes,std::vector<char>& bytesVec)//base case for request, after all attributes have been processeed
+    {
+        if (bytes < program.getRequestDataAmount()) //if we underprovided data, replace the rest of the data with 0s
+        {
+            bytesVec.resize(bytesVec.size()+ program.getRequestDataAmount() - bytes,0);
+        }
     }
     template<typename T, typename... Args>
-    static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes,T t1, Args... args)
+    static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes,std::vector<char>& bytesVec, T t1, Args... args)
     {
-        //std::cout << opaqueData.size()/28 << "\n";
-        if (bytes >=program.getRequestDataAmount())
+        /*main workhorse function. Makes a single request for "sprite" using "program". "bytes" is the number of bytes we've already
+        processed, useful to make sure our request wasn't too big or small. "bytesVec" is the vector we will be storing our bytes in,
+        which differs depending on opaque vs transluscent fragments.*/
+        if (bytes >= static_cast<size_t>(program.getRequestDataAmount()))
         {
-            requestWork(sprite,program,bytes); //terminate early if too many arguments were provided
+            requestWork(sprite,program,bytes,bytesVec); //terminate early if too many arguments were provided
         }
         else
         {
-            char* bytesBuffer = reinterpret_cast<char*>(&t1);
-            //opaqueData.insert(opaqueData.end(), bytesBuffer,bytesBuffer + sizeof(t1));
-            opaquesMap[{sprite,program}].insert(opaquesMap[{sprite,program}].end(),bytesBuffer,bytesBuffer + sizeof(t1));
-
-            //std::cout << opaqueData.size()<< " " << sizeof(t1) << "\n";
-            requestWork(sprite,program,bytes + sizeof(t1), args...);
+            char* bytesBuffer = reinterpret_cast<char*>(&t1); //convert to string of bytes
+            bytesVec.insert(bytesVec.end(),bytesBuffer,bytesBuffer + sizeof(t1)); //insert it into the appropriate vector
+            requestWork(sprite,program,bytes + sizeof(t1),bytesVec, args...); //continue unpacking parameters
         }
     }
 public:
-    static void init();
-
-    template<typename T, typename... Args>
-    static void request(Sprite& sprite, RenderProgram& program,T t1, Args... args)
+    template<typename... Args>
+    static void request(Sprite& sprite, RenderProgram& program,const FullPosition& pos,Args... args)
     {
-        requestWork(sprite,program,0,t1,args...);
+        /*exposed public function, used to make requests. Every request is expected to begin with rect and z. */
+        if (sprite.getTransluscent())
+        {
+            trans.request(sprite,program,pos.z); //transluscent manager needs to make a request specifically for the sprite-program pairing
+            requestWork(sprite,program,0,trans.data,pos.rect,pos.z,args...); //place request into transluscent manager
+        }
+        else
+        {
+            requestWork(sprite,program,0,opaques.opaquesMap[{sprite,program}],pos.rect,pos.z,args...); //place request into opaque manager
+        }
     }
-
-    static void render(RenderProgram& program, RenderCamera* camera = nullptr);
+    static void render();
 
 };
 

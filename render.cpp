@@ -455,6 +455,11 @@ std::string Sprite::getSource()
     return source;
 }
 
+bool Sprite::getTransluscent()
+{
+    return transluscent;
+}
+
 glm::vec2 Sprite::getDimen()
 {
     return {width,height};
@@ -617,21 +622,40 @@ void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<Sp
     Sprite::renderInstanced(program, params);
 }*/
 
-std::unordered_map<std::pair<Sprite&,RenderProgram&>,std::vector<char>,SpriteManager::OpaquePair,SpriteManager::OpaqueEquals> SpriteManager::opaquesMap;
-void SpriteManager::init()
-{
 
+
+void TransManager::request(Sprite& sprite, RenderProgram& program, ZType z)
+{
+    requests.insert({sprite,program,z,requests.size()});
 }
 
-void SpriteManager::render(RenderProgram& program, RenderCamera* camera)
+void TransManager::render()
 {
-    auto opaqueEnd = opaquesMap.end();//opaques.end();
-    //std::cout << opaqueData.size()/(28) << "\n";
+    for (auto it = requests.begin(); it != requests.end(); ++it)
+    {
+        buffer.insert(buffer.end(),&data[it->index],&data[it->index] + it->program.getRequestDataAmount()); //for each request, store the data into buffer
+        if (it == std::prev(requests.end()) || &std::next(it)->sprite != &it->sprite || &std::next(it)->program != &it->program) //if we have run out of requests, or if the next request requires a different sprite/renderprogram
+        {
+            it->program.draw(it->sprite,&buffer[0],buffer.size()/it->program.getRequestDataAmount()); //draw
+            buffer.clear(); //clear our buffer
+        }
+    }
+    requests.clear();
+    data.clear();
+}
+
+OpaqueManager SpriteManager::opaques;
+TransManager SpriteManager::trans;
+void OpaqueManager::render()
+{
+    /*go through each sprite-program pairing and render their data. A lot simpler than TransManager because the data
+    is already sorted and contiguous*/
+    auto opaqueEnd = opaquesMap.end();
     int size =  opaquesMap.size();
     int i =0;
    for (auto it = opaquesMap.begin(); it != opaqueEnd; ++it)
     {
-       if (i == size - 1 || &std::next(it)->first.first != &it->first.first || &std::next(it)->first.second != &it->first.second) //render all current sprite parameters in one go
+       if (it->second.size() > 0 && (i == size - 1 || &std::next(it)->first.first != &it->first.first || &std::next(it)->first.second != &it->first.second)) //render all current sprite parameters in one go, assuming there are any
        {
             int requestAmount = it->first.second.getRequestDataAmount();
             it->first.second.draw(it->first.first,&it->second[0],it->second.size()/(requestAmount));
@@ -639,6 +663,13 @@ void SpriteManager::render(RenderProgram& program, RenderCamera* camera)
        }
        i ++;
     }
+}
+
+void SpriteManager::render()
+{
+
+    opaques.render();
+    trans.render();
 }
 
 unsigned int PolyRender::VAO = -1;

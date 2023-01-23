@@ -2,8 +2,8 @@
 
 layout (location = 0) in vec4 values;
 layout (location = 1) in vec4 rect;
-layout (location = 2) in float radians;
-layout (location = 3) in float depth;
+layout (location = 2) in float depth;
+layout (location = 3) in float radians;
 layout (location = 4) in float effect;
 
 

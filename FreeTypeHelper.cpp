@@ -43,9 +43,6 @@ Font::Character::Character(char c, FT_Face& face) : Sprite()
     bearing =  glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top);
     advance =    face->glyph->advance.x;
 
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER,0);
-    //load("image.png",true);
 }
 
 const glm::vec2& Font::Character::getBearing()
@@ -74,7 +71,7 @@ int Font::writeLength(std::string str)
 
     void Font::init(int screenWidth, int screenHeight)
     {
-        wordProgram.init("../../resources/shaders/vertex/vertexShader.h","../../resources/shaders/fragment/wordFragment.h",1);
+        wordProgram.init("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/wordFragment.h",7,{4,1,1,1});
 
         tnr.init("../../resources/tnr.ttf");
     }
@@ -197,6 +194,7 @@ void Font::requestWrite(const FontParameter& param)
         glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
         GLfloat w = chSize->x*scale;
         GLfloat h = (chSize->y)*scale;
+        SpriteManager::request(*characters[c],wordProgram,{glm::vec4(pos.x,pos.y,w,h),param.z});
       //  PolyRender::requestRect({pos.x,pos.y,w,h},{1,0,0,1},false,0,-1);
      // printRect({pos.x,pos.y,w,h});
         //SpriteManager::request(*characters[c],{{pos.x,pos.y,w,h},0,param.z});
@@ -205,16 +203,6 @@ void Font::requestWrite(const FontParameter& param)
     }
 
    // std::cout << "End: " << writeRequests.size() << std::endl;
-}
-void Font::write()
-{
-    /*auto end = characters.end();
-    for (auto it = characters.begin(); it != end; ++it)
-    {
-   //     it->second.get()->render();
-    //    it->second.get()->reset();
-    }*/
-
 }
 
 Font::~Font()
