@@ -22,6 +22,24 @@ void addPointToBuffer(float buffer[], glm::vec3 point, int index);
 void addPointToBuffer(float buffer[], glm::vec2 point, int index);
 void addPointToBuffer(float buffer[], glm::vec4 point, int index);
 
+class GLContext
+{
+    /*
+    represents OpenGL context. Keeps track if the context is still valid or not. Many of our OpenGL wrapperclasses
+    will not work if GLContext::init is not called in the beginning of every program. Similarly, terminate() should be called
+    right before main() ends.*/
+    static bool context; //true if context is guaranteed to be true;
+    static SDL_Window* window;
+public:
+    static void init(int screenWidth, int screenHeight);
+    static bool isContextValid();
+    static void update();
+    static void terminate();
+    ~GLContext()
+    {
+        terminate();
+    }
+};
 struct ViewRange
 {
     static float getXRange(const ViewRange& range)
@@ -72,12 +90,12 @@ public:
     }
     ~RenderProgram()
     {
-        if (VAO)
+        /*if (GLContext::isContextValid())
         glDeleteVertexArrays(1,&VAO);
-        if (VBO)
+        if (GLContext::isContextValid())
         glDeleteBuffers(1,&verticiesVBO);
-        if (verticiesVBO)
-        glDeleteBuffers(1,&VBO);
+        if (GLContext::isContextValid())
+        glDeleteBuffers(1,&VBO);*/
     }
     void init(std::string vertexPath, std::string fragmentPath,int total, Numbers numbers);
     void init(std::string vertexPath, std::string fragmentPath,int a);
@@ -167,7 +185,6 @@ protected:
     unsigned int texture = 0;
     bool transluscent = false;
 public:
-    static bool context; //next level scuffed way of knowing there is an opengl context or not. Starts as true and set to false as the main function terminates.
     void load(std::string source);
     std::string source = "";
     Sprite(std::string source);

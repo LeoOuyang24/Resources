@@ -11,6 +11,35 @@
 #include "render.h"
 #include "SDLhelper.h"
 
+bool GLContext::context = false;
+SDL_Window* GLContext::window = 0;
+
+void GLContext::init(int screenWidth, int screenHeight)
+{
+    window = SDL_CreateWindow("Project",SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,screenWidth, screenHeight, SDL_WINDOW_OPENGL);
+    SDL_GL_CreateContext(window);
+    context = true;
+}
+
+bool GLContext::isContextValid()
+{
+    return context;
+}
+
+void GLContext::update()
+{
+    SDL_GL_SwapWindow(window);
+}
+
+void GLContext::terminate()
+{
+    context = false;
+   if (window)
+   {
+       SDL_DestroyWindow(window);
+       window = 0;
+   }
+}
 
 void addPointToBuffer(float buffer[], glm::vec4 point, int index)
 {
@@ -417,11 +446,10 @@ bool isTransluscent(unsigned char* sprite, int width, int height)
     return false;
 }
 
-bool Sprite::context = false;
 
    void Sprite::load(std::string source)
     {
-        if (context)
+        if (GLContext::isContextValid())
         {
             glGenTextures(1, &texture);
             glBindTexture(GL_TEXTURE_2D,texture);
@@ -479,8 +507,8 @@ Sprite::Sprite( std::string source)
     {
         /*if there is no opengl context glDeleteTextures crashes. "context" = false means that our main function has ended, in which case there is no longer
         a guarnatee to be an openGL context (and the OS will free our memory anyway) so don't delete the texture*/
-        if (context)
-        glDeleteTextures(1,&texture);
+        //if (GLContext::isContextValid())
+        //glDeleteTextures(1,&texture);
     }
 
 void Sprite::init(std::string source_)
