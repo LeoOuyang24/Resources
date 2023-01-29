@@ -61,102 +61,6 @@ int loadShaders(const GLchar* source, GLenum shaderType )
 
 }
 
-
-int ViewPort::screenWidth = 0;
-int ViewPort::screenHeight = 0;
-
-ViewRange ViewPort::baseRange;
-ViewRange ViewPort::currentRange;
-
-void ViewPort::init(int screenWidth, int screenHeight)
-{
-    ViewPort::screenWidth = screenWidth;
-    ViewPort::screenHeight = screenHeight;
-
-
-
-    glewExperimental = true;
-
-    GLenum err=glewInit();
-      if(err!=GLEW_OK) {
-        // Problem: glewInit failed, something is seriously wrong.
-        std::cout << "glewInit failed: " << glewGetErrorString(err) << std::endl;
-      }
-
-    baseRange =
-    {
-        {0,screenWidth},
-        {0,screenHeight},
-        {-10.0f,10.0f}     //magic numbers. Can be anything
-    };
-    currentRange = baseRange;
-
-glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
-    glEnable(GL_BLEND);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_PRIMITIVE_RESTART);
-
-    glDepthFunc(GL_LEQUAL);
-
-    //RenderProgram::basicProgram.init("../../resources/shaders/vertex/vertexShader.h","../../resources/shaders/fragment/fragmentShader.h",18,{16,1,1});
-
-
-
-}
-
-glm::vec2 ViewPort::toAbsolute(const glm::vec2& point)
-{
-    double ratio = ViewRange::getXRange(currentRange)/ViewRange::getXRange(baseRange);
-    return {point.x*ViewRange::getXRange(currentRange)/ViewRange::getXRange(baseRange),point.y*ViewRange::getYRange(currentRange)/ViewRange::getYRange(baseRange)};
-}
-glm::vec4 ViewPort::toAbsolute(const glm::vec4& rect)
-{
-    return glm::vec4(toAbsolute({rect.x,rect.y}),toAbsolute({rect.z,rect.a}));
-}
-
-const glm::vec2& ViewPort::getXRange()
-{
-    return currentRange.xRange;
-}
-const glm::vec2& ViewPort::getYRange()
-{
-    return currentRange.yRange;
-}
-const glm::vec2& ViewPort::getZRange()
-{
-    return currentRange.zRange;
-}
-void ViewPort::setXRange(float x1, float x2)
-{
-    currentRange.xRange.x = x1;
-    currentRange.xRange.y = x2;
-}
-void ViewPort::setYRange(float y1, float y2)
-{
-    currentRange.yRange.x = y1;
-    currentRange.yRange.y = y2;
-}
-void ViewPort::setZRange(float z1, float z2)
-{
-    currentRange.zRange.x = z1;
-    currentRange.zRange.y = z2;
-}
-
-void ViewPort::resetRange()
-{
-    currentRange = baseRange;
-}
-
-glm::mat4 ViewPort::getOrtho()
-{
-    return (glm::ortho(currentRange.xRange.x, currentRange.xRange.y, currentRange.yRange.y, currentRange.yRange.x, currentRange.zRange.x, currentRange.zRange.y));
-}
-
-glm::vec2 ViewPort::getScreenDimen()
-{
-    return {screenWidth,screenHeight};
-}
-
 void RenderProgram::initShaders(std::string vertexPath, std::string fragmentPath)
 {
     GLuint fragment = -1, vertex= -1;
@@ -242,16 +146,9 @@ void RenderProgram::init(std::string vertexPath, std::string fragmentPath)
 
 void RenderProgram::use()
 {
-    use(value_ptr(glm::mat4(1.0f)));
-}
-
-void RenderProgram::use(const GLfloat* view)
-{
     //setMatrix4fv("view",view);
     //setMatrix4fv("projection",value_ptr(RenderProgram::getOrtho()));
     glUseProgram(program);
-    glUniformMatrix4fv(glGetUniformLocation(program,"view"),1,GL_FALSE,view);
-    glUniformMatrix4fv(glGetUniformLocation(program,"projection"),1,GL_FALSE,value_ptr(ViewPort::getOrtho()));
 }
 
 void RenderProgram::setMatrix4fv(std::string name, const GLfloat* value)
@@ -299,6 +196,139 @@ void RenderProgram::draw(Sprite& sprite, void* data, int instances)
 int RenderProgram::getRequestDataAmount()
 {
     return preDataAmount*4;
+}
+
+unsigned int RenderProgram::ID()
+{
+    return program;
+}
+
+Buffer ViewPort::UBO = 0;
+int ViewPort::screenWidth = 0;
+int ViewPort::screenHeight = 0;
+
+ViewRange ViewPort::baseRange;
+ViewRange ViewPort::currentRange;
+
+RenderProgram ViewPort::basicProgram;
+
+void ViewPort::init(int screenWidth, int screenHeight)
+{
+    ViewPort::screenWidth = screenWidth;
+    ViewPort::screenHeight = screenHeight;
+
+
+
+    glewExperimental = true;
+
+    GLenum err=glewInit();
+      if(err!=GLEW_OK) {
+        // Problem: glewInit failed, something is seriously wrong.
+        std::cout << "glewInit failed: " << glewGetErrorString(err) << std::endl;
+      }
+
+    baseRange =
+    {
+        {0,screenWidth},
+        {0,screenHeight},
+        {-10.0f,10.0f}     //magic numbers. Can be anything
+    };
+    currentRange = baseRange;
+
+glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+    glEnable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_PRIMITIVE_RESTART);
+
+    glDepthFunc(GL_LEQUAL);
+
+
+
+    basicProgram.init("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/fragmentShader.h",7,{4,1,1,1});
+
+    glGenBuffers(1,&UBO);
+    glBindBuffer(GL_UNIFORM_BUFFER,UBO);
+    //float* projection = glm::value_ptr(getOrtho());
+    glBufferData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4), glm::value_ptr(getOrtho()), GL_STATIC_DRAW); // allocate enough memory for two 4x4 matricies. Remember that a glm::vec4 is 16 bytes, so each matrix is 64 bytes
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    setUniformBuffer(basicProgram);
+
+}
+
+glm::vec2 ViewPort::toAbsolute(const glm::vec2& point)
+{
+    double ratio = ViewRange::getXRange(currentRange)/ViewRange::getXRange(baseRange);
+    return {point.x*ViewRange::getXRange(currentRange)/ViewRange::getXRange(baseRange),point.y*ViewRange::getYRange(currentRange)/ViewRange::getYRange(baseRange)};
+}
+glm::vec4 ViewPort::toAbsolute(const glm::vec4& rect)
+{
+    return glm::vec4(toAbsolute({rect.x,rect.y}),toAbsolute({rect.z,rect.a}));
+}
+
+const glm::vec2& ViewPort::getXRange()
+{
+    return currentRange.xRange;
+}
+const glm::vec2& ViewPort::getYRange()
+{
+    return currentRange.yRange;
+}
+const glm::vec2& ViewPort::getZRange()
+{
+    return currentRange.zRange;
+}
+void ViewPort::setXRange(float x1, float x2)
+{
+    currentRange.xRange.x = x1;
+    currentRange.xRange.y = x2;
+}
+void ViewPort::setYRange(float y1, float y2)
+{
+    currentRange.yRange.x = y1;
+    currentRange.yRange.y = y2;
+}
+void ViewPort::setZRange(float z1, float z2)
+{
+    currentRange.zRange.x = z1;
+    currentRange.zRange.y = z2;
+}
+
+void ViewPort::resetRange()
+{
+    currentRange = baseRange;
+}
+
+glm::mat4 ViewPort::getOrtho()
+{
+    return (glm::ortho(currentRange.xRange.x, currentRange.xRange.y, currentRange.yRange.y, currentRange.yRange.x, currentRange.zRange.x, currentRange.zRange.y));
+}
+
+glm::vec2 ViewPort::getScreenDimen()
+{
+    return {screenWidth,screenHeight};
+}
+
+void ViewPort::setUniformBuffer(RenderProgram& program)
+{
+    glUniformBlockBinding(program.ID(), glGetUniformBlockIndex(basicProgram.ID(),"Matricies"), 0);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
+}
+
+void ViewPort::update(RenderCamera* camera)
+{
+    glBindBuffer(GL_UNIFORM_BUFFER,UBO);
+    glm::mat4 view;
+    if (camera)
+    {
+        glm::vec2 pos = {camera->getRect().x,camera->getRect().y};
+        view = glm::lookAt(glm::vec3(pos,0),glm::vec3(pos,-1),glm::vec3(0,1,0));
+    }
+    else
+    {
+        view = glm::mat4(1);
+    }
+    glBufferSubData(GL_UNIFORM_BUFFER,sizeof(glm::mat4),sizeof(glm::mat4),glm::value_ptr(view));
 }
 
 RenderCamera* RenderCamera::currentCamera = nullptr;
@@ -387,48 +417,57 @@ bool isTransluscent(unsigned char* sprite, int width, int height)
     return false;
 }
 
+bool Sprite::context = false;
+
    void Sprite::load(std::string source)
     {
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D,texture);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-
-        int channels;
-        //auto imageData = cv::imread(source);
-        unsigned char* data = stbi_load(source.c_str(),&width, &height, &channels, 0);
-        int rgb = 0;// GL_RGB*!transparent + GL_RGBA*transparent;
-        switch (channels)
+        if (context)
         {
-        case 1:
-            rgb = GL_RED;
-            break;
-        case 2:
-            rgb = GL_RG;
-            break;
-        case 3:
-            rgb = GL_RGB;
-            break;
-        case 4:
-            rgb = GL_RGBA;
-            transluscent = isTransluscent(data,width,height);
-            break;
-        }
+            glGenTextures(1, &texture);
+            glBindTexture(GL_TEXTURE_2D,texture);
 
-        if (data)
-        {
-            glTexImage2D(GL_TEXTURE_2D, 0, rgb,width, height, 0, rgb, GL_UNSIGNED_BYTE, data);
-            glGenerateMipmap(GL_TEXTURE_2D);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
+            int channels;
+            //auto imageData = cv::imread(source);
+            unsigned char* data = stbi_load(source.c_str(),&width, &height, &channels, 0);
+            int rgb = 0;// GL_RGB*!transparent + GL_RGBA*transparent;
+            switch (channels)
+            {
+            case 1:
+                rgb = GL_RED;
+                break;
+            case 2:
+                rgb = GL_RG;
+                break;
+            case 3:
+                rgb = GL_RGB;
+                break;
+            case 4:
+                rgb = GL_RGBA;
+                transluscent = isTransluscent(data,width,height);
+                break;
+            }
+
+            if (data)
+            {
+                glTexImage2D(GL_TEXTURE_2D, 0, rgb,width, height, 0, rgb, GL_UNSIGNED_BYTE, data);
+                glGenerateMipmap(GL_TEXTURE_2D);
+            }
+            else
+            {
+                std::cout << "Error loading texture: " << source << std::endl;
+            }
+            stbi_image_free(data);
         }
         else
         {
-            std::cout << "Error loading texture: " << source << std::endl;
+            throw std::runtime_error("WOAW MISS\n\nPUMP THE BRAKES\n\nARE YOU TRYING TO INITIALIZE A SPRITE WITHOUT AN OPENGL CONTEXT???\n\nI'm going to have to respectfully decline\n\nYou can\'t initialize textures before initializing an OpenGL Context(https://www.khronos.org/opengl/wiki/Common_Mistakes#The_Object_Oriented_Language_Problem)");
         }
-        stbi_image_free(data);
 
     }
 
@@ -438,6 +477,9 @@ Sprite::Sprite( std::string source)
     }
     Sprite::~Sprite()
     {
+        /*if there is no opengl context glDeleteTextures crashes. "context" = false means that our main function has ended, in which case there is no longer
+        a guarnatee to be an openGL context (and the OS will free our memory anyway) so don't delete the texture*/
+        if (context)
         glDeleteTextures(1,&texture);
     }
 
