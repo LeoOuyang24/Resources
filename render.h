@@ -42,26 +42,6 @@ struct ViewRange
 };
 typedef unsigned int Buffer;
 
-struct ViewPort //has data about visible area on screen
-{
-    static int screenWidth, screenHeight;
-    static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
-    static ViewRange currentRange; //represents the current range for x,y, and z
-    static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
-
-    static glm::vec2 toAbsolute(const glm::vec2& point);//given a screen coordinate, renders it to that point on the screen regardless of zoom
-    static glm::vec4 toAbsolute(const glm::vec4& rect);
-
-    static const glm::vec2& getXRange();
-    static const glm::vec2& getYRange();
-    static const glm::vec2& getZRange();
-    static void setXRange(float x1, float x2);
-    static void setYRange(float y1, float y2);
-    static void setZRange(float z1, float z2);
-    static void resetRange();
-    static glm::mat4 getOrtho(); //gets projection matrix
-    static glm::vec2 getScreenDimen();
-};
 
 class Sprite;
 class RenderProgram //represents a shader pipeline (by default only a vertex and a fragment shader).
@@ -107,15 +87,41 @@ public:
     void setVec3fv(std::string name,glm::vec3 value);
     void setVec4fv(std::string name, glm::vec4 value);
     void setVec2fv(std::string name, glm::vec2 value);
-    void use(const GLfloat* ortho); //pass in the ortho matrix (camera view)
     void use();
     void draw(Sprite& sprite, void* data, int instances);
 
-    int getRequestDataAmount();
+    int getRequestDataAmount(); //bytes of data needed for this render program
+    unsigned int ID();
 
 
 
 
+};
+
+class RenderCamera;
+struct ViewPort //has data about visible area on screen
+{
+    static Buffer UBO; //view and projection matricies Uniform Buffer
+    static int screenWidth, screenHeight;
+    static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
+    static ViewRange currentRange; //represents the current range for x,y, and z
+    static RenderProgram basicProgram; //generic shader pipeline to render sprites
+    static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
+
+    static glm::vec2 toAbsolute(const glm::vec2& point);//given a screen coordinate, renders it to that point on the screen regardless of zoom
+    static glm::vec4 toAbsolute(const glm::vec4& rect);
+
+    static const glm::vec2& getXRange();
+    static const glm::vec2& getYRange();
+    static const glm::vec2& getZRange();
+    static void setXRange(float x1, float x2);
+    static void setYRange(float y1, float y2);
+    static void setZRange(float z1, float z2);
+    static void resetRange();
+    static glm::mat4 getOrtho(); //gets projection matrix
+    static glm::vec2 getScreenDimen();
+    static void setUniformBuffer(RenderProgram& program); //set a program to use UBO
+    static void update(RenderCamera* camera = nullptr);
 };
 
 class RenderCamera
@@ -158,15 +164,16 @@ class Sprite
 {
 protected:
     int width = 0, height = 0;
-    unsigned int texture = -1;
+    unsigned int texture = 0;
     bool transluscent = false;
 public:
+    static bool context; //next level scuffed way of knowing there is an opengl context or not. Starts as true and set to false as the main function terminates.
     void load(std::string source);
     std::string source = "";
     Sprite(std::string source);
     Sprite()
     {
-        texture = -1;
+        texture = 0;
     }
     ~Sprite();
     unsigned int getTexture();

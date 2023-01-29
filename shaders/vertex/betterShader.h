@@ -6,9 +6,12 @@ layout (location = 2) in float depth;
 layout (location = 3) in float radians;
 layout (location = 4) in float effect;
 
+layout (std140) uniform Matrices
+{
+    mat4 projection;
+    mat4 view;
+};
 
-uniform mat4 projection;
-uniform mat4 view;
 
 out vec2 texCoord;
 
