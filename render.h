@@ -40,19 +40,19 @@ public:
         terminate();
     }
 };
-struct ViewRange
+struct ViewRange //represents the extent of our view range. y is the furthest, x is the smallest
 {
     static float getXRange(const ViewRange& range)
     {
-        return abs(range.xRange[1] - range.xRange[0]);
+        return (range.xRange[1] - range.xRange[0]);
     }
     static float getYRange(const ViewRange& range)
     {
-        return abs(range.yRange[1] - range.yRange[0]);
+        return (range.yRange[1] - range.yRange[0]);
     }
     static float getZRange(const ViewRange& range)
     {
-        return abs(range.zRange[1] - range.zRange[0]);
+        return (range.zRange[1] - range.zRange[0]);
     }
     glm::vec2 xRange = {0,0};
     glm::vec2 yRange = {0,0};
@@ -60,30 +60,36 @@ struct ViewRange
 };
 typedef unsigned int Buffer;
 
+typedef std::initializer_list<int> Numbers; //represents list of numbers where each number is how many GLfloats belong to a vertex attribute
+
+struct BasicRenderPipeline //extremely simple class, made for simple rendering
+{
+    unsigned int program = 0;
+    size_t dataAmount; //number of bytes per request
+    Buffer VBO;
+    Buffer VAO;
+    std::vector<char*> bytes;
+    void init(std::string vertexPath, std::string fragmentPath, Numbers numbers = {}); //future Leo! If you ever decide to add more shaders to a pipeline, consider
+                                                                                        //adding their paths to the end of this function with a default value of ""
+private:
+    void initAttribDivisors(Numbers numbers);
+};
+
+
 
 class Sprite;
-class RenderProgram //represents a shader pipeline (by default only a vertex and a fragment shader).
+class RenderProgram //represents a Sprite shader pipeline (by default only a vertex and a fragment shader).
 {
 private:
     int dataAmount = 0; //total number of GLfloats passed to shader
-    unsigned int program;
-    void initShaders(std::string vertexPath, std::string fragmentPath);
-    void initBuffers(); //initializes VAO and VBOs as well as loads the verticies into VerticiesVBO
+    void initShaders(std::string vertexPath, std::string fragmentPath,Numbers numbers);
+    virtual void initBuffers(); //loads the verticies into VerticiesVBO
 
-protected:
-    typedef std::initializer_list<int> Numbers; //represents list of numbers where each number is how many GLfloats belong to a vertex attribute
-
-    void initTransforms(int total, Numbers numbers);//initTransforms allows us to specify our vertex attribute data using one function.
-                                                    //"total" is the total amount of numbers(usually floats) we pass
-                                                    //"numbers" is a list of ints to specify how many ints per attribute
 public:
-    int preDataAmount = 0; //total number of GLFloats per request; so called because they have yet to be processed (pre-processed).
+    BasicRenderPipeline program;
+    Buffer verticiesVBO; //used to store texture verticies
 
-    Buffer VBO, //used to store transform data
-    VAO,
-    verticiesVBO; //used to store verticies
-
-    RenderProgram(std::string vertexPath, std::string fragmentPath);
+    RenderProgram(std::string vertexPath, std::string fragmentPath,Numbers numbers= {});
     RenderProgram()
     {
 
@@ -97,8 +103,7 @@ public:
         if (GLContext::isContextValid())
         glDeleteBuffers(1,&VBO);*/
     }
-    void init(std::string vertexPath, std::string fragmentPath,int total, Numbers numbers);
-    void init(std::string vertexPath, std::string fragmentPath,int a);
+    void init(std::string vertexPath, std::string fragmentPath,Numbers numbers);
     void init(std::string vertexPath, std::string fragmentPath);
 
     void setMatrix4fv(std::string name, const GLfloat* value); //pass in the value_ptr of the matrix
@@ -106,7 +111,7 @@ public:
     void setVec4fv(std::string name, glm::vec4 value);
     void setVec2fv(std::string name, glm::vec2 value);
     void use();
-    void draw(Sprite& sprite, void* data, int instances);
+    virtual void draw(Sprite& sprite, void* data, int instances);
 
     int getRequestDataAmount(); //bytes of data needed for this render program
     unsigned int ID();
@@ -138,7 +143,7 @@ struct ViewPort //has data about visible area on screen
     static void resetRange();
     static glm::mat4 getOrtho(); //gets projection matrix
     static glm::vec2 getScreenDimen();
-    static void setUniformBuffer(RenderProgram& program); //set a program to use UBO
+    static void linkUniformBuffer(unsigned int program); //set a program to use UBO
     static void update(RenderCamera* camera = nullptr);
 };
 
@@ -321,30 +326,7 @@ class SpriteManager //handles all sprite requests
 {
     static OpaqueManager opaques;
     static TransManager trans;
-    static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes,std::vector<char>& bytesVec)//base case for request, after all attributes have been processeed
-    {
-        if (bytes < program.getRequestDataAmount()) //if we underprovided data, replace the rest of the data with 0s
-        {
-            bytesVec.resize(bytesVec.size()+ program.getRequestDataAmount() - bytes,0);
-        }
-    }
-    template<typename T, typename... Args>
-    static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes,std::vector<char>& bytesVec, T t1, Args... args)
-    {
-        /*main workhorse function. Makes a single request for "sprite" using "program". "bytes" is the number of bytes we've already
-        processed, useful to make sure our request wasn't too big or small. "bytesVec" is the vector we will be storing our bytes in,
-        which differs depending on opaque vs transluscent fragments.*/
-        if (bytes >= static_cast<size_t>(program.getRequestDataAmount()))
-        {
-            requestWork(sprite,program,bytes,bytesVec); //terminate early if too many arguments were provided
-        }
-        else
-        {
-            char* bytesBuffer = reinterpret_cast<char*>(&t1); //convert to string of bytes
-            bytesVec.insert(bytesVec.end(),bytesBuffer,bytesBuffer + sizeof(t1)); //insert it into the appropriate vector
-            requestWork(sprite,program,bytes + sizeof(t1),bytesVec, args...); //continue unpacking parameters
-        }
-    }
+
 public:
     template<typename... Args>
     static void request(Sprite& sprite, RenderProgram& program,const FullPosition& pos,Args... args)
@@ -353,11 +335,11 @@ public:
         if (sprite.getTransluscent())
         {
             trans.request(sprite,program,pos.z); //transluscent manager needs to make a request specifically for the sprite-program pairing
-            requestWork(sprite,program,0,trans.data,pos.rect,pos.z,args...); //place request into transluscent manager
+            fillBytesVec(trans.data,program.getRequestDataAmount(),pos.rect,pos.z,args...); //place request into transluscent manager
         }
         else
         {
-            requestWork(sprite,program,0,opaques.opaquesMap[{sprite,program}],pos.rect,pos.z,args...); //place request into opaque manager
+            fillBytesVec(opaques.opaquesMap[{sprite,program}],program.getRequestDataAmount(),pos.rect,pos.z,args...); //place request into opaque manager
         }
     }
     static void render();
@@ -379,8 +361,8 @@ struct PolyRender
     static unsigned int polyVBO;
     static unsigned int colorVBO;
     static void init(int screenWidth, int screenHeight);
-    static void requestLine(const glm::vec4& line, const glm::vec4& color, float z = 0, unsigned int thickness = 1, RenderCamera* camera = 0);
-    static void requestGradientLine(const glm::vec4& line, const glm::vec4& color1, const glm::vec4& color2, float z = 0, unsigned int thickness = 1, RenderCamera* camera = 0);
+    static void requestLine(const glm::vec4& line, const glm::vec4& color, float z = 0, unsigned int thickness = 1);
+    static void requestGradientLine(const glm::vec4& line, const glm::vec4& color1, const glm::vec4& color2, float z = 0, unsigned int thickness = 1);
     static void requestCircleSegment(float segHeight,float angle, const glm::vec4& color,const glm::vec2& center, double radius, bool filled, float z); //draw a CircleSegment. Angle = 0 means that only the top of the circle will be drawn.
     static void requestCircle(const glm::vec4& color,const glm::vec2& center, double radius, bool filled, float z);
     static void requestRect(const glm::vec4& rect, const glm::vec4& color, bool filled, double angle, float z);

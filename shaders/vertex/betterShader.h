@@ -2,7 +2,7 @@
 
 layout (location = 0) in vec4 values;
 layout (location = 1) in vec4 rect;
-layout (location = 2) in float depth;
+layout (location = 2) in int depth;
 layout (location = 3) in float radians;
 layout (location = 4) in float effect;
 
@@ -32,7 +32,7 @@ void main()
         }
     }*/
     vec2 transformed = vec2(values.xy * rect.zw*.5);
-    //transformed = vec2(cos(radians)*transformed.x - sin(radians)*transformed.y,sin(radians)*transformed.x + cos(radians)*transformed.y);
+    transformed = vec2(cos(radians)*transformed.x - sin(radians)*transformed.y,sin(radians)*transformed.x + cos(radians)*transformed.y);
     transformed += rect.xy + rect.zw*.5;
     gl_Position = projection*view*vec4(transformed,depth,1);
    // gl_Position.z = depth;

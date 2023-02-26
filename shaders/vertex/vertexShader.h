@@ -2,7 +2,7 @@
 
 layout (location = 0) in vec4 values;
 layout (location = 1) in mat4 transform;
-layout (location = 5) in float depth;
+layout (location = 5) in int depth;
 layout (location = 6) in float effect;
 
 

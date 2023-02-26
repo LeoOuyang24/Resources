@@ -351,7 +351,7 @@ public:
     glm::vec4 getRegion();
     void insert(Positional& wrap); //calculates the node wrap belongs in and inserts it, splitting nodes if necesesary
     BiTreeStorage::iterator remove(Positional& wrap);  //removes wrap and returns an iterator to the next element, or elements.end() if wrap is not found
-    void showNodes(RenderCamera* camera = RenderCamera::currentCamera);
+    void showNodes();
 
     template<typename UpdateFunc>
     BiTreeStorage::iterator update(Positional& pos, UpdateFunc func,  BiTreeStorage::iterator it)

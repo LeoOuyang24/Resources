@@ -706,4 +706,40 @@ struct AllDerivedFrom<Base, Derived, Ds...>
     constexpr static bool value = std::is_base_of<Base, Derived>::value && AllDerivedFrom<Base, Ds...>::value;
 };
 
+
+
+void fillBytesVecWork( std::vector<char>& bytesVec,size_t bytes,size_t finalBytes);//base case after all attributes have been processeed
+
+
+template<typename T, typename... Args>
+void fillBytesVecWork(std::vector<char>& bytesVec, size_t bytes,size_t finalBytes, T t1, Args... args) //fill a byte array with "args"
+{
+    /*main workhorse function. "bytes" is the number of bytes we've already
+    processed, useful to make sure our request wasn't too big or small. "bytesVec" is the vector we will be storing our bytes in,
+    which differs depending on opaque vs transluscent fragments.*/
+    if (bytes >= finalBytes)
+    {
+        fillBytesVecWork(bytesVec,bytes,finalBytes); //terminate early if too many arguments were provided. base case is in vanilla.cpp
+    }
+    else
+    {
+        char* bytesBuffer = reinterpret_cast<char*>(&t1); //convert to string of bytes
+        //std::cout << typeid(t1).name() << "\n";
+        bytesVec.insert(bytesVec.end(),bytesBuffer,bytesBuffer + sizeof(t1)); //insert it into the appropriate vector
+        fillBytesVecWork(bytesVec,bytes + sizeof(t1), finalBytes, args...); //continue unpacking parameters
+    }
+}
+
+
+template<typename T, typename... Args>
+void fillBytesVec(std::vector<char>& bytesVec, int totalBytes, T t1, Args... args) //fill a byte array with "args"
+{
+    /*Recursively fill "bytesVec" with the bytes of our arguments. "totalBytes" is the total number of bytes of data we are providing, useful if we want to
+    pad with 0s if we under supplied arguments; -1 to do no padding*/
+    fillBytesVecWork(bytesVec,0,totalBytes,t1,args...);
+}
+
+
+
+
 #endif // VANILLA_H_INCLUDED

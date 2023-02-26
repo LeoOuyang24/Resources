@@ -71,7 +71,7 @@ int Font::writeLength(std::string str)
 
     void Font::init(int screenWidth, int screenHeight)
     {
-        wordProgram.init("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/wordFragment.h",7,{4,1,1,1});
+        wordProgram.init("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/wordFragment.h",{4,1,1,1});
 
         tnr.init("../../resources/tnr.ttf");
     }

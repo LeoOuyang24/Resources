@@ -621,13 +621,13 @@ BiTree::BiTreeStorage::iterator BiTree::remove(Positional& wrap)
     //return this->elements.end();
 }
 
-void BiTree::showNodes(RenderCamera* camera)
+void BiTree::showNodes()
 {
-    processNode([camera,this](BiTreeNode& node){
+    processNode([this](BiTreeNode& node){
                 if (node.nodes[0])
                 {
                     float mid = node.vertDimen.x + node.vertDimen.y/2;
-                    PolyRender::requestLine(glm::vec4(region.x,mid, region.x + region.z,mid),glm::vec4(1,1,0,1),0,1,camera);
+                    PolyRender::requestLine(glm::vec4(region.x,mid, region.x + region.z,mid),glm::vec4(1,1,0,1),0,1);
                 }
                 },head,false);
 }

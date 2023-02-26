@@ -90,7 +90,7 @@ int loadShaders(const GLchar* source, GLenum shaderType )
 
 }
 
-void RenderProgram::initShaders(std::string vertexPath, std::string fragmentPath)
+void BasicRenderPipeline::init(std::string vertexPath, std::string fragmentPath, Numbers numbers)
 {
     GLuint fragment = -1, vertex= -1;
     program = glCreateProgram();
@@ -101,6 +101,43 @@ void RenderProgram::initShaders(std::string vertexPath, std::string fragmentPath
     glLinkProgram(program);
     glDeleteShader(fragment);
     glDeleteShader(vertex);
+
+    glGenVertexArrays(1,&VAO);
+    glGenBuffers(1,&VBO);
+
+    initAttribDivisors(numbers);
+}
+
+void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
+{
+    int total = 0;
+    for (auto num: numbers)
+    {
+        total += num;
+    }
+
+    dataAmount = total*sizeof(GLfloat);
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER,VBO);
+    int index = 1;
+    int aggregate = 0;
+    for (auto num : numbers)
+    {
+        for (int i = 0; i < num; i+= 4)
+        {
+            int amount = std::min(num-i,4);
+            glVertexAttribPointer(index, amount, GL_FLOAT, GL_FALSE,total*sizeof(float), (void*)(aggregate*sizeof(float)));
+            glEnableVertexAttribArray(index);
+            glVertexAttribDivisor(index, 1);
+            index ++;
+            aggregate += amount;
+        }
+    }
+}
+
+void RenderProgram::initShaders(std::string vertexPath, std::string fragmentPath, Numbers numbers)
+{
+    program.init(vertexPath,fragmentPath, numbers);
 }
 
 void RenderProgram::initBuffers()
@@ -115,105 +152,70 @@ void RenderProgram::initBuffers()
 
     };
 
-    glGenVertexArrays(1,&VAO);
-    glGenBuffers(1,&VBO);
+    glBindVertexArray(program.VAO);
+
     glGenBuffers(1,&verticiesVBO);
-
-    glBindVertexArray(VAO);
-
     glBindBuffer(GL_ARRAY_BUFFER,verticiesVBO);
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(verticies),verticies, GL_STATIC_DRAW);
+
     glEnableVertexAttribArray(0);
+
     glVertexAttribPointer(0,4,GL_FLOAT,GL_FALSE,0,0);
 
 }
 
-void RenderProgram::initTransforms(int total,Numbers numbers)
-{
-    dataAmount = total;
-    preDataAmount = total;
-    glBindBuffer(GL_ARRAY_BUFFER,VBO);
-    int index = 1;
-    int aggregate = 0;
-    for (auto num : numbers)
-    {
-        for (int i = 0; i < num; i+= 4)
-        {
-            int amount = std::min(num-i,4);
-            glVertexAttribPointer(index, amount, GL_FLOAT, GL_FALSE,total*sizeof(float), (void*)(aggregate*sizeof(float))); //3-6 inclusive are the transformation matrix
-            glEnableVertexAttribArray(index);
-            glVertexAttribDivisor(index, 1);
-            index ++;
-            aggregate += amount;
-        }
-    }
-}
 
-RenderProgram::RenderProgram(std::string vertexPath, std::string fragmentPath)
+RenderProgram::RenderProgram(std::string vertexPath, std::string fragmentPath,Numbers numbers)
 {
-    init(vertexPath,fragmentPath);
+    init(vertexPath,fragmentPath,numbers);
 }
-void RenderProgram::init(std::string vertexPath, std::string fragmentPath,int total, Numbers numbers)
+void RenderProgram::init(std::string vertexPath, std::string fragmentPath,Numbers numbers)
 {
-    init(vertexPath,fragmentPath);
-
-    initTransforms(total,numbers);
-}
-void RenderProgram::init(std::string vertexPath, std::string fragmentPath,int a)
-{
-    init(vertexPath,fragmentPath);
-    initTransforms(a,{a});
-}
-void RenderProgram::init(std::string vertexPath, std::string fragmentPath)
-{
-    initShaders(vertexPath,fragmentPath);
-
+    initShaders(vertexPath, fragmentPath, numbers);
+    ViewPort::linkUniformBuffer(ID());
     initBuffers();
-    preDataAmount = 0;
 }
 
 void RenderProgram::use()
 {
     //setMatrix4fv("view",view);
     //setMatrix4fv("projection",value_ptr(RenderProgram::getOrtho()));
-    glUseProgram(program);
+    glUseProgram(program.program);
 }
 
 void RenderProgram::setMatrix4fv(std::string name, const GLfloat* value)
 {
-    glUseProgram(program);
-    glUniformMatrix4fv(glGetUniformLocation(program,name.c_str()),1,GL_FALSE,value);
+    glUseProgram(ID());
+    glUniformMatrix4fv(glGetUniformLocation(ID(),name.c_str()),1,GL_FALSE,value);
     glUseProgram(0);
 }
 void RenderProgram::setVec3fv(std::string name,glm::vec3 value)
 {
-    glUseProgram(program);
-    glUniform3fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
+    glUseProgram(ID());
+    glUniform3fv(glGetUniformLocation(ID(),name.c_str()),1,glm::value_ptr(value));
     glUseProgram(0);
 }
 void RenderProgram::setVec4fv(std::string name,glm::vec4 value)
 {
-    glUseProgram(program);
-    glUniform4fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
+    glUseProgram(ID());
+    glUniform4fv(glGetUniformLocation(ID(),name.c_str()),1,glm::value_ptr(value));
     glUseProgram(0);
 }
 void RenderProgram::setVec2fv(std::string name, glm::vec2 value)
 {
-    glUseProgram(program);
-    glUniform2fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
+    glUseProgram(ID());
+    glUniform2fv(glGetUniformLocation(ID(),name.c_str()),1,glm::value_ptr(value));
     glUseProgram(0);
 }
 
 void RenderProgram::draw(Sprite& sprite, void* data, int instances)
 {
-    glBindVertexArray(VAO);
+    glBindVertexArray(program.VAO);
     glBindTexture(GL_TEXTURE_2D,sprite.getTexture());
 
-    glBindBuffer(GL_ARRAY_BUFFER,VBO);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(float)*dataAmount*instances,data,GL_DYNAMIC_DRAW);
-
-
+    glBindBuffer(GL_ARRAY_BUFFER,program.VBO);
+    glBufferData(GL_ARRAY_BUFFER,program.dataAmount*instances,data,GL_DYNAMIC_DRAW);
 
     use();
     glDrawArraysInstanced(GL_TRIANGLES,0,6,instances);
@@ -224,12 +226,12 @@ void RenderProgram::draw(Sprite& sprite, void* data, int instances)
 
 int RenderProgram::getRequestDataAmount()
 {
-    return preDataAmount*4;
+    return program.dataAmount;
 }
 
 unsigned int RenderProgram::ID()
 {
-    return program;
+    return program.program;
 }
 
 Buffer ViewPort::UBO = 0;
@@ -273,15 +275,16 @@ glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
 
 
 
-    basicProgram.init("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/fragmentShader.h",7,{4,1,1,1});
+    basicProgram.init("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/fragmentShader.h",{4,1,1,1});
 
     glGenBuffers(1,&UBO);
     glBindBuffer(GL_UNIFORM_BUFFER,UBO);
     //float* projection = glm::value_ptr(getOrtho());
     glBufferData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4), glm::value_ptr(getOrtho()), GL_STATIC_DRAW); // allocate enough memory for two 4x4 matricies. Remember that a glm::vec4 is 16 bytes, so each matrix is 64 bytes
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    setUniformBuffer(basicProgram);
+
 
 }
 
@@ -330,6 +333,7 @@ void ViewPort::resetRange()
 
 glm::mat4 ViewPort::getOrtho()
 {
+    //return glm::perspective(glm::radians(45.0f), (float)screenWidth/(float)screenHeight, currentRange.zRange.x, currentRange.zRange.y);
     return (glm::ortho(currentRange.xRange.x, currentRange.xRange.y, currentRange.yRange.y, currentRange.yRange.x, currentRange.zRange.x, currentRange.zRange.y));
 }
 
@@ -338,10 +342,12 @@ glm::vec2 ViewPort::getScreenDimen()
     return {screenWidth,screenHeight};
 }
 
-void ViewPort::setUniformBuffer(RenderProgram& program)
+void ViewPort::linkUniformBuffer(unsigned int program)
 {
-    glUniformBlockBinding(program.ID(), glGetUniformBlockIndex(basicProgram.ID(),"Matricies"), 0);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
+    unsigned int index =glGetUniformBlockIndex(program,"Matrices");
+    //std::cout << glGetError() << "\n";
+    glUniformBlockBinding(program, index, 0);
+
 }
 
 void ViewPort::update(RenderCamera* camera)
@@ -351,7 +357,7 @@ void ViewPort::update(RenderCamera* camera)
     if (camera)
     {
         glm::vec2 pos = {camera->getRect().x,camera->getRect().y};
-        view = glm::lookAt(glm::vec3(pos,0),glm::vec3(pos,-1),glm::vec3(0,1,0));
+        view = glm::lookAt(glm::vec3(pos,currentRange.zRange.y),glm::vec3(pos,currentRange.zRange.x),glm::vec3(0,1,0));
     }
     else
     {
@@ -696,7 +702,7 @@ void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<Sp
 
 void TransManager::request(Sprite& sprite, RenderProgram& program, ZType z)
 {
-    requests.insert({sprite,program,z,requests.size()});
+    requests.insert({sprite,program,z,data.size()});
 }
 
 void TransManager::render()
@@ -706,6 +712,7 @@ void TransManager::render()
         buffer.insert(buffer.end(),&data[it->index],&data[it->index] + it->program.getRequestDataAmount()); //for each request, store the data into buffer
         if (it == std::prev(requests.end()) || &std::next(it)->sprite != &it->sprite || &std::next(it)->program != &it->program) //if we have run out of requests, or if the next request requires a different sprite/renderprogram
         {
+
             it->program.draw(it->sprite,&buffer[0],buffer.size()/it->program.getRequestDataAmount()); //draw
             buffer.clear(); //clear our buffer
         }
@@ -722,16 +729,15 @@ void OpaqueManager::render()
     is already sorted and contiguous*/
     auto opaqueEnd = opaquesMap.end();
     int size =  opaquesMap.size();
-    int i =0;
    for (auto it = opaquesMap.begin(); it != opaqueEnd; ++it)
     {
-       if (it->second.size() > 0 && (i == size - 1 || &std::next(it)->first.first != &it->first.first || &std::next(it)->first.second != &it->first.second)) //render all current sprite parameters in one go, assuming there are any
+       if (it->second.size() > 0) //render all current sprite parameters in one go, assuming there are any
        {
             int requestAmount = it->first.second.getRequestDataAmount();
+
             it->first.second.draw(it->first.first,&it->second[0],it->second.size()/(requestAmount));
             it->second.clear();
        }
-       i ++;
     }
 }
 
@@ -762,19 +768,19 @@ void PolyRender::init(int screenWidth, int screenHeight)
 
 
 
-    polyRenderer.init("../../resources/shaders/vertex/polygonVertex.h","../../resources/shaders/fragment/simpleFragment.h");
+    polyRenderer.init("../../resources/shaders/vertex/polygonVertex.h","../../resources/shaders/fragment/simpleFragment.h",{});
 
     glPrimitiveRestartIndex(restart);
     glEnable(GL_PRIMITIVE_RESTART);
 
 }
 
-void PolyRender::requestLine(const glm::vec4& line, const glm::vec4& color, float z, unsigned int thickness, RenderCamera* camera)
+void PolyRender::requestLine(const glm::vec4& line, const glm::vec4& color, float z, unsigned int thickness)
 {
-    requestGradientLine(line,color,color,z,thickness,camera);
+    requestGradientLine(line,color,color,z,thickness);
 }
 
-void PolyRender::requestGradientLine(const glm::vec4& line, const glm::vec4& color1, const glm::vec4& color2, float z, unsigned int thickness, RenderCamera* camera)
+void PolyRender::requestGradientLine(const glm::vec4& line, const glm::vec4& color1, const glm::vec4& color2, float z, unsigned int thickness)
 {
     /*here, we have to draw "thickness" amount of lines, each of which are parallel translated. https://math.stackexchange.com/a/2594547
     is the full explanation.*/
@@ -789,11 +795,6 @@ void PolyRender::requestGradientLine(const glm::vec4& line, const glm::vec4& col
             glm::vec2 disp = perpVector*(thickness/2.0f-i); //displacement of both points
             p1 += disp;
             p2 += disp;
-        }
-        if (camera)
-        {
-            p1 = camera->toScreen(p1);
-            p2 = camera->toScreen(p2);
         }
         lines.push_back(std::pair<glm::vec3,glm::vec4>(glm::vec3(p1,z),color1));
         lines.push_back(std::pair<glm::vec3, glm::vec4>(glm::vec3(p2,z),color2));

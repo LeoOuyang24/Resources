@@ -2,7 +2,6 @@
 
 layout (location = 0) in vec3 points;
 layout (location = 1) in vec4 color;
-layout (location = 2) in vec3 tri;
 
 layout (std140) uniform Matrices
 {
@@ -11,7 +10,6 @@ layout (std140) uniform Matrices
 };
 
 
-out vec2 texCoord;
 out vec4 shade;
 
 void main()

@@ -22,19 +22,37 @@ void addPointToBuffer(float buffer[], glm::vec3 point, int index);
 void addPointToBuffer(float buffer[], glm::vec2 point, int index);
 void addPointToBuffer(float buffer[], glm::vec4 point, int index);
 
-struct ViewRange
+class GLContext
+{
+    /*
+    represents OpenGL context. Keeps track if the context is still valid or not. Many of our OpenGL wrapperclasses
+    will not work if GLContext::init is not called in the beginning of every program. Similarly, terminate() should be called
+    right before main() ends.*/
+    static bool context; //true if context is guaranteed to be true;
+    static SDL_Window* window;
+public:
+    static void init(int screenWidth, int screenHeight);
+    static bool isContextValid();
+    static void update();
+    static void terminate();
+    ~GLContext()
+    {
+        terminate();
+    }
+};
+struct ViewRange //represents the extent of our view range. y is the furthest, x is the smallest
 {
     static float getXRange(const ViewRange& range)
     {
-        return abs(range.xRange[1] - range.xRange[0]);
+        return (range.xRange[1] - range.xRange[0]);
     }
     static float getYRange(const ViewRange& range)
     {
-        return abs(range.yRange[1] - range.yRange[0]);
+        return (range.yRange[1] - range.yRange[0]);
     }
     static float getZRange(const ViewRange& range)
     {
-        return abs(range.zRange[1] - range.zRange[0]);
+        return (range.zRange[1] - range.zRange[0]);
     }
     glm::vec2 xRange = {0,0};
     glm::vec2 yRange = {0,0};
@@ -42,26 +60,6 @@ struct ViewRange
 };
 typedef unsigned int Buffer;
 
-struct ViewPort //has data about visible area on screen
-{
-    static int screenWidth, screenHeight;
-    static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
-    static ViewRange currentRange; //represents the current range for x,y, and z
-    static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
-
-    static glm::vec2 toAbsolute(const glm::vec2& point);//given a screen coordinate, renders it to that point on the screen regardless of zoom
-    static glm::vec4 toAbsolute(const glm::vec4& rect);
-
-    static const glm::vec2& getXRange();
-    static const glm::vec2& getYRange();
-    static const glm::vec2& getZRange();
-    static void setXRange(float x1, float x2);
-    static void setYRange(float y1, float y2);
-    static void setZRange(float z1, float z2);
-    static void resetRange();
-    static glm::mat4 getOrtho(); //gets projection matrix
-    static glm::vec2 getScreenDimen();
-};
 
 class Sprite;
 class RenderProgram //represents a shader pipeline (by default only a vertex and a fragment shader).
@@ -92,12 +90,12 @@ public:
     }
     ~RenderProgram()
     {
-        if (VAO)
+        /*if (GLContext::isContextValid())
         glDeleteVertexArrays(1,&VAO);
-        if (VBO)
+        if (GLContext::isContextValid())
         glDeleteBuffers(1,&verticiesVBO);
-        if (verticiesVBO)
-        glDeleteBuffers(1,&VBO);
+        if (GLContext::isContextValid())
+        glDeleteBuffers(1,&VBO);*/
     }
     void init(std::string vertexPath, std::string fragmentPath,int total, Numbers numbers);
     void init(std::string vertexPath, std::string fragmentPath,int a);
@@ -107,15 +105,41 @@ public:
     void setVec3fv(std::string name,glm::vec3 value);
     void setVec4fv(std::string name, glm::vec4 value);
     void setVec2fv(std::string name, glm::vec2 value);
-    void use(const GLfloat* ortho); //pass in the ortho matrix (camera view)
     void use();
     void draw(Sprite& sprite, void* data, int instances);
 
-    int getRequestDataAmount();
+    int getRequestDataAmount(); //bytes of data needed for this render program
+    unsigned int ID();
 
 
 
 
+};
+
+class RenderCamera;
+struct ViewPort //has data about visible area on screen
+{
+    static Buffer UBO; //view and projection matricies Uniform Buffer
+    static int screenWidth, screenHeight;
+    static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
+    static ViewRange currentRange; //represents the current range for x,y, and z
+    static RenderProgram basicProgram; //generic shader pipeline to render sprites
+    static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
+
+    static glm::vec2 toAbsolute(const glm::vec2& point);//given a screen coordinate, renders it to that point on the screen regardless of zoom
+    static glm::vec4 toAbsolute(const glm::vec4& rect);
+
+    static const glm::vec2& getXRange();
+    static const glm::vec2& getYRange();
+    static const glm::vec2& getZRange();
+    static void setXRange(float x1, float x2);
+    static void setYRange(float y1, float y2);
+    static void setZRange(float z1, float z2);
+    static void resetRange();
+    static glm::mat4 getOrtho(); //gets projection matrix
+    static glm::vec2 getScreenDimen();
+    static void setUniformBuffer(RenderProgram& program); //set a program to use UBO
+    static void update(RenderCamera* camera = nullptr);
 };
 
 class RenderCamera
@@ -158,7 +182,7 @@ class Sprite
 {
 protected:
     int width = 0, height = 0;
-    unsigned int texture = -1;
+    unsigned int texture = 0;
     bool transluscent = false;
 public:
     void load(std::string source);
@@ -166,7 +190,7 @@ public:
     Sprite(std::string source);
     Sprite()
     {
-        texture = -1;
+        texture = 0;
     }
     ~Sprite();
     unsigned int getTexture();
@@ -228,16 +252,18 @@ public:
     void init(std::string source,int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
 };*/
 
-class OpaqueManager
+class OpaqueManager //manages storing opaque (non-transluscent) fragment render requests
 {
-    struct OpaquePair
+    //opaques can be rendered in any order, since they can't be blended, so OpaqueManager simply allocates contiguous memory for
+    //each Sprite-RenderProgram pair and renders all the data at once
+    struct OpaquePair //hash a pair of Sprite and RenderPrograms by XOring their hashes
     {
-        size_t operator()(const std::pair<Sprite&,RenderProgram&>& a) const
+        size_t operator()(const std::pair<Sprite&,RenderProgram&>& a) const //we don't have to worry about commutativity because they have different memory addresses
         {
             return std::hash<Sprite*>()(&a.first) ^ std::hash<RenderProgram*>()(&a.second);
         }
     };
-    struct OpaqueEquals
+    struct OpaqueEquals //how to determine if two pairs are the same (can't believe I had to specify this tbh)
     {
         bool operator()(const std::pair<Sprite&,RenderProgram&>& a,const std::pair<Sprite&,RenderProgram&>& b) const
         {
@@ -246,13 +272,16 @@ class OpaqueManager
     };
 public:
     std::unordered_map<std::pair<Sprite&,RenderProgram&>,std::vector<char>,OpaquePair,OpaqueEquals> opaquesMap;
-    void render();
+    //for each sprite-renderprogram pairing, they have a unique bytes buffer
+    void render(); //pass each bytes buffer to rendering pipeline
 };
 
 typedef int ZType; //used to represent z values
-struct TransManager
+struct TransManager //handles transluscent fragment render requests.
 {
-    struct TransRequest
+     //Transluscents must be rendered after opaques and sorted by distance from the screen from furthest
+     //(smallest z) to closest (largest z) to prevent fragments from being discarded via the depth test
+    struct TransRequest //bare bones info for each request: what sprite is being rendered, how to render it, the z value (for sorting) and the index in "data" where the transformations are stored
     {
         Sprite& sprite;
         RenderProgram& program;
@@ -261,7 +290,7 @@ struct TransManager
     };
     void request(Sprite& sprite, RenderProgram& program, ZType z);
     void render();
-    std::vector<char> data;
+    std::vector<char> data; //buffer used to store all vertex attributes. Unsorted.
 private:
     struct TransRequestCompare //returns true if "a" is "less than" b, and thus should be rendered first
     {
@@ -278,23 +307,23 @@ private:
             return a.z < b.z; //fragments with smaller zs get rendered first
         }
     };
-    std::vector<char> buffer; //reusable buffer for sorting data
+    std::vector<char> buffer; //reusable buffer for sorting data. Used to compile all data one sprite-renderprogram pairing.
     std::multiset<TransRequest,TransRequestCompare> requests;
 };
 
-struct FullPosition
+struct FullPosition //every request, regardless of sprite or render program is going to have a position (rect.xy), dimensions (rect.za), and a z coordinate (z)
 {
     glm::vec4 rect;
     ZType z;
 };
 
-class SpriteManager
+class SpriteManager //handles all sprite requests
 {
     static OpaqueManager opaques;
     static TransManager trans;
-    static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes,std::vector<char>& bytesVec)
+    static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes,std::vector<char>& bytesVec)//base case for request, after all attributes have been processeed
     {
-        if (bytes < program.getRequestDataAmount())
+        if (bytes < program.getRequestDataAmount()) //if we underprovided data, replace the rest of the data with 0s
         {
             bytesVec.resize(bytesVec.size()+ program.getRequestDataAmount() - bytes,0);
         }
@@ -302,33 +331,40 @@ class SpriteManager
     template<typename T, typename... Args>
     static void requestWork(Sprite& sprite, RenderProgram& program,size_t bytes,std::vector<char>& bytesVec, T t1, Args... args)
     {
-        //std::cout << opaqueData.size()/28 << "\n";
+        /*main workhorse function. Makes a single request for "sprite" using "program". "bytes" is the number of bytes we've already
+        processed, useful to make sure our request wasn't too big or small. "bytesVec" is the vector we will be storing our bytes in,
+        which differs depending on opaque vs transluscent fragments.*/
         if (bytes >= static_cast<size_t>(program.getRequestDataAmount()))
         {
             requestWork(sprite,program,bytes,bytesVec); //terminate early if too many arguments were provided
         }
         else
         {
-            char* bytesBuffer = reinterpret_cast<char*>(&t1);
-            //opaqueData.insert(opaqueData.end(), bytesBuffer,bytesBuffer + sizeof(t1));
-            bytesVec.insert(bytesVec.end(),bytesBuffer,bytesBuffer + sizeof(t1));
+            char* bytesBuffer = reinterpret_cast<char*>(&t1); //convert to string of bytes
 
-            //std::cout << opaqueData.size()<< " " << sizeof(t1) << "\n";
-            requestWork(sprite,program,bytes + sizeof(t1),bytesVec, args...);
+            for (int i= 0; i < sizeof(t1); i += sizeof(float))
+            {
+                float num;
+                memcpy(&num,&bytesBuffer[i],sizeof(float));
+                std::cout << num << "\n";
+            }
+            bytesVec.insert(bytesVec.end(),bytesBuffer,bytesBuffer + sizeof(t1)); //insert it into the appropriate vector
+            requestWork(sprite,program,bytes + sizeof(t1),bytesVec, args...); //continue unpacking parameters
         }
     }
 public:
     template<typename... Args>
     static void request(Sprite& sprite, RenderProgram& program,const FullPosition& pos,Args... args)
     {
+        /*exposed public function, used to make requests. Every request is expected to begin with rect and z. */
         if (sprite.getTransluscent())
         {
-            trans.request(sprite,program,pos.z);
-            requestWork(sprite,program,0,trans.data,pos.rect,pos.z,args...);
+            trans.request(sprite,program,pos.z); //transluscent manager needs to make a request specifically for the sprite-program pairing
+            requestWork(sprite,program,0,trans.data,pos.rect,pos.z,args...); //place request into transluscent manager
         }
         else
         {
-            requestWork(sprite,program,0,opaques.opaquesMap[{sprite,program}],pos.rect,pos.z,args...);
+            requestWork(sprite,program,0,opaques.opaquesMap[{sprite,program}],pos.rect,pos.z,args...); //place request into opaque manager
         }
     }
     static void render();
