@@ -90,8 +90,10 @@ int loadShaders(const GLchar* source, GLenum shaderType )
 
 }
 
-void BasicRenderPipeline::init(std::string vertexPath, std::string fragmentPath, Numbers numbers)
+void BasicRenderPipeline::init(std::string vertexPath, std::string fragmentPath, Numbers numbers,const float* verts, int floatsPerVertex_ , int vertexAmount_)
 {
+    vertexAmount = vertexAmount_;
+
     GLuint fragment = -1, vertex= -1;
     program = glCreateProgram();
     vertex = loadShaders(vertexPath.c_str(), GL_VERTEX_SHADER );
@@ -105,7 +107,21 @@ void BasicRenderPipeline::init(std::string vertexPath, std::string fragmentPath,
     glGenVertexArrays(1,&VAO);
     glGenBuffers(1,&VBO);
 
+    initVerticies(verts,floatsPerVertex_,vertexAmount_);
     initAttribDivisors(numbers);
+}
+
+void BasicRenderPipeline::initVerticies(const float* verts, int floatsPerVertex_ , int vertexAmount_)
+{
+    glBindVertexArray(VAO);
+    glGenBuffers(1,&verticies);
+    glBindBuffer(GL_ARRAY_BUFFER,verticies);
+
+    glBufferData(GL_ARRAY_BUFFER, floatsPerVertex_*vertexAmount_*sizeof(float),verts, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(0,floatsPerVertex_,GL_FLOAT,GL_FALSE,0,0);
 }
 
 void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
@@ -119,8 +135,9 @@ void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
     dataAmount = total*sizeof(GLfloat);
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER,VBO);
-    int index = 1;
+    int index = 1; //we start at 0 because RenderProgram uses index 0 to store verticies
     int aggregate = 0;
+
     for (auto num : numbers)
     {
         for (int i = 0; i < num; i+= 4)
@@ -131,18 +148,14 @@ void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
             glVertexAttribDivisor(index, 1);
             index ++;
             aggregate += amount;
+
         }
     }
 }
 
 void RenderProgram::initShaders(std::string vertexPath, std::string fragmentPath, Numbers numbers)
 {
-    program.init(vertexPath,fragmentPath, numbers);
-}
-
-void RenderProgram::initBuffers()
-{
-   float verticies[24] = { //verticies of the sprite
+    float verticies[24] = { //verticies of the sprite
     -1, 1, 0, 1,
     1, 1, 1, 1,
     1, -1, 1, 0,
@@ -151,18 +164,7 @@ void RenderProgram::initBuffers()
     1, -1, 1, 0
 
     };
-
-    glBindVertexArray(program.VAO);
-
-    glGenBuffers(1,&verticiesVBO);
-    glBindBuffer(GL_ARRAY_BUFFER,verticiesVBO);
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(verticies),verticies, GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(0,4,GL_FLOAT,GL_FALSE,0,0);
-
+    program.init(vertexPath,fragmentPath, numbers,verticies,4,6);
 }
 
 
@@ -174,7 +176,8 @@ void RenderProgram::init(std::string vertexPath, std::string fragmentPath,Number
 {
     initShaders(vertexPath, fragmentPath, numbers);
     ViewPort::linkUniformBuffer(ID());
-    initBuffers();
+    //initBuffers();
+
 }
 
 void RenderProgram::use()
@@ -209,16 +212,21 @@ void RenderProgram::setVec2fv(std::string name, glm::vec2 value)
     glUseProgram(0);
 }
 
-void RenderProgram::draw(Sprite& sprite, void* data, int instances)
+void RenderProgram::draw(Buffer sprite, void* data, int instances)
 {
     glBindVertexArray(program.VAO);
-    glBindTexture(GL_TEXTURE_2D,sprite.getTexture());
+    glBindTexture(GL_TEXTURE_2D,sprite);
 
-    glBindBuffer(GL_ARRAY_BUFFER,program.VBO);
-    glBufferData(GL_ARRAY_BUFFER,program.dataAmount*instances,data,GL_DYNAMIC_DRAW);
+    if (data)
+    {
+        glBindBuffer(GL_ARRAY_BUFFER,program.VBO);
+        glBufferData(GL_ARRAY_BUFFER,program.dataAmount*instances,data,GL_DYNAMIC_DRAW);
+    }
 
     use();
+
     glDrawArraysInstanced(GL_TRIANGLES,0,6,instances);
+
     //glDrawElementsInstanced(GL_TRIANGLES,6,GL_UNSIGNED_INT,indices,instances);
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER,0);
@@ -226,7 +234,7 @@ void RenderProgram::draw(Sprite& sprite, void* data, int instances)
 
 int RenderProgram::getRequestDataAmount()
 {
-    return program.dataAmount;
+    return program.dataAmount ? program.dataAmount : 1; //return 1 instead of 0 as 0 messes things up.
 }
 
 unsigned int RenderProgram::ID()
@@ -346,7 +354,10 @@ void ViewPort::linkUniformBuffer(unsigned int program)
 {
     unsigned int index =glGetUniformBlockIndex(program,"Matrices");
     //std::cout << glGetError() << "\n";
-    glUniformBlockBinding(program, index, 0);
+    if (index != GL_INVALID_INDEX)
+    {
+        glUniformBlockBinding(program, index, 0);
+    }
 
 }
 
@@ -713,7 +724,7 @@ void TransManager::render()
         if (it == std::prev(requests.end()) || &std::next(it)->sprite != &it->sprite || &std::next(it)->program != &it->program) //if we have run out of requests, or if the next request requires a different sprite/renderprogram
         {
 
-            it->program.draw(it->sprite,&buffer[0],buffer.size()/it->program.getRequestDataAmount()); //draw
+            it->program.draw(it->sprite.getTexture(),&buffer[0],buffer.size()/it->program.getRequestDataAmount()); //draw
             buffer.clear(); //clear our buffer
         }
     }
@@ -734,8 +745,7 @@ void OpaqueManager::render()
        if (it->second.size() > 0) //render all current sprite parameters in one go, assuming there are any
        {
             int requestAmount = it->first.second.getRequestDataAmount();
-
-            it->first.second.draw(it->first.first,&it->second[0],it->second.size()/(requestAmount));
+            it->first.second.draw(it->first.first.getTexture(),&it->second[0],it->second.size()/(requestAmount));
             it->second.clear();
        }
     }

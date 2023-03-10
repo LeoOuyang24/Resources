@@ -13,11 +13,12 @@ float kernel[9] = float[](
 );
 void main()
 {
-    vec4 text = vec4(0);// = texture(sprite,texCoord);
+    vec4 text;//texture(sprite,TexCoords);
     for (int i = 0; i < 9 ; i++)
     {
-        text += kernel[i]*texture(sprite, vec2(texCoord.x + (i%3 - 1)*offset, texCoord.y + (i/3 - 1)*offset));
+        text += kernel[i]*(texture(sprite, vec2(texCoord.x + (i%3 - 1)*offset, texCoord.y + (1 - i/3)*offset)));// + vec4(.01,0,0,0);
     }
-    fragColor = vec4(text);
+    //text= texture(sprite,texCoord);
+    fragColor = text;
 
 }

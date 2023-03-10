@@ -412,7 +412,7 @@ void fastPrint(std::string str)
 
 
 
-void fillBytesVecWork( std::vector<char>& bytesVec,size_t bytes,size_t finalBytes)//base case after all attributes have been processeed
+void fillBytesVecWork( std::vector<char>& bytesVec,size_t bytes,int finalBytes)//base case after all attributes have been processeed
 {
     if (bytes < finalBytes) //if we underprovided data, replace the rest of the data with 0s
     {

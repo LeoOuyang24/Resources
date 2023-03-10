@@ -35,7 +35,7 @@ void main()
     transformed = vec2(cos(radians)*transformed.x - sin(radians)*transformed.y,sin(radians)*transformed.x + cos(radians)*transformed.y);
     transformed += rect.xy + rect.zw*.5;
     gl_Position = projection*view*vec4(transformed,depth,1);
+        texCoord = vec2(z,a);
    // gl_Position.z = depth;
-    texCoord = vec2(z,a);
 
 }

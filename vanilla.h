@@ -708,11 +708,11 @@ struct AllDerivedFrom<Base, Derived, Ds...>
 
 
 
-void fillBytesVecWork( std::vector<char>& bytesVec,size_t bytes,size_t finalBytes);//base case after all attributes have been processeed
+void fillBytesVecWork( std::vector<char>& bytesVec,size_t bytes,int finalBytes);//base case after all attributes have been processeed
 
 
 template<typename T, typename... Args>
-void fillBytesVecWork(std::vector<char>& bytesVec, size_t bytes,size_t finalBytes, T t1, Args... args) //fill a byte array with "args"
+void fillBytesVecWork(std::vector<char>& bytesVec, size_t bytes,int finalBytes, T t1, Args... args) //fill a byte array with "args"
 {
     /*main workhorse function. "bytes" is the number of bytes we've already
     processed, useful to make sure our request wasn't too big or small. "bytesVec" is the vector we will be storing our bytes in,

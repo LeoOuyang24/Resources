@@ -58,21 +58,51 @@ struct ViewRange //represents the extent of our view range. y is the furthest, x
     glm::vec2 yRange = {0,0};
     glm::vec2 zRange = {0,0};
 };
-typedef unsigned int Buffer;
+typedef GLuint Buffer;
 
 typedef std::initializer_list<int> Numbers; //represents list of numbers where each number is how many GLfloats belong to a vertex attribute
 
-struct BasicRenderPipeline //extremely simple class, made for simple rendering
+
+struct BasicRenderPipeline //extremely simple class, made for storing simple rendering information
 {
+    static constexpr float basicScreenCoords[12] = { //verticies to render a rectangle the size of the screen
+        -1,-1, //bot left
+        1,-1, //bop right
+        -1,1, //top left
+        1,-1, //bot right
+        -1,1, //top left
+        1,1 //top right
+    };
+
     unsigned int program = 0;
     size_t dataAmount; //number of bytes per request
     Buffer VBO;
     Buffer VAO;
-    std::vector<char*> bytes;
-    void init(std::string vertexPath, std::string fragmentPath, Numbers numbers = {}); //future Leo! If you ever decide to add more shaders to a pipeline, consider
-                                                                                        //adding their paths to the end of this function with a default value of ""
+    Buffer verticies; //VBO for verticies
+    int vertexAmount = 0; //number of verticies
+    std::vector<char> bytes;
+    void init(std::string vertexPath, std::string fragmentPath, Numbers numbers = {}, //vertex and fragment shader paths as well as amount of data to pass in per render
+              const float* verts = basicScreenCoords, int floatsPerVertex_ = 2, int vertexAmount_ = 6); //info for verticies, by default render a rectangle size of the screen
+    //future Leo! If you ever decide to add more shaders to a pipeline, consider
+    //adding their paths to the end of this function with a default value of ""
+
+    template <typename T,typename... Args>
+    void draw(GLenum mode, T t1, Args... args) //pass in a bunch of data and then draw
+    { //maybe consider making this a separate function that takes in a BasicRenderPipeline and draws rather than calling it from the Pipeline itself
+        bytes.clear();
+        fillBytesVec(bytes,dataAmount,t1,args...);
+        glBindVertexArray(VAO);
+        if (dataAmount)
+        {
+            glBindBuffer(GL_ARRAY_BUFFER,VBO);
+            glBufferData(GL_ARRAY_BUFFER,dataAmount,&bytes[0],GL_DYNAMIC_DRAW);
+        }
+        glUseProgram(program);
+        glDrawArrays(mode,0,vertexAmount);
+    }
 private:
     void initAttribDivisors(Numbers numbers);
+    void initVerticies(const float* verts, int floatsPerVertex_, int vertexAmount);
 };
 
 
@@ -80,14 +110,11 @@ private:
 class Sprite;
 class RenderProgram //represents a Sprite shader pipeline (by default only a vertex and a fragment shader).
 {
-private:
-    int dataAmount = 0; //total number of GLfloats passed to shader
+protected:
     void initShaders(std::string vertexPath, std::string fragmentPath,Numbers numbers);
-    virtual void initBuffers(); //loads the verticies into VerticiesVBO
 
 public:
     BasicRenderPipeline program;
-    Buffer verticiesVBO; //used to store texture verticies
 
     RenderProgram(std::string vertexPath, std::string fragmentPath,Numbers numbers= {});
     RenderProgram()
@@ -111,7 +138,7 @@ public:
     void setVec4fv(std::string name, glm::vec4 value);
     void setVec2fv(std::string name, glm::vec2 value);
     void use();
-    virtual void draw(Sprite& sprite, void* data, int instances);
+    virtual void draw(Buffer texture, void* data, int instances);
 
     int getRequestDataAmount(); //bytes of data needed for this render program
     unsigned int ID();
