@@ -572,7 +572,7 @@
 1525702984 c:\users\leoou\onedrive\desktop\glm\glm\gtc\type_ptr.inl
 	<cstring>
 
-1678159899 c:\users\leoou\onedrive\desktop\resources\render.h
+1678490600 c:\users\leoou\onedrive\desktop\resources\render.h
 	<iostream>
 	<vector>
 	<map>
@@ -1372,4 +1372,9 @@
 	"SDL_stdinc.h"
 	"begin_code.h"
 	"close_code.h"
+
+1675519205 c:\users\leoou\onedrive\desktop\freetype-2.13.0\include\ft2build.h
+	<freetype/config/ftheader.h>
+
+1675519205 c:\users\leoou\onedrive\desktop\freetype-2.13.0\include\freetype\config\ftheader.h
 
