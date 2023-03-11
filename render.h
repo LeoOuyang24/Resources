@@ -63,6 +63,16 @@ typedef GLuint Buffer;
 typedef std::initializer_list<int> Numbers; //represents list of numbers where each number is how many GLfloats belong to a vertex attribute
 
 
+const float textureVerticies[24] = { //verticies of textures
+    -1, 1, 0, 1,
+    1, 1, 1, 1,
+    1, -1, 1, 0,
+    -1, 1, 0, 1,
+    -1, -1, 0, 0,
+    1, -1, 1, 0
+
+    };
+
 struct BasicRenderPipeline //extremely simple class, made for storing simple rendering information
 {
     static constexpr float basicScreenCoords[12] = { //verticies to render a rectangle the size of the screen

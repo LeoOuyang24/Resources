@@ -1,14 +1,8 @@
 #version 330 core
-
-layout (location = 0) in vec3 points;
-
-uniform vec3 color;
-uniform mat4 projection;
-
-out vec3 shade;
+//the most basic vertex shader you can have
+layout (location = 0) in vec4 aPos;
 
 void main()
 {
-    gl_Position = projection*vec4(points.xyz,1);
-    shade = color;
+    gl_Position = vec4(aPos.x, aPos.y, 1.0, 1.0);
 }

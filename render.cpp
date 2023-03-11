@@ -155,16 +155,7 @@ void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
 
 void RenderProgram::initShaders(std::string vertexPath, std::string fragmentPath, Numbers numbers)
 {
-    float verticies[24] = { //verticies of the sprite
-    -1, 1, 0, 1,
-    1, 1, 1, 1,
-    1, -1, 1, 0,
-    -1, 1, 0, 1,
-    -1, -1, 0, 0,
-    1, -1, 1, 0
-
-    };
-    program.init(vertexPath,fragmentPath, numbers,verticies,4,6);
+    program.init(vertexPath,fragmentPath, numbers,textureVerticies,4,6);
 }
 
 
