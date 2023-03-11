@@ -303,7 +303,14 @@ RectRenderComponent::RectRenderComponent(Entity& entity, const glm::vec4& color_
 
 void RectRenderComponent::update()
 {
-//    render({});
+    if (entity)
+    {
+        if (auto rect = entity->getComponent<RectComponent>())
+        {
+            glm::vec4 box = rect->getRect();
+            PolyRender::requestRect(ViewPort::toScreen(box),color,true,0,0);
+        }
+    }
 }
 
 /*SpriteParameter SpriteComponent::defaultSParam()

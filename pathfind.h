@@ -14,7 +14,7 @@ struct PathPoint //includes a point and the line node-node border it resides on
 
 typedef std::deque<PathPoint> Path;
 
-void renderPath(Path& path, RenderCamera* cam = RenderCamera::currentCamera);
+void renderPath(Path& path, RenderCamera* cam = ViewPort::currentCamera);
 
 struct HashPoint
 {
@@ -96,7 +96,7 @@ struct Terrain : public RectPositional
     {
         if (!renderFunc)
         {
-            PolyRender::requestRect(RenderCamera::currentCamera->toScreen(rect),{1,0,0,1},true,0,1);
+            PolyRender::requestRect(ViewPort::currentCamera->toScreen(rect),{1,0,0,1},true,0,1);
         }
         else
         {

@@ -106,31 +106,31 @@ NavMesh::Neighbors& NavMesh::NavMeshNode::getNextTo()
 
 void NavMesh::NavMeshNode::render() const
 {
-    if (RenderCamera::currentCamera)
+    if (ViewPort::currentCamera)
     {
       // std::cout << "RECT: ";
-      // printRect(RenderCamera::currentCamera->getRect());
-        glm::vec4 overlap1 = vecIntersectRegion(RenderCamera::currentCamera->getRect(),rect);
+      // printRect(ViewPort::currentCamera->getRect());
+        glm::vec4 overlap1 = vecIntersectRegion(ViewPort::currentCamera->getRect(),rect);
         glm::vec2 center = {overlap1.x + overlap1.z/2, overlap1.y + overlap1.a/2};
-        PolyRender::requestRect(RenderCamera::currentCamera->toScreen(overlap1),{1,0,0,.3},true,0,1);
+        PolyRender::requestRect(ViewPort::currentCamera->toScreen(overlap1),{1,0,0,.3},true,0,1);
         for (auto it = nextTo.begin(); it != nextTo.end(); ++it)
         {
             //printRect(it->first->getRect());
           //  printRect(it->second);
-            glm::vec4 overlap2 = vecIntersectRegion(RenderCamera::currentCamera->getRect(),it->first->getRect());
+            glm::vec4 overlap2 = vecIntersectRegion(ViewPort::currentCamera->getRect(),it->first->getRect());
             if (overlap2.z != 0 && overlap2.a != 0)
             {
                 glm::vec2 otherCenter = {overlap2.x + overlap2.z/2, overlap2.y + overlap2.a/2};
-               PolyRender::requestLine(glm::vec4(RenderCamera::currentCamera->toScreen({center.x,center.y})
+               PolyRender::requestLine(glm::vec4(ViewPort::currentCamera->toScreen({center.x,center.y})
                                                  ,glm::vec2(otherCenter.x,otherCenter.y)),
                                                  {1,0,1,1},.5);
-                PolyRender::requestRect(RenderCamera::currentCamera->toScreen({it->second.x,it->second.y - 10*(center.y < otherCenter.y),it->second.z - it->second.x,10}),{1,1,1,.5},true,0,1.1);
-                PolyRender::requestRect(RenderCamera::currentCamera->toScreen(overlap2),{0,1,0,.4},true,0,1);
+                PolyRender::requestRect(ViewPort::currentCamera->toScreen({it->second.x,it->second.y - 10*(center.y < otherCenter.y),it->second.z - it->second.x,10}),{1,1,1,.5},true,0,1.1);
+                PolyRender::requestRect(ViewPort::currentCamera->toScreen(overlap2),{0,1,0,.4},true,0,1);
               //  printRect(overlap2);
             }
            //renders a rectangle in our node bordering the neighboring node
         }
-       // PolyRender::requestRect(RenderCamera::currentCamera->toScreen(rect),{1,0,0,.3},true,0,1);
+       // PolyRender::requestRect(ViewPort::currentCamera->toScreen(rect),{1,0,0,.3},true,0,1);
 
        // printRect(rect);
     }
@@ -584,10 +584,10 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
             curNode = heap.peak().second;
             const glm::vec4* curRect = &(curNode->getRect());
             //printRect(*curRect);
-           // PolyRender::requestRect(RenderCamera::currentCamera->toScreen(curNode->getRect()),{0,0,1,1},true,0,.1);
-            //PolyRender::requestNGon(10,RenderCamera::currentCamera->toScreen(curPoint),13,{0,1,0,1},0,true,2);
+           // PolyRender::requestRect(ViewPort::currentCamera->toScreen(curNode->getRect()),{0,0,1,1},true,0,.1);
+            //PolyRender::requestNGon(10,ViewPort::currentCamera->toScreen(curPoint),13,{0,1,0,1},0,true,2);
             float angle = atan2(curNode->getCenter().y - curPoint.y, curNode->getCenter().x - curPoint.x);
-            //PolyRender::requestLine(glm::vec4(curPoint,curPoint + glm::vec2(40*cos(angle),40*sin(angle))),{0,0,0,1},1,RenderCamera::currentCamera);
+            //PolyRender::requestLine(glm::vec4(curPoint,curPoint + glm::vec2(40*cos(angle),40*sin(angle))),{0,0,0,1},1,ViewPort::currentCamera);
             heap.pop();
             if (curNode == endNode || pointInVec(endRect,curPoint)) //if we are in the endNode, we can go directly to the end. This may not be the shortest path, so we keep searching
             {
@@ -603,7 +603,7 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
                     paths[end].first = score;
                     paths[end].second = curPoint;
                 }
-               // PolyRender::requestNGon(10,RenderCamera::currentCamera->toScreen(curPoint),10,{.5,.5,1,1},0,true,5);
+               // PolyRender::requestNGon(10,ViewPort::currentCamera->toScreen(curPoint),10,{.5,.5,1,1},0,true,5);
                 //std::cout << score <<"\n";
                 continue;
             }
@@ -626,8 +626,8 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
                         heap.add({curPoint,it->first},distance);  //The closest point between our current point and a line that we are already on is obviously just curPoint.
                         startEdge = true;
                     }
-                    PolyRender::requestNGon(10,RenderCamera::currentCamera->toScreen(curPoint),10,{1,0,0,1},0,true,2);
-                    PolyRender::requestLine(it->second,{1,0,0,1},1,RenderCamera::currentCamera);
+                    PolyRender::requestNGon(10,ViewPort::currentCamera->toScreen(curPoint),10,{1,0,0,1},0,true,2);
+                    PolyRender::requestLine(it->second,{1,0,0,1},1,ViewPort::currentCamera);
                     continue;
                 }*/
 
@@ -636,7 +636,7 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
                 glm::vec2 midpoint;  //this is not actually the midpoint, but rather the point on the intersection line we think will be closest to the goal
                 midpoint = lineLineIntersectExtend(curPoint,end,a,b);//this ensures that if there is a direct path to the end, we work towards it.
                // PolyRender::requestLine(glm::vec4(GameWindow::getCamera().toScreen(midpoint),GameWindow::getCamera().toScreen(curPoint)),{1,.5,.5,1},10);
-                //PolyRender::requestRect(RenderCamera::currentCamera->toScreen((it)->first->getRect()),{0,1,0,1},true,0,1);
+                //PolyRender::requestRect(ViewPort::currentCamera->toScreen((it)->first->getRect()),{0,1,0,1},true,0,1);
 
                 if (!lineInLine(midpoint,end,a,b)) //if the midpoint isn't on the intersection, choose one of the endpoints
                 {
@@ -650,8 +650,8 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
                 const glm::vec4* nodeRect = &(it->first->getRect());
                 midpoint = displacePoint(midpoint,it->second,*nodeRect,width);
 
-               // PolyRender::requestLine({RenderCamera::currentCamera->toScreen(a),RenderCamera::currentCamera->toScreen(b)},{1,0,1,1},1);
-                //PolyRender::requestNGon(10,RenderCamera::currentCamera->toScreen(midpoint),10,{.5,1,0,1},0,true,2);
+               // PolyRender::requestLine({ViewPort::currentCamera->toScreen(a),ViewPort::currentCamera->toScreen(b)},{1,0,1,1},1);
+                //PolyRender::requestNGon(10,ViewPort::currentCamera->toScreen(midpoint),10,{.5,1,0,1},0,true,2);
                 double newDistance =std::get<0>(paths[curPoint]) +  pointDistance(curPoint,midpoint); //distance from start to midpoint
                 bool newPoint = paths.count(midpoint) == 0;
                 //if we found the new shortest distance from start to this point, update.
@@ -685,7 +685,7 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
             {
                 //std::cout << paths.count(curPoint) << " " << curPoint.x << " " << curPoint.y << std::endl;
                 glm::vec2 nextPoint = paths[shortCut].second; //nextPoint is the nextPoint to process.
-               // PolyRender::requestCircle({1,1,1,1},RenderCamera::currentCamera->toScreen(nextPoint),10,2);
+               // PolyRender::requestCircle({1,1,1,1},ViewPort::currentCamera->toScreen(nextPoint),10,2);
                     glm::vec4 line = (nextPoint != start ?
                                             pointAndNodes[nextPoint]->getNextTo()[pointAndNodes[paths[nextPoint].second]] : //intersection between the two nodes
                                             glm::vec4(startNode->getRect().x ,start.y, startNode->getRect().x + startNode->getRect().z, start.y));// - glm::vec4(width,0,width,0);
@@ -703,9 +703,9 @@ Path NavMesh::getPath(const glm::vec2& startPoint, const glm::vec2& endPoint, in
                             rightBound = {std::min(line.z,lineLineIntersectExtend(rightBound,curPoint,{line.x,line.y},{line.z,line.a}).x),line.y};
                         }
                         /*std::cout << leftBound.x <<" " << leftBound.y << " " << rightBound.x << " " << rightBound.y << " " << curPoint.x << " " << curPoint.y << " " << nextPoint.x << " " << nextPoint.y<< "\n";
-                        PolyRender::requestNGon(10,RenderCamera::currentCamera->toScreen(rightBound),10,{0,0,1,1},0,10,2);
-                        PolyRender::requestNGon(10,RenderCamera::currentCamera->toScreen(leftBound),10,{1,0,0,1},0,10,2);
-                        PolyRender::requestLine(line,{0,1,0,1},3,RenderCamera::currentCamera);*/
+                        PolyRender::requestNGon(10,ViewPort::currentCamera->toScreen(rightBound),10,{0,0,1,1},0,10,2);
+                        PolyRender::requestNGon(10,ViewPort::currentCamera->toScreen(leftBound),10,{1,0,0,1},0,10,2);
+                        PolyRender::requestLine(line,{0,1,0,1},3,ViewPort::currentCamera);*/
                         boundsSet = true;
                         //rightBound.x < leftBound.x || !pointInTriangle(leftBound,rightBound,curPoint,nextPoint)
                         if (rightBound.x < leftBound.x || !pointInTriangle(leftBound,rightBound,curPoint,nextPoint)) //if we can't move to nextPoint, then shortCut is the furthest we can move.
@@ -939,10 +939,10 @@ int NavMesh::getNumNodes()
 
 void NavMesh::render()
 {
-    if (RenderCamera::currentCamera)
+    if (ViewPort::currentCamera)
     {
      nodeTree.map([](const Positional& pos){
-                 PolyRender::requestRect(RenderCamera::currentCamera->toScreen(static_cast<const RectPositional*>(&pos)->getRect()),
+                 PolyRender::requestRect(ViewPort::currentCamera->toScreen(static_cast<const RectPositional*>(&pos)->getRect()),
                                          {0,0,0,1},
                                          false,
                                          0,1);
@@ -952,7 +952,7 @@ void NavMesh::render()
     }
     else
     {
-        std::cerr << "NavMesh::render: RenderCamera::currentCamera not set!\n";
+        std::cerr << "NavMesh::render: ViewPort::currentCamera not set!\n";
     }
 
 }
@@ -974,7 +974,7 @@ NavMesh::~NavMesh()
 void EntityTerrainManager::updateTerrain()
 {
      auto end = terrain.end();
-    if (RenderCamera::currentCamera)
+    if (ViewPort::currentCamera)
     {
         for (auto it =terrain.begin(); it != end; ++it)
         {

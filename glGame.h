@@ -812,15 +812,15 @@ public:
     bool inGrid(Positional& p) //true if p is in the spatial grid in the appropriate nodes
     {
         bool answer = true;
-        PolyRender::requestRect(RenderCamera::currentCamera->toScreen(p.getBoundingRect()),glm::vec4(0,1,0,1),0,0,1);
+        PolyRender::requestRect(ViewPort::currentCamera->toScreen(p.getBoundingRect()),glm::vec4(0,1,0,1),0,0,1);
         processAllExistingNodes(p.getBoundingRect(),[&answer,this,&p](const glm::vec2& point, Node& node) mutable {
                         if (lookup.find({node,p}) == lookup.end())
                             {
-                                PolyRender::requestRect(RenderCamera::currentCamera->toScreen(glm::vec4(point,nodeDimen,nodeDimen)),glm::vec4(1,0,0,1),0,0,1);
+                                PolyRender::requestRect(glm::vec4(ViewPort::toScreen(point),nodeDimen,nodeDimen),glm::vec4(1,0,0,1),0,0,1);
                             }
                             else
                             {
-                                PolyRender::requestRect(RenderCamera::currentCamera->toScreen(glm::vec4(point,nodeDimen,nodeDimen)),glm::vec4(1,1,0,1),0,0,1);
+                                PolyRender::requestRect(glm::vec4(ViewPort::toScreen(point),nodeDimen,nodeDimen),glm::vec4(1,1,0,1),0,0,1);
                             }
                         answer = answer && (lookup.find({node,p}) != lookup.end()); //REFACTOR: should short circuit if answer is ever false; don't have to process every node if answer is ever false
                         });
@@ -837,10 +837,7 @@ public:
         for (auto it = nodes.begin(); it!= nodes.end(); ++it)
         {
             glm::vec4 nodeRect = glm::vec4(it->first + glm::vec2(1,1),nodeDimen - 2,nodeDimen - 2); //render nodes slightly smaller to prevent overlap
-            if (RenderCamera::currentCamera)
-            {
-                //nodeRect = RenderCamera::currentCamera->toScreen(nodeRect);
-            }
+
             glm::vec4 color = it->second.size != 0 ? glm::vec4(1,1,0,1) : glm::vec4(1,0,0,1); //if node has stuff in it, render it yellow, otherwise red
             PolyRender::requestRect(nodeRect,color,false,0,1);
         }

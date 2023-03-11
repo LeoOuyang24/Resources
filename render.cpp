@@ -242,6 +242,7 @@ unsigned int RenderProgram::ID()
     return program.program;
 }
 
+RenderCamera* ViewPort::currentCamera = nullptr;
 Buffer ViewPort::UBO = 0;
 int ViewPort::screenWidth = 0;
 int ViewPort::screenHeight = 0;
@@ -306,6 +307,26 @@ glm::vec4 ViewPort::toAbsolute(const glm::vec4& rect)
     return glm::vec4(toAbsolute({rect.x,rect.y}),toAbsolute({rect.z,rect.a}));
 }
 
+glm::vec2 ViewPort::toWorld(const glm::vec2& point)
+{
+    return currentCamera ? currentCamera->toWorld(point) : point;
+}
+
+glm::vec4 ViewPort::toWorld(const glm::vec4& rect)
+{
+    return glm::vec4(toWorld({rect.x,rect.y}),rect.z,rect.a);
+}
+
+glm::vec2 ViewPort::toScreen(const glm::vec2& point)
+{
+    return currentCamera ? currentCamera->toScreen(point) : point;
+}
+
+glm::vec4 ViewPort::toScreen(const glm::vec4& rect)
+{
+    return glm::vec4(toScreen({rect.x,rect.y}),rect.z,rect.a);
+}
+
 const glm::vec2& ViewPort::getXRange()
 {
     return currentRange.xRange;
@@ -361,13 +382,13 @@ void ViewPort::linkUniformBuffer(unsigned int program)
 
 }
 
-void ViewPort::update(RenderCamera* camera)
+void ViewPort::update()
 {
     glBindBuffer(GL_UNIFORM_BUFFER,UBO);
     glm::mat4 view;
-    if (camera)
+    if (currentCamera) //REFACTOR: might be faster to not have to recalculate this every frame
     {
-        glm::vec2 pos = {camera->getRect().x,camera->getRect().y};
+        glm::vec2 pos = {currentCamera->getRect().x,currentCamera->getRect().y};
         view = glm::lookAt(glm::vec3(pos,currentRange.zRange.y),glm::vec3(pos,currentRange.zRange.x),glm::vec3(0,1,0));
     }
     else
@@ -377,7 +398,13 @@ void ViewPort::update(RenderCamera* camera)
     glBufferSubData(GL_UNIFORM_BUFFER,sizeof(glm::mat4),sizeof(glm::mat4),glm::value_ptr(view));
 }
 
-RenderCamera* RenderCamera::currentCamera = nullptr;
+RenderCamera::~RenderCamera()
+{
+    if (ViewPort::currentCamera == this)
+    {
+        ViewPort::currentCamera = 0;
+    }
+}
 
 void RenderCamera::init(int w, int h)
 {

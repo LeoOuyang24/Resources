@@ -151,6 +151,7 @@ public:
 class RenderCamera;
 struct ViewPort //has data about visible area on screen
 {
+    static RenderCamera* currentCamera; //the current camera in use
     static Buffer UBO; //view and projection matricies Uniform Buffer
     static int screenWidth, screenHeight;
     static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
@@ -160,6 +161,12 @@ struct ViewPort //has data about visible area on screen
 
     static glm::vec2 toAbsolute(const glm::vec2& point);//given a screen coordinate, renders it to that point on the screen regardless of zoom
     static glm::vec4 toAbsolute(const glm::vec4& rect);
+
+    static glm::vec2 toWorld(const glm::vec2& point);//if currentCamera is not null, uses currentCamera to project screen point to world point. Otherwise, return "point"
+    static glm::vec4 toWorld(const glm::vec4& point);
+
+    static glm::vec2 toScreen(const glm::vec2& point); //same as toWorld but for toScreen
+    static glm::vec4 toScreen(const glm::vec4& point);
 
     static const glm::vec2& getXRange();
     static const glm::vec2& getYRange();
@@ -171,7 +178,7 @@ struct ViewPort //has data about visible area on screen
     static glm::mat4 getOrtho(); //gets projection matrix
     static glm::vec2 getScreenDimen();
     static void linkUniformBuffer(unsigned int program); //set a program to use UBO
-    static void update(RenderCamera* camera = nullptr);
+    static void update();
 };
 
 class RenderCamera
@@ -180,8 +187,8 @@ protected:
     glm::vec4 rect = {0,0,0,0};
 
 public:
-    static RenderCamera* currentCamera; //a pointer to the current camera in use.
     virtual void init(int w, int h); //we use an init instead of constructor since we don't always know what the dimensions are when creating the object.
+    ~RenderCamera(); //make sure to update the current camera if this camera was the current camera
     const glm::vec4& getRect() const;
     void setRect(const glm::vec4& rect_);
     void addVector(const glm::vec2& moveVector); //add vector to topleft corner
