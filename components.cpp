@@ -308,7 +308,7 @@ void RectRenderComponent::update()
         if (auto rect = entity->getComponent<RectComponent>())
         {
             glm::vec4 box = rect->getRect();
-            PolyRender::requestRect(ViewPort::toScreen(box),color,true,0,0);
+            PolyRender::requestRect(box,color,true,rect->getTilt(),0);
         }
     }
 }
@@ -404,6 +404,11 @@ void BaseHealthComponent::addHealth(float damage)
 float BaseHealthComponent::getHealth()
 {
     return health;
+}
+
+float BaseHealthComponent::getMaxHealth()
+{
+    return maxHealth;
 }
 
 bool BaseHealthComponent::isInvuln()

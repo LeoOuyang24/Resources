@@ -231,6 +231,7 @@ public:
     BaseHealthComponent(float invulnTime_,float health_, float maxHealth_, Entity& entity);
     virtual void addHealth(float damage); //damage can be positive or negative
     float getHealth();
+    float getMaxHealth();
     bool isInvuln(); //return true if still invulnerable
     virtual ~BaseHealthComponent()
     {

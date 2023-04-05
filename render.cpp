@@ -290,12 +290,11 @@ glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
 
 glm::vec2 ViewPort::toAbsolute(const glm::vec2& point)
 {
-    double ratio = ViewRange::getXRange(currentRange)/ViewRange::getXRange(baseRange);
-    return {point.x*ViewRange::getXRange(currentRange)/ViewRange::getXRange(baseRange),point.y*ViewRange::getYRange(currentRange)/ViewRange::getYRange(baseRange)};
+    return currentCamera ? currentCamera->toAbsolute(point) : point;
 }
 glm::vec4 ViewPort::toAbsolute(const glm::vec4& rect)
 {
-    return glm::vec4(toAbsolute({rect.x,rect.y}),toAbsolute({rect.z,rect.a}));
+    return currentCamera ? currentCamera->toAbsolute(rect) : rect;
 }
 
 glm::vec2 ViewPort::toWorld(const glm::vec2& point)
@@ -457,18 +456,13 @@ glm::vec2 RenderCamera::toWorld(const glm::vec2& point) const
 
 glm::vec4 RenderCamera::toAbsolute(const glm::vec4& rect) const
 {
-    return glm::vec4(toAbsolute({rect.x,rect.y}),toAbsolute({rect.z,rect.a}));
+    return glm::vec4(toAbsolute({rect.x,rect.y}),rect.z,rect.a);
 }
 glm::vec2 RenderCamera::toAbsolute(const glm::vec2& point) const
 {
-     //glm::vec2 screenDimen = RenderProgram::getScreenDimen();
-     //double horiz = (RenderProgram::getXRange().y - RenderProgram::getXRange().x);
-  //   std::cout << horiz << " " << rect.z << std::endl;
-     //double vert = ViewRange::getYRange(RenderProgram::getYRange());
-    //return {point.x*horiz/screenDimen.x,point.y*rect.a/screenDimen.y};
-    return ViewPort::toAbsolute(point);
+    glm::vec2 screenDimen = ViewPort::getScreenDimen();
+    return {(point.x + rect.x),point.y + rect.y};
 }
-
 bool isTransluscent(unsigned char* sprite, int width, int height)
 {
     for (int i = 3; i < width*height; i +=4)

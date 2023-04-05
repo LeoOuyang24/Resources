@@ -6,15 +6,10 @@ void ForcesComponent::applyForce(ForceVector force)
     finalForce += force;
 }
 
-ForcesComponent::ForcesComponent(Entity& entity, float friction_, float maxForce_) : Component(entity), ComponentContainer<ForcesComponent>(&entity), move(entity.getComponent<BasicMoveComponent>()),
+ForcesComponent::ForcesComponent(Entity& entity, float friction_, float maxForce_) : Component(entity), ComponentContainer<ForcesComponent>(&entity),
                                                                                     friction(friction_), maxForce(maxForce_)
 {
 
-}
-
-void ForcesComponent::setMoveComponent(BasicMoveComponent* move_)
-{
-    move = move_;
 }
 
 bool ForcesComponent::getBeingPushed()
@@ -33,6 +28,7 @@ void ForcesComponent::addForce(ForceVector force)
 
 void ForcesComponent::update()
 {
+    BasicMoveComponent* move = entity->getComponent<BasicMoveComponent>();
     if (getBeingPushed() && move)
     {
         float frictionFactor = DeltaTime::deltaTime; //fraction of the friction since last frame
@@ -74,7 +70,7 @@ ChainLinkComponent* ChainLinkComponent::getNextLink()
 
 glm::vec2 ChainLinkComponent::getLinkPos()
 {
-    if (move)
+    if (BasicMoveComponent* move = entity->getComponent<BasicMoveComponent>())
     {
         return move->getCenter();
     }
@@ -82,7 +78,7 @@ glm::vec2 ChainLinkComponent::getLinkPos()
 
 void ChainLinkComponent::update()
 {
-    if (move)
+    if (BasicMoveComponent* move = entity->getComponent<BasicMoveComponent>())
     {
         ForcesComponent::update();
         auto downPtr = down.get();
@@ -160,7 +156,7 @@ void Chain::setBottomPos(const glm::vec2& pos)
     if (ChainLinkComponent* link = bottom->getComponent<ChainLinkComponent>())
         {
 
-            if (BasicMoveComponent* move = link->getMove())
+            if (BasicMoveComponent* move = link->getEntity().getComponent<BasicMoveComponent>())
                 {
                     move->setPos(pos);
                 }
