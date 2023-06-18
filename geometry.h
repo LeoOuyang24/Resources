@@ -9,6 +9,7 @@
 #include "gtc/matrix_transform.hpp"
 #include "gtc/type_ptr.hpp"
 
+bool isClockwise(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c); //with "c" as the center, returns true if "a" must rotate clockwise to reach "b"
 
 void printRect(const glm::vec4& rect);
 int loadShaders(const GLchar* source, GLenum shaderType );

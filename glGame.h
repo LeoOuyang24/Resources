@@ -51,7 +51,7 @@ public:
     glm::vec4 getBoundingRect() const;
     virtual glm::vec2 getPos() const;
     const glm::vec4& getRect() const;
-    float getTilt() const;
+    virtual float getTilt() const;
     void setTilt(float tilt_);
     glm::vec2 getCenter() const;
 };
@@ -735,6 +735,10 @@ public:
     {
 
     }
+    ~SpatialGrid()
+    {
+        clear();
+    }
     void insert(Positional& positional)
     {
         processAllNodes(positional.getBoundingRect(),[this,&positional](const glm::vec2& point, Node& node){
@@ -786,7 +790,7 @@ public:
                         int i =0;
                         for ( auto it = node.end; i < node.size; i++, --it)
                         {
-                            if (p.collides((*it)->getBoundingRect())) //REFACTOR: this may not be accurate if the positional "it" is pointing to is not a rectangle
+                            if (&p != (*it) && p.collides((*it)->getBoundingRect())) //REFACTOR: this may not be accurate if the positional "it" is pointing to is not a rectangle
                             {
                                 func(**it);
                             }
@@ -808,7 +812,7 @@ public:
                         }
                         });
     }
-    void updateEntities(const glm::vec4& region);
+    void updateEntities(const glm::vec4& region); //update all entities in region, calling their updateOnce function and update their positions
     bool inGrid(Positional& p) //true if p is in the spatial grid in the appropriate nodes
     {
         bool answer = true;
@@ -842,7 +846,7 @@ public:
             PolyRender::requestRect(nodeRect,color,false,0,1);
         }
     }
-    int size()
+    int size() //not necessarily the number of unique entities in the grid, just the number of positionals are stored.
     {
         return positionals.size();
     }

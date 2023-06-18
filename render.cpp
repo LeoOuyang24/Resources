@@ -242,6 +242,7 @@ ViewRange ViewPort::baseRange;
 ViewRange ViewPort::currentRange;
 
 RenderProgram ViewPort::basicProgram;
+RenderProgram ViewPort::animeProgram;
 
 void ViewPort::init(int screenWidth, int screenHeight)
 {
@@ -276,6 +277,7 @@ glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
 
 
     basicProgram.init("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/fragmentShader.h",{4,1,1,1});
+    animeProgram.init("../../resources/shaders/vertex/animationShader.h","../../resources/shaders/fragment/fragmentShader.h",{4,1,4,2,1,1,1,1,});
 
     glGenBuffers(1,&UBO);
     glBindBuffer(GL_UNIFORM_BUFFER,UBO);
@@ -465,10 +467,14 @@ glm::vec2 RenderCamera::toAbsolute(const glm::vec2& point) const
 }
 bool isTransluscent(unsigned char* sprite, int width, int height)
 {
-    for (int i = 3; i < width*height; i +=4)
+    for (int i = 3; i < width*height*4; i +=4)
     {
-        if (sprite[i] != 0 && sprite[i] != 255)
+        if (sprite[i] != 255)
         {
+        //note: it's possible to make this check for alpha values of 0 as well, and then discard fragments of pure transparency in the shader,
+        //to avoid z-sorting. the issue is that as long as sprites use GL_LINEAR instead of GL_NEAREST for
+        //GL_TEXTURE_MIN_FILTER and GL_TEXTURE_MAG_FILTER, a purely opaque or transparent image might have
+        //blurred pixels due to linear interpolation.
             return true;
         }
     }
@@ -604,9 +610,15 @@ void Sprite9::init(std::string source,glm::vec2 W, glm::vec2 H)
 }*/
 
 
-/*BaseAnimation::BaseAnimation(std::string source, int speed, int perRow, int rows, const glm::vec4& sub)
+BaseAnimation::BaseAnimation(std::string source, int speed, int perRow, int rows, const glm::vec4& sub)
 {
-    init(source,speed,perRow,rows,  sub);
+    init(source,speed,perRow,rows, sub);
+}
+
+
+int BaseAnimation::getFrames()
+{
+    return framesDimen.x*framesDimen.y;
 }
 
 int BaseAnimation::getFPS()
@@ -614,26 +626,35 @@ int BaseAnimation::getFPS()
     return fps;
 }
 
-int BaseAnimation::getFrames()
+glm::vec4 BaseAnimation::getSubSection()
 {
-    return subSection.z*subSection.a;
+    return subSection;
 }
 
-int BaseAnimation::getDuration(int speed)
+glm::vec2 BaseAnimation::getFramesDimen()
 {
-    if (speed == -1)
+    return framesDimen;
+
+}
+
+void BaseAnimation::init(std::string source, int speed, int perRow, int rows, const glm::vec4& sub)
+{
+    Sprite::init(source);
+    fps = speed;
+    framesDimen.x = perRow;
+    framesDimen.y = rows;
+    subSection = sub;
+    if (sub.z == 0)
     {
-        speed = fps;
+        subSection.z = perRow;
     }
-    return 1000/speed*subSection.z*subSection.a;
+    if (sub.a == 0)
+    {
+        subSection.a = rows;
+    }
 }
 
-glm::vec2 BaseAnimation::getDimen()
-{
-    return {frameDimen.x*width,frameDimen.y*height};
-}
-
-glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
+/*glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
 {
         //int current =  SDL_GetTicks();
         /*glm::vec4 backup = subSection;
@@ -656,7 +677,7 @@ glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
 
         subSection = backup;
 
-        return answer;*/
+        return answer;
 /*}
 
 SpriteParameter BaseAnimation::processParam(const SpriteParameter& sParam,const AnimationParameter& aParam)
@@ -675,22 +696,7 @@ SpriteParameter BaseAnimation::processParam(const SpriteParameter& sParam,const 
 /*    return param;
 }
 
-void BaseAnimation::init(std::string source, int speed, int perRow, int rows, const glm::vec4& sub)
-{
-    Sprite::init(source);
-    fps = speed;
-    frameDimen.x = 1.0/(perRow);
-    frameDimen.y = 1.0/(rows);
-    subSection = sub;
-    if (sub.z == 0)
-    {
-        subSection.z = perRow;
-    }
-    if (sub.a == 0)
-    {
-        subSection.a = rows;
-    }
-}
+
 /*void BaseAnimation::renderInstanced(RenderProgram& program, const std::list<FullAnimationParameter>& parameters)
 {
     auto size = parameters.end();

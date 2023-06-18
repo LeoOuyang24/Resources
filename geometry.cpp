@@ -4,6 +4,16 @@
 
 #include "geometry.h"
 
+bool isClockwise(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c) //with "c" as the center, returns true if "a" must rotate clockwise to reach "b"
+{
+    /*https://gamedev.stackexchange.com/questions/45412/understanding-math-used-to-determine-if-vector-is-clockwise-counterclockwise-f
+    The dot product of two vectors is positive iff the angle between two vectors is less than 90 degrees because a*b = ||a||*||b||cos(theta), where theta
+    is the angle between a and b. "a" rotated 90 degrees is {-a.y,a.x}, this is the result of multiplying a.x + a.y*i by i. If b is within 90 degrees of
+    "a" rotated by 90 degrees, it is thus at most positive 180 degrees from "a". So, we have to test if {-a.y,a.x}*{b.x,b.y} is positive.
+    -a.y*b.x + a.x*b.y > 0 iff a.x*b.y > a.y*b.x
+    */
+    return a.x*b.y > a.y*b.x;
+}
 
 void printRect(const glm::vec4& rect)
 {

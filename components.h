@@ -184,9 +184,12 @@ public:
 
 class RenderComponent : public Component, public ComponentContainer<RenderComponent>
 {
+protected:
+    ZType zCoord = 0; //the z to render at, optional usage
 public:
-    RenderComponent(Entity& entity);
+    RenderComponent(Entity& entity, ZType zCoord_ = 0);
     virtual ~RenderComponent();
+
 };
 
 class RectRenderComponent : public RenderComponent, public ComponentContainer<RectRenderComponent>
@@ -196,6 +199,24 @@ public:
     RectRenderComponent(Entity& entity, const glm::vec4& color_);
     //virtual void render(const SpriteParameter& param);
     void update();
+};
+
+class BaseAnimationComponent : public RenderComponent, public ComponentContainer<BaseAnimationComponent>
+{
+    //very basic animation rendering component
+protected:
+    int fps = 1;
+    int start = 0; //millisecond we started rendering animation, 0 if we haven't started
+    BaseAnimation* sprite;
+public:
+    BaseAnimationComponent(Entity& entity, BaseAnimation& anime, int fps, ZType zCoord_);
+    BaseAnimationComponent(Entity& entity, BaseAnimation& anime, ZType zCoord_ = 0);
+    template<typename... T>
+    void request(RenderProgram& program, const FullPosition& pos, T... stuff)
+    {
+        SpriteManager::request(*sprite,program,pos,sprite->getSubSection(),sprite->getFramesDimen(),SDL_GetTicks() - start,fps, stuff...);
+    }
+    virtual void update();
 };
 
 /*class SpriteComponent : public RenderComponent, public ComponentContainer<SpriteComponent> //also handles Animations
@@ -319,6 +340,7 @@ protected:
     virtual bool forEachEntity(Entity& it); //used to allow child managers to easily change how they manage entities without forlooping twice
                                             //returns true if the entity should be deleted after this function call
 public:
+    ~EntityManager();
     virtual void addEntity(Entity& entity);
     virtual void addEntity(const std::shared_ptr<Entity>& entity);
     virtual EntityIt removeEntity(Entity* entity);
@@ -332,6 +354,7 @@ class EntityPosManager : public EntityManager//Entity Manager that also keeps a 
 protected:
     virtual bool forEachEntity(Entity& entity);
 public:
+    ~EntityPosManager();
     virtual void init(int gridSize);
     SpatialGrid* getContainer(); //can return null, most likely because init was never called
     using EntityManager::addEntity;

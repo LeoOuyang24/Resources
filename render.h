@@ -15,7 +15,7 @@
 #include "gtc/matrix_transform.hpp"
 #include "gtc/type_ptr.hpp"
 
-#include "SDLhelper.h";
+#include "SDLhelper.h"
 #include "vanilla.h"
 
 void addPointToBuffer(float buffer[], glm::vec3 point, int index);
@@ -167,6 +167,7 @@ struct ViewPort //has data about visible area on screen
     static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
     static ViewRange currentRange; //represents the current range for x,y, and z
     static RenderProgram basicProgram; //generic shader pipeline to render sprites
+    static RenderProgram animeProgram; //shader pipeline to render spritesheets
     static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
 
     static glm::vec2 toAbsolute(const glm::vec2& point);//given a screen coordinate, renders it to that point on the screen regardless of zoom
@@ -270,14 +271,14 @@ public:
     int timeSince = 0; //milliseconds since beginning,
     int fps = 1;
     glm::vec4 subSection = glm::vec4(0); //the portion of the sprite sheet we want to render
-};
+};*/
 
 
 class BaseAnimation : public Sprite //the actual animation object
 {
-    int fps = 0;
-    glm::vec2 frameDimen; //proportion of the spritesheet of each frame
+    glm::vec2 framesDimen; //frames per Dimension
     glm::vec4 subSection = {0,0,0,0}; //subsection.xy is the origin of the sprite sheet. This is a standardized value (0-1). subsection.za is the framesPerRow and the number of rows wanted.
+    int fps = 1; //default fps
 public:
     static getFrameIndex(int startingFrame, int timePerFrame) //given the frame an animation has started at and the time to spend per frame, return which frame should be rendered
     {
@@ -287,19 +288,17 @@ public:
         }
         return (DeltaTime::getCurrentFrame() - startingFrame)/timePerFrame;
     }
-    BaseAnimation(std::string source, int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0});
+    BaseAnimation(std::string source, int speed, int perRow, int rows,  const glm::vec4& sub = {0,0,0,0});
     BaseAnimation()
     {
 
     }
-    int getFPS();
     int getFrames();
-    glm::vec2 getDimen(); //does not return the dimensions of the whole spritesheet but rather the size of the portion to be rendered.
-    int getDuration(int speed = -1); //returns the duration of the full animation in milliseconds
-    glm::vec4 getPortion(const AnimationParameter& param); //given animation parameter, returns the portion of the spreadsheet
-    SpriteParameter processParam(const SpriteParameter& sParam,const AnimationParameter& aParam); //returns a spriteparameter that represents what to render
-    void init(std::string source,int speed, int perRow, int rows, const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
-};*/
+    int getFPS();
+    glm::vec2 getFramesDimen(); //returns {subsection.z,subsection.a}, basically the amount of frames per dimension
+    glm::vec4 getSubSection();
+    void init(std::string source,int speed, int perRow, int rows,  const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
+};
 
 class OpaqueManager //manages storing opaque (non-transluscent) fragment render requests
 {
@@ -341,7 +340,7 @@ struct TransManager //handles transluscent fragment render requests.
     void render();
     std::vector<char> data; //buffer used to store all vertex attributes. Unsorted.
 private:
-    struct TransRequestCompare //returns true if "a" is "less than" b, and thus should be rendered first
+    struct TransRequestCompare //returns true if "a" is "less than" "b", and thus should be rendered first
     {
         bool operator()(const TransRequest& a, const TransRequest& b) const //sort by z,then by program, then by sprite
         {

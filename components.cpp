@@ -47,7 +47,9 @@ bool RectComponent::collides(const glm::vec4& target)
 
 void RectComponent::setRect(const glm::vec4& rect)
 {
-    this->rect = rect;
+    this->rect.z = rect.z;
+    this->rect.a = rect.a;
+    setPos({rect.x,rect.y});
 }
 
 void RectComponent::setPos(const glm::vec2& pos)
@@ -58,8 +60,7 @@ void RectComponent::setPos(const glm::vec2& pos)
 
 void RectComponent::setCenter(const glm::vec2& center)
 {
-    this->rect.x = center.x - rect.z/2;
-    this->rect.y = center.y - rect.a/2;
+    setPos(center - glm::vec2(rect.z/2,rect.a/2));
 }
 
 glm::vec2 RectComponent::getPos()
@@ -100,8 +101,7 @@ glm::vec2 BasicMoveComponent::getNextMoveVector()
 void BasicMoveComponent::update()
 {
     glm::vec2 move = getNextMoveVector();
-    rect.x += move.x;
-    rect.y += move.y;
+    setPos({rect.x + move.x, rect.y+ move.y});
 
     moveVec = glm::vec2(0);
 }
@@ -287,7 +287,7 @@ void RealMoveComponent::update()
     speed = oldSpeed;
 }
 
-RenderComponent::RenderComponent(Entity& entity) : Component(entity), ComponentContainer<RenderComponent>(&entity)
+RenderComponent::RenderComponent(Entity& entity, ZType zCoord_ ) : Component(entity), ComponentContainer<RenderComponent>(&entity), zCoord(zCoord_)
 {
 
 }
@@ -310,6 +310,29 @@ void RectRenderComponent::update()
             glm::vec4 box = rect->getRect();
             PolyRender::requestRect(box,color,true,rect->getTilt(),0);
         }
+    }
+}
+
+BaseAnimationComponent::BaseAnimationComponent(Entity& entity, BaseAnimation& anime, int fps_, ZType zCoord_) : RenderComponent(entity, zCoord_), ComponentContainer<BaseAnimationComponent>(entity),
+                                                                                                 fps(fps_),sprite(&anime)
+{
+
+}
+
+BaseAnimationComponent::BaseAnimationComponent(Entity& entity, BaseAnimation& anime, ZType zCoord_) : BaseAnimationComponent(entity,anime,anime.getFPS(), zCoord_)
+{
+
+}
+void BaseAnimationComponent::update()
+{
+    if (entity)
+    if (RectComponent* rect = entity->getComponent<RectComponent>())
+    {
+        request(ViewPort::animeProgram,{rect->getRect(),zCoord},rect->getTilt());
+    }
+    if (start == 0)
+    {
+        start = SDL_GetTicks();
     }
 }
 
@@ -500,6 +523,11 @@ bool EntityManager::forEachEntity(Entity& entity)
     return false;
 }
 
+EntityManager::~EntityManager()
+{
+    entities.clear();
+}
+
 void EntityManager::addEntity(Entity& entity)
 {
     std::shared_ptr<Entity> ptr(&entity);
@@ -556,7 +584,7 @@ bool EntityPosManager::forEachEntity(Entity& entity)
 {
     if (RectComponent* rect = entity.getComponent<RectComponent>())
     {
-        glm::vec4 oldPos = rect->getRect();
+        glm::vec4 oldPos = rect->getBoundingRect();
         entity.update();
         grid->findNearest(*rect,[&entity](Positional& r1){
                               Entity* e1 = &static_cast<RectComponent&>(r1).getEntity();
@@ -569,6 +597,14 @@ bool EntityPosManager::forEachEntity(Entity& entity)
         entity.update();
     }
     return false;
+}
+
+EntityPosManager::~EntityPosManager()
+{
+    if (grid.get())
+    {
+        grid->clear();
+    }
 }
 
 void EntityPosManager::init(int gridSize)
