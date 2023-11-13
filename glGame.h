@@ -60,7 +60,7 @@ class RectPosCamera : public RenderCamera  //a camera that follows a RectPositio
 {
     std::weak_ptr<RectPositional> followee;
 public:
-    virtual void init(const std::shared_ptr<RectPositional>& followee_, int w, int h);
+    virtual void init(const std::shared_ptr<RectPositional>& followee_);
     void setFollowee(const std::shared_ptr<RectPositional>& followee_);
     virtual void update();
 };
@@ -816,7 +816,7 @@ public:
     bool inGrid(Positional& p) //true if p is in the spatial grid in the appropriate nodes
     {
         bool answer = true;
-        PolyRender::requestRect(ViewPort::currentCamera->toScreen(p.getBoundingRect()),glm::vec4(0,1,0,1),0,0,1);
+        PolyRender::requestRect(ViewPort::toScreen(p.getBoundingRect()),glm::vec4(0,1,0,1),0,0,1);
         processAllExistingNodes(p.getBoundingRect(),[&answer,this,&p](const glm::vec2& point, Node& node) mutable {
                         if (lookup.find({node,p}) == lookup.end())
                             {

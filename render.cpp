@@ -79,7 +79,7 @@ int loadShaders(const GLchar* source, GLenum shaderType )
         if (!success)
         {
             glGetShaderInfoLog(shader, 512, NULL, infoLog);
-            std::cout << "Error loading shader: " << infoLog << std::endl;
+            std::cout << "Error loading shader " << source << ": " << infoLog << std::endl;
         }
     }
     else
@@ -90,19 +90,27 @@ int loadShaders(const GLchar* source, GLenum shaderType )
 
 }
 
-void BasicRenderPipeline::init(std::string vertexPath, std::string fragmentPath, Numbers numbers,const float* verts, int floatsPerVertex_ , int vertexAmount_)
+void BasicRenderPipeline::init(std::string vertexPath, std::string fragmentPath, Numbers numbers, const OptionalShaders& optionalShaders, const float* verts, int floatsPerVertex_ , int vertexAmount_)
 {
     vertexAmount = vertexAmount_;
 
-    GLuint fragment = -1, vertex= -1;
+    GLuint fragment = -1, vertex= -1, geometry = -1, tess = -1;
     program = glCreateProgram();
     vertex = loadShaders(vertexPath.c_str(), GL_VERTEX_SHADER );
     fragment = loadShaders(fragmentPath.c_str(),GL_FRAGMENT_SHADER);
     glAttachShader(program,vertex);
     glAttachShader(program, fragment);
-    glLinkProgram(program);
     glDeleteShader(fragment);
     glDeleteShader(vertex);
+    if (optionalShaders.geometryShader != "")
+    {
+        geometry = loadShaders(optionalShaders.geometryShader.c_str(), GL_GEOMETRY_SHADER);
+        glAttachShader(program, geometry);
+        glDeleteShader(geometry);
+    }
+    //add tesselation stuff here, too lazy to do it now
+
+    glLinkProgram(program);
 
     glGenVertexArrays(1,&VAO);
     glGenBuffers(1,&VBO);
@@ -113,15 +121,18 @@ void BasicRenderPipeline::init(std::string vertexPath, std::string fragmentPath,
 
 void BasicRenderPipeline::initVerticies(const float* verts, int floatsPerVertex_ , int vertexAmount_)
 {
-    glBindVertexArray(VAO);
-    glGenBuffers(1,&verticies);
-    glBindBuffer(GL_ARRAY_BUFFER,verticies);
+    if (verts && floatsPerVertex_ > 0 && vertexAmount_ > 0)
+    {
+        glBindVertexArray(VAO);
+        glGenBuffers(1,&verticies);
+        glBindBuffer(GL_ARRAY_BUFFER,verticies);
 
-    glBufferData(GL_ARRAY_BUFFER, floatsPerVertex_*vertexAmount_*sizeof(float),verts, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, floatsPerVertex_*vertexAmount_*sizeof(float),verts, GL_STATIC_DRAW);
 
-    glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(0,floatsPerVertex_,GL_FLOAT,GL_FALSE,0,0);
+        glVertexAttribPointer(0,floatsPerVertex_,GL_FLOAT,GL_FALSE,0,0);
+    }
 }
 
 void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
@@ -140,9 +151,9 @@ void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
 
     for (auto num : numbers)
     {
-        for (int i = 0; i < num; i+= 4)
+        for (int i = 0; i < num; i+= 4) //usually this only runs once, but if you have something that's larger than 4 floats (matricies) this will pass in every 4 floats in
         {
-            int amount = std::min(num-i,4);
+            int amount = std::min(num-i,4); //can't store larger than a vec4 at a time
             glVertexAttribPointer(index, amount, GL_FLOAT, GL_FALSE,total*sizeof(float), (void*)(aggregate*sizeof(float)));
             glEnableVertexAttribArray(index);
             glVertexAttribDivisor(index, 1);
@@ -155,7 +166,7 @@ void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
 
 void RenderProgram::initShaders(std::string vertexPath, std::string fragmentPath, Numbers numbers)
 {
-    program.init(vertexPath,fragmentPath, numbers,textureVerticies,4,6);
+    program.init(vertexPath,fragmentPath, numbers,{}, textureVerticies,4,6);
 }
 
 
@@ -237,6 +248,7 @@ RenderCamera* ViewPort::currentCamera = nullptr;
 Buffer ViewPort::UBO = 0;
 int ViewPort::screenWidth = 0;
 int ViewPort::screenHeight = 0;
+ViewPort::PROJECTION_TYPE ViewPort::proj = ORTHOGRAPHIC;
 
 ViewRange ViewPort::baseRange;
 ViewRange ViewPort::currentRange;
@@ -263,7 +275,7 @@ void ViewPort::init(int screenWidth, int screenHeight)
     {
         {0,screenWidth},
         {0,screenHeight},
-        {-10.0f,10.0f}     //magic numbers. Can be anything
+        {0.0f,100.0f}     //magic numbers. Can be anything for orthographic views but perspective views will clamp the x value to 0.1, as it must be positive
     };
     currentRange = baseRange;
 
@@ -277,19 +289,68 @@ glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
 
 
     basicProgram.init("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/fragmentShader.h",{4,1,1,1});
-    animeProgram.init("../../resources/shaders/vertex/animationShader.h","../../resources/shaders/fragment/fragmentShader.h",{4,1,4,2,1,1,1,1,});
+    animeProgram.init("../../resources/shaders/vertex/animationShader.h","../../resources/shaders/fragment/fragmentShader.h",{4,1,4,1,1});
 
     glGenBuffers(1,&UBO);
-    glBindBuffer(GL_UNIFORM_BUFFER,UBO);
-    //float* projection = glm::value_ptr(getOrtho());
-    glBufferData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4), glm::value_ptr(getOrtho()), GL_STATIC_DRAW); // allocate enough memory for two 4x4 matricies. Remember that a glm::vec4 is 16 bytes, so each matrix is 64 bytes
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
 
 
 
 }
 
+
+glm::vec4 RenderCamera::toScreen(const glm::vec4& change) const
+{
+        //REFACTOR: Finish this for perspective mode
+
+    glm::vec2 point = toScreen({change.x,change.y});
+    return {point.x,point.y,change.z, change.a};
+}
+
+glm::vec2 RenderCamera::toScreen(const glm::vec2& point) const
+{
+    //REFACTOR: Finish this for perspective mode
+
+    return (point - getTopLeft())/glm::vec2(ViewPort::getViewWidth(),ViewPort::getViewHeight())*ViewPort::getScreenDimen();
+}
+
+glm::vec4 RenderCamera::toWorld(const glm::vec4& change) const
+{
+    //REFACTOR: Finish this for perspective mode
+
+    glm::vec2 point = toWorld({change.x,change.y});
+    return {point.x,point.y , change.z, change.a};
+}
+
+glm::vec2 RenderCamera::toWorld(const glm::vec2& point) const
+{    //REFACTOR: Finish this for perspective mode
+
+     glm::vec2 screenDimen = ViewPort::getScreenDimen();
+    return getTopLeft() + glm::vec2(point.x/screenDimen.x*ViewPort::getViewWidth(), (point.y/screenDimen.y*ViewPort::getViewHeight()));
+}
+
+glm::vec4 RenderCamera::toAbsolute(const glm::vec4& rect) const
+{
+    if (ViewPort::getProj() == ViewPort::PERSPECTIVE)
+    {
+        //returns toAbsolute if rect is rendered at 1 distance from the camera
+        glm::vec2 screenDimen = ViewPort::getScreenDimen();
+
+        float screenHeight = 2*(1)*(tan(ViewPort::FOV/180*M_PI/2));
+        float screenWidth = screenHeight/screenDimen.y*screenDimen.x;
+
+        return glm::vec4(-screenWidth/2 + pos.x + (rect.x)/screenDimen.x*screenWidth,
+                -screenHeight/2 + pos.y + (rect.y)/screenDimen.y*screenHeight,
+                rect.z/screenDimen.x*screenWidth,
+                rect.a/screenDimen.y*screenHeight);
+    }
+    return glm::vec4(getTopLeft() + glm::vec2(rect.x,rect.y),rect.z,rect.a);
+}
+glm::vec2 RenderCamera::toAbsolute(const glm::vec2& point) const
+{
+    glm::vec4 rect = toAbsolute(glm::vec4(point,0,0));
+    return {rect.x,rect.y};
+}
 glm::vec2 ViewPort::toAbsolute(const glm::vec2& point)
 {
     return currentCamera ? currentCamera->toAbsolute(point) : point;
@@ -331,31 +392,72 @@ const glm::vec2& ViewPort::getZRange()
 {
     return currentRange.zRange;
 }
+
+const float ViewPort::getViewWidth()
+{
+    return currentRange.xRange.y - currentRange.xRange.x;
+}
+
+const float ViewPort::getViewHeight()
+{
+    return currentRange.yRange.y - currentRange.yRange.x;
+}
+
+const float ViewPort::getViewDepth()
+{
+    return currentRange.zRange.y - currentRange.zRange.x;
+}
+
 void ViewPort::setXRange(float x1, float x2)
 {
-    currentRange.xRange.x = x1;
-    currentRange.xRange.y = x2;
+    setViewRange({
+                 {x1,x2},
+                 currentRange.yRange,
+                 currentRange.zRange
+                 });
 }
 void ViewPort::setYRange(float y1, float y2)
 {
-    currentRange.yRange.x = y1;
-    currentRange.yRange.y = y2;
+    setViewRange({
+                 currentRange.xRange,
+                 {y1,y2},
+                 currentRange.zRange
+                 });
 }
 void ViewPort::setZRange(float z1, float z2)
 {
-    currentRange.zRange.x = z1;
-    currentRange.zRange.y = z2;
+    setViewRange({
+                 currentRange.xRange,
+                 currentRange.yRange,
+                 {z1,z2}
+                 });
 }
 
-void ViewPort::resetRange()
+void ViewPort::resetViewRange()
 {
-    currentRange = baseRange;
+    setViewRange(baseRange);
 }
 
-glm::mat4 ViewPort::getOrtho()
+glm::mat4 ViewPort::getProjMatrix()
 {
-    //return glm::perspective(glm::radians(45.0f), (float)screenWidth/(float)screenHeight, currentRange.zRange.x, currentRange.zRange.y);
+    if (proj) //return PROJECTION view
+    {
+        return glm::scale(glm::perspective(glm::radians(FOV), (float)screenWidth/(float)screenHeight, std::max(0.1f,currentRange.zRange.x), currentRange.zRange.y),
+                      glm::vec3(1,-1,1)); //flip y because otherwise sprites will be upside down
+    } //otherwise return orthographic view
     return (glm::ortho(currentRange.xRange.x, currentRange.xRange.y, currentRange.yRange.y, currentRange.yRange.x, currentRange.zRange.x, currentRange.zRange.y));
+}
+
+ViewPort::PROJECTION_TYPE ViewPort::getProj()
+{
+    return proj;
+}
+
+void ViewPort::flipProj()
+{
+    proj = static_cast<PROJECTION_TYPE>(!(static_cast<bool>(proj)));
+
+    resetProjMatrix();
 }
 
 glm::vec2 ViewPort::getScreenDimen()
@@ -380,14 +482,35 @@ void ViewPort::update()
     glm::mat4 view;
     if (currentCamera) //REFACTOR: might be faster to not have to recalculate this every frame
     {
-        glm::vec2 pos = {currentCamera->getRect().x,currentCamera->getRect().y};
-        view = glm::lookAt(glm::vec3(pos,currentRange.zRange.y),glm::vec3(pos,currentRange.zRange.x),glm::vec3(0,1,0));
+        glm::vec3 pos = currentCamera->getPos() - static_cast<float>(proj == ORTHOGRAPHIC)*0.5f*glm::vec3(ViewPort::getViewWidth(),ViewPort::getViewHeight(),0); //for some reason, looking at point(x,y) in ortho view causes point(x,y) to be on the top left corner of the screen
+                                                                                                                 //not sure why, but that's a problem for future leo, this here is a work around
+        view = glm::lookAt(pos,glm::vec3(glm::vec2(pos),currentRange.zRange.x),glm::vec3(0,1,0));
     }
     else
     {
-        view = glm::mat4(1);
+        //glm::vec2 pos = {screenWidth/2,screenHeight/2};
+        view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, currentRange.zRange.y)); //if no camera, put view matrix at farthest possible Z
+        //glm::lookAt(glm::vec3(pos,currentRange.zRange.y),glm::vec3(pos,currentRange.zRange.x),glm::vec3(0,1,0));
     }
     glBufferSubData(GL_UNIFORM_BUFFER,sizeof(glm::mat4),sizeof(glm::mat4),glm::value_ptr(view));
+    float cameraZ = currentCamera ? currentCamera->getPos().z : currentRange.zRange.y;
+    glBufferSubData(GL_UNIFORM_BUFFER,2*sizeof(glm::mat4),sizeof(float),&cameraZ);
+
+}
+
+void ViewPort::setViewRange(const ViewRange& range)
+{
+    currentRange = range;
+    resetProjMatrix();
+}
+
+void ViewPort::resetProjMatrix()
+{
+    glBindBuffer(GL_UNIFORM_BUFFER,UBO);
+    //float* projection = glm::value_ptr(getOrtho());
+    glBufferData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4) + sizeof(float), glm::value_ptr(getProjMatrix()), GL_STATIC_DRAW); // allocate enough memory for two 4x4 matricies and the camera position. Remember that a glm::vec4 is 16 bytes, so each matrix is 64 bytes
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 RenderCamera::~RenderCamera()
@@ -398,73 +521,49 @@ RenderCamera::~RenderCamera()
     }
 }
 
-void RenderCamera::init(int w, int h)
+void RenderCamera::init(const glm::vec3& pos_)
 {
-    rect.z = w;
-    rect.a = h;
+    setPos(pos_);
 }
 
-const glm::vec4& RenderCamera::getRect() const
+const glm::vec3& RenderCamera::getPos() const
 {
-    return rect;
+    return pos;
 }
 
-void RenderCamera::setRect(const glm::vec4& rect_)
+glm::vec2 RenderCamera::getTopLeft() const
 {
-    rect = rect_;
+    glm::vec2 dimen = ViewPort::getScreenDimen();
+
+    return {pos.x - dimen.x/2, pos.y - dimen.y/2};
 }
 
-void RenderCamera::addVector(const glm::vec2& pos)
+glm::vec4 RenderCamera::getRect() const
 {
-    setRect(glm::vec4(rect.x + pos.x, rect.y + pos.y,rect.z,rect.a));
+    glm::vec2 dimen = ViewPort::getScreenDimen();
+    return glm::vec4(getTopLeft(), dimen.x,dimen.y);
 }
 
-glm::vec2 RenderCamera::getCenter()
+void RenderCamera::setPos(const glm::vec3& pos_)
 {
-    return {rect.x + rect.z/2, rect.y + rect.a/2};
+    pos = pos_;
 }
 
-void RenderCamera::recenter(const glm::vec2& point)
+void RenderCamera::setPos(const glm::vec2& pos_)
 {
-    rect.x = point.x - rect.z/2;
-    rect.y = point.y - rect.a/2;
+    pos = glm::vec3(pos_,pos.z);
 }
 
-
-glm::vec4 RenderCamera::toScreen(const glm::vec4& change) const
+void RenderCamera::addVector(const glm::vec2& vec)
 {
-    glm::vec2 point = toScreen({change.x,change.y});
-    return {point.x,point.y,change.z, change.a};
+    setPos(glm::vec3(pos.x + vec.x, pos.y + vec.y, pos.z));
 }
 
-glm::vec2 RenderCamera::toScreen(const glm::vec2& point) const
+void RenderCamera::addVector(const glm::vec3& vec)
 {
-
-    return {(point.x - rect.x), (point.y - rect.y)};
+    setPos(pos + vec);
 }
 
-glm::vec4 RenderCamera::toWorld(const glm::vec4& change) const
-{
-
-    glm::vec2 point = toWorld({change.x,change.y});
-    return {point.x,point.y , change.z, change.a};
-}
-
-glm::vec2 RenderCamera::toWorld(const glm::vec2& point) const
-{
-     glm::vec2 screenDimen = ViewPort::getScreenDimen();
-    return {(point.x/screenDimen.x*rect.z + rect.x), (point.y/screenDimen.y*rect.a + rect.y)};
-}
-
-glm::vec4 RenderCamera::toAbsolute(const glm::vec4& rect) const
-{
-    return glm::vec4(toAbsolute({rect.x,rect.y}),rect.z,rect.a);
-}
-glm::vec2 RenderCamera::toAbsolute(const glm::vec2& point) const
-{
-    glm::vec2 screenDimen = ViewPort::getScreenDimen();
-    return {(point.x + rect.x),point.y + rect.y};
-}
 bool isTransluscent(unsigned char* sprite, int width, int height)
 {
     for (int i = 3; i < width*height*4; i +=4)
@@ -513,6 +612,7 @@ bool isTransluscent(unsigned char* sprite, int width, int height)
             case 4:
                 rgb = GL_RGBA;
                 transluscent = isTransluscent(data,width,height);
+                //std::cout << source << " " << transluscent << "\n";
                 break;
             }
 
@@ -610,50 +710,51 @@ void Sprite9::init(std::string source,glm::vec2 W, glm::vec2 H)
 }*/
 
 
-BaseAnimation::BaseAnimation(std::string source, int speed, int perRow, int rows, const glm::vec4& sub)
+
+UINT BaseAnimation::getTotalFrames()
 {
-    init(source,speed,perRow,rows, sub);
+    return perRow*rows;
 }
 
-
-int BaseAnimation::getFrames()
+UINT BaseAnimation::getFrameIndex(UINT start, BaseAnimation& anime)
 {
-    return framesDimen.x*framesDimen.y;
-}
-
-int BaseAnimation::getFPS()
-{
-    return fps;
-}
-
-glm::vec4 BaseAnimation::getSubSection()
-{
-    return subSection;
-}
-
-glm::vec2 BaseAnimation::getFramesDimen()
-{
-    return framesDimen;
-
-}
-
-void BaseAnimation::init(std::string source, int speed, int perRow, int rows, const glm::vec4& sub)
-{
-    Sprite::init(source);
-    fps = speed;
-    framesDimen.x = perRow;
-    framesDimen.y = rows;
-    subSection = sub;
-    if (sub.z == 0)
+    if (anime.fps == 0)
     {
-        subSection.z = perRow;
+        return 0;
     }
-    if (sub.a == 0)
-    {
-        subSection.a = rows;
-    }
+    return ((SDL_GetTicks() - start)/1000.0)*anime.fps;
 }
 
+glm::vec4 BaseAnimation::getNthFrame(UINT n, BaseAnimation& anime)
+{
+    int xFrame = n%anime.perRow; //the number of frames horizontally
+    int yFrame = (n/anime.perRow)%anime.rows; //the number of frames horizontally
+    float width = anime.subSection.z/anime.perRow;
+    float height = anime.subSection.a/anime.rows;
+    return {anime.subSection.x + width*xFrame,anime.subSection.y + height*yFrame,width,height};
+}
+
+glm::vec4 BaseAnimation::getFrameFromStart(UINT startingFrame, BaseAnimation& anime)
+{
+    return getNthFrame(getFrameIndex(startingFrame,anime),anime);
+}
+
+glm::vec4 BaseAnimation::normalizePixels(const glm::vec4& rect, Sprite& sprite)
+{
+    glm::vec2 dimens = sprite.getDimen();
+    glm::vec4 answer = {rect.x > 1 ? rect.x/dimens.x : rect.x,rect.y > 1 ? rect.y/dimens.y : rect.y ,1,1};
+    answer.z = rect.z > 1 ? rect.z/dimens.x : rect.z;
+    if (answer.z + answer.x > 1)
+    {
+        answer.z = 1 - answer.x;
+    }
+    answer.a = rect.a > 1 ? rect.a/dimens.y : rect.a;
+    if (answer.a + answer.y > 1)
+    {
+        answer.a = 1 - answer.y;
+    }
+    return answer;
+}
 /*glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
 {
         //int current =  SDL_GetTicks();
@@ -741,7 +842,14 @@ void TransManager::render()
         buffer.insert(buffer.end(),&data[it->index],&data[it->index] + it->program.getRequestDataAmount()); //for each request, store the data into buffer
         if (it == std::prev(requests.end()) || &std::next(it)->sprite != &it->sprite || &std::next(it)->program != &it->program) //if we have run out of requests, or if the next request requires a different sprite/renderprogram
         {
-
+            /*std::cout << it->sprite.getSource() << ": ";
+            for (int i = 0; i < buffer.size(); i += sizeof(float))
+            {
+                int f;
+                memcpy(&f,&buffer[i],sizeof(float));
+                std::cout << f << " ";
+            }
+            std::cout << "\n";*/
             it->program.draw(it->sprite.getTexture(),&buffer[0],buffer.size()/it->program.getRequestDataAmount()); //draw
             buffer.clear(); //clear our buffer
         }

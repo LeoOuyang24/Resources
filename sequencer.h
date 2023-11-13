@@ -18,7 +18,7 @@ struct Callable //creates a base class for all sequence units to inherit from. R
     //  2) the Callable operator returned true, meaning it terminated itself
     //Only one of these conditions has to be true to terminate
 
-    unsigned int time = 0; //how long to run one repetition
+    unsigned int time = 0; //how long to run one repetition. Can't be 0, set it to 1 to run every frame
     unsigned int repetitions = 0; //number of times to run, 0 means to run until operator returns true
     bool inFrames = true; //true if "time" is expressed in frames, otherwise, milliseconds
     virtual bool operator()(int) = 0;
@@ -78,17 +78,18 @@ protected:
     {
         bool done = false;
         int repsElapsed = repetitionsElapsed(*current->get());
-        while (repsElapsed > numOfReps && ((*current)->repetitions > numOfReps || (*current)->repetitions == 0) && !done) //Call the current Callable the number of times we should've called it since our last time calling. Terminate early if the function returns "true" (meaning it is done) or if we have done the max number of reps
+        while (repsElapsed > numOfReps && !done)
         {
+            //Call the current Callable the number of times we should've called it since our last time calling. Terminate early if the function returns
+            //"true" (meaning it is done) or if we have done the max number of reps
             numOfReps++;
             auto cur = ((current->get()));
             auto time = (*current)->inFrames ? timer.getFramesPassed() : timer.getTimePassed();
-            auto result = (*cur)(time);
-            done = (result) ||
-                   numOfReps >= (*current)->repetitions; //run the function and update done. Also pass in how many frames/milliseconds since we began running this Callable
-            //done is true if function returned true or if we have reached the number of repetitions needed
+            auto result = (*cur)(time);  //run the function and update done. Also pass in how many frames/milliseconds since we began running this Callable
+            done = (result);
+            //done is true if function returned true
         }
-        return done;
+        return done || ((*current)->repetitions <= numOfReps && (*current)->repetitions != 0); //we are done with this current unit if it returned "true" or if we have ran it enough times.
     }
     virtual void perUnitDone() //what to do if a sequenceUnit is done
     {
@@ -157,8 +158,11 @@ class SequenceManager //contains a list of sequences to run
 public:
     static void request(Sequencer& sequence)
     {
-        sequence.reset();
-        sequences.insert(&sequence);
+        if (sequences.find(&sequence) == sequences.end()) //if sequence has not been added yet...
+        {
+            sequence.reset(); //...reset it
+            sequences.insert(&sequence); // ...and add it to our sequences to run
+        }
     }
     static void run()
     {

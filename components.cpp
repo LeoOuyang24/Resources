@@ -313,22 +313,23 @@ void RectRenderComponent::update()
     }
 }
 
-BaseAnimationComponent::BaseAnimationComponent(Entity& entity, BaseAnimation& anime, int fps_, ZType zCoord_) : RenderComponent(entity, zCoord_), ComponentContainer<BaseAnimationComponent>(entity),
-                                                                                                 fps(fps_),sprite(&anime)
+BaseAnimationComponent::BaseAnimationComponent(Entity& entity, Sprite& sprite_, const BaseAnimation& anime_, ZType zCoord_) : RenderComponent(entity, zCoord_), ComponentContainer<BaseAnimationComponent>(entity),
+                                                                                                 anime(anime_), spriteSheet(&sprite_)
 {
 
 }
 
-BaseAnimationComponent::BaseAnimationComponent(Entity& entity, BaseAnimation& anime, ZType zCoord_) : BaseAnimationComponent(entity,anime,anime.getFPS(), zCoord_)
+Sprite* BaseAnimationComponent::getSpriteSheet()
 {
-
+    return spriteSheet;
 }
+
 void BaseAnimationComponent::update()
 {
     if (entity)
     if (RectComponent* rect = entity->getComponent<RectComponent>())
     {
-        request(ViewPort::animeProgram,{rect->getRect(),zCoord},rect->getTilt());
+        request(ViewPort::animeProgram,{rect->getRect(),zCoord},BaseAnimation::getFrameFromStart(start,anime),rect->getTilt());
     }
     if (start == 0)
     {
@@ -632,6 +633,15 @@ void EntityPosManager::addEntity(Entity& entity, float x, float y, bool centered
     {
         rect->setPos({x - centered*rect->getRect().z/2, y - centered*rect->getRect().a/2}); //if centered, we have to adjust the position so that our center is over x and y
         addEntity(std::shared_ptr<Entity>(&entity));
+    }
+}
+
+void EntityPosManager::addEntity(const std::shared_ptr<Entity>& (entity), float x, float y, bool centered)
+{
+    if (RectComponent* rect = entity->getComponent<RectComponent>())
+    {
+        rect->setPos({x - centered*rect->getRect().z/2, y - centered*rect->getRect().a/2}); //if centered, we have to adjust the position so that our center is over x and y
+        addEntity(entity);
     }
 }
 

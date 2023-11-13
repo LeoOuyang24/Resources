@@ -5,23 +5,37 @@
 #include "glGame.h"
 
 typedef glm::vec2 ForceVector;
+
+constexpr float MAX_FORCE = 10.0f;
+constexpr float BASE_FRICTION = .999f;
+
+struct ForcePart
+{
+    //used to store a single force.
+    //the idea here is you may have multiple forces from different sources (for example, a sailboat is affected by wind, gravity, and buoyancy).
+    //you'd then have one "ForcePart" representing each source
+    //later down the road, maybe you want to turn off the gravity, you'd be able to turn the gravity component and just the gravity component
+    float maxMag = MAX_FORCE; //maximum magnitude of the force
+    float friction = BASE_FRICTION; //amount to multiply force by with applyFriction
+    ForceVector force = {0,0}; //the actual force we are representing
+
+    void setForce(const ForceVector& force);
+    void addForce(const ForceVector& force);
+    void applyFriction(unsigned int instances = 1); //apply friction "instances" times
+};
+
 class ForcesComponent : public Component, public ComponentContainer<ForcesComponent> //component that pushes MoveComponent based on what forces are currently being applied
 {
 protected:
-    ForceVector finalForce = glm::vec2(0); //after applying all forces, this is the final x and y displacement to move
-    float friction= 0; //how much to decrease finalForce every frame
-    static constexpr float MAX_FORCE = 10.0f;
-    float maxForce = 10.0f; //the maximum magnitude of the finalForce.
-    void applyForce(ForceVector force);
+    ForcePart finalForce;
 public:
-    constexpr static float baseFriction = .999f;
-    ForcesComponent(Entity& entity, float friction_ = baseFriction, float maxForce = MAX_FORCE);
+    ForcesComponent(Entity& entity, float friction_ = BASE_FRICTION, float maxForce = MAX_FORCE);
     bool getBeingPushed();
     virtual void addForce(ForceVector force);
     void update();
     glm::vec2 getFinalForce()
     {
-        return finalForce;
+        return finalForce.force;
     }
     virtual ~ForcesComponent()
     {
@@ -39,7 +53,7 @@ public:
     constexpr static float baseTension = .0001f;
     const float linkDist = 0; //distance between points
     const float tension = 0; //proportion of the force between up and down that should affect this component
-    ChainLinkComponent(Entity& entity, const LinkPtr& down_, float linkDist_, float tension_ = baseTension, float friction_ = ForcesComponent::baseFriction);
+    ChainLinkComponent(Entity& entity, const LinkPtr& down_, float linkDist_, float tension_ = BASE_FRICTION, float friction_ = BASE_FRICTION);
     void setLink(const LinkPtr& link);
     ChainLinkComponent* getNextLink();
     virtual glm::vec2 getLinkPos(); //returns the point of the link, (0,0) if moveComponent is null otherwise the center. Virtual so different links can return different points (such as different points on a rectangle)
@@ -61,7 +75,7 @@ struct Chain
 {
     LinkPtr top,//top-most link, primarily used to propagate functions through all the links
     bottom; //bottom-most link, less used than top since it can't refer to the link above it, but it's sometimes useful to set its position to move the rest of the chain
-    Chain(ChainLinkRender renderFunc_, const glm::vec4& color1, const glm::vec4& color2, float linkDist_,  int length, glm::vec2 start,float tension_ = .00001f, float angle = 0, float friction = ForcesComponent::baseFriction); //color1 and color2: forms a color gradient along the chain, can be left to glm::vec4(0) if you don't care about color
+    Chain(ChainLinkRender renderFunc_, const glm::vec4& color1, const glm::vec4& color2, float linkDist_,  int length, glm::vec2 start,float tension_ = .00001f, float angle = 0, float friction = BASE_FRICTION); //color1 and color2: forms a color gradient along the chain, can be left to glm::vec4(0) if you don't care about color
     template<typename Callable>
     Chain(Callable func, int length) //customizable constructor; given a callable, (can be a lambda with captures!). Calls func length times.
     {

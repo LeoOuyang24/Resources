@@ -15,7 +15,6 @@ layout (std140) uniform Matrices
 
 out vec2 texCoord;
 
-
 void main()
 {
     float z = values.z;
@@ -31,9 +30,9 @@ void main()
             a*=-1;
         }
     }*/
-    vec2 transformed = vec2(values.xy * rect.zw*.5);
-    transformed = vec2(cos(radians)*transformed.x - sin(radians)*transformed.y,sin(radians)*transformed.x + cos(radians)*transformed.y);
-    transformed += rect.xy + rect.zw*.5;
+    vec2 transformed = vec2(values.xy * rect.zw*.5); //scale
+    transformed = vec2(cos(radians)*transformed.x - sin(radians)*transformed.y,sin(radians)*transformed.x + cos(radians)*transformed.y); //rotate
+    transformed += rect.xy + rect.zw*.5; //move
     gl_Position = projection*view*vec4(transformed,depth,1);
         texCoord = vec2(z,a);
    // gl_Position.z = depth;

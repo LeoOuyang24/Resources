@@ -9,7 +9,8 @@
 #include "gtc/matrix_transform.hpp"
 #include "gtc/type_ptr.hpp"
 
-bool isClockwise(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c); //with "c" as the center, returns true if "a" must rotate clockwise to reach "b"
+bool isClockwise(const glm::vec2& a, const glm::vec2& b, const glm::vec2& center); // returns true if "a" must rotate clockwise to reach "b"
+bool withinDistance(const glm::vec2& a, const glm::vec2& b, float distance); //returns true if "a" is within a "distance" of "b"
 
 void printRect(const glm::vec4& rect);
 int loadShaders(const GLchar* source, GLenum shaderType );

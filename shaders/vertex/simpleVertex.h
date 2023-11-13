@@ -1,6 +1,6 @@
 #version 330 core
 //the most basic vertex shader you can have
-layout (location = 0) in vec4 aPos;
+layout (location = 0) in vec2 aPos;
 
 void main()
 {

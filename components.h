@@ -20,7 +20,7 @@ template<class C>
 class ComponentContainer
 {
 private:
-    static std::unordered_map<Entity*,C*> components; //use raw pointers because smart pointers are quite hard to manage, since they all have to point to the same thing and copy from one another
+    static std::unordered_map<Entity*,C*> components; //used to find components given an entity; use raw pointers because smart pointers are quite hard to manage, since they all have to point to the same thing and copy from one another
     static std::unordered_map<ComponentContainer*, Entity*> entities;
 
     void insert(Entity* entity)
@@ -205,17 +205,18 @@ class BaseAnimationComponent : public RenderComponent, public ComponentContainer
 {
     //very basic animation rendering component
 protected:
-    int fps = 1;
-    int start = 0; //millisecond we started rendering animation, 0 if we haven't started
-    BaseAnimation* sprite;
+    Uint32 start = 0; //millisecond we started rendering animation, 0 if we haven't started
+    BaseAnimation anime;
+    Sprite* spriteSheet = 0;
 public:
-    BaseAnimationComponent(Entity& entity, BaseAnimation& anime, int fps, ZType zCoord_);
-    BaseAnimationComponent(Entity& entity, BaseAnimation& anime, ZType zCoord_ = 0);
+    BaseAnimationComponent(Entity& entity, Sprite& sprite, const BaseAnimation& anime, ZType zCoord_ = 0);
     template<typename... T>
-    void request(RenderProgram& program, const FullPosition& pos, T... stuff)
+    void request(RenderProgram& program, const FullPosition& pos, const glm::vec4& subSection, T... stuff) //pass subSection to SpriteManager, as well as any other arguments
     {
-        SpriteManager::request(*sprite,program,pos,sprite->getSubSection(),sprite->getFramesDimen(),SDL_GetTicks() - start,fps, stuff...);
+        //a shader that expects a BaseAnimation request needs a rect, z, and the subsection of the sprite sheet
+        SpriteManager::request(*spriteSheet,program,pos,subSection,stuff...);
     }
+    Sprite* getSpriteSheet();
     virtual void update();
 };
 
@@ -360,6 +361,7 @@ public:
     using EntityManager::addEntity;
     virtual void addEntity(const std::shared_ptr<Entity>& ptr);
     virtual void addEntity(Entity& entity, float x, float y, bool centered = true); //sets center position if centered is true, otherwise sets top left corner
+    virtual void addEntity(const std::shared_ptr<Entity>& (entity), float x, float y, bool centered = true);
     EntityIt removeEntity(Entity* entity);
     void update();
     void reset();

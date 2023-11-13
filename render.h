@@ -61,15 +61,19 @@ struct ViewRange //represents the extent of our view range. y is the furthest, x
 typedef GLuint Buffer;
 
 typedef std::initializer_list<int> Numbers; //represents list of numbers where each number is how many GLfloats belong to a vertex attribute
-
+struct OptionalShaders //represents a list of paths to various shaders
+{
+    std::string geometryShader = "";
+    std::string tesselationShader="";
+};
 
 const float textureVerticies[24] = { //verticies of textures
-    -1, 1, 0, 1,
-    1, 1, 1, 1,
-    1, -1, 1, 0,
-    -1, 1, 0, 1,
-    -1, -1, 0, 0,
-    1, -1, 1, 0
+    -1, 1, 0, 1, //top left
+    1, 1, 1, 1, //top right
+    1, -1, 1, 0, //bottom right
+    -1, 1, 0, 1, //top left
+    -1, -1, 0, 0, //bottom left
+    1, -1, 1, 0 //bottom right
 
     };
 
@@ -92,10 +96,7 @@ struct BasicRenderPipeline //extremely simple class, made for storing simple ren
     int vertexAmount = 0; //number of verticies
     std::vector<char> bytes;
     void init(std::string vertexPath, std::string fragmentPath, Numbers numbers = {}, //vertex and fragment shader paths as well as amount of data to pass in per render
-              const float* verts = basicScreenCoords, int floatsPerVertex_ = 2, int vertexAmount_ = 6); //info for verticies, by default render a rectangle size of the screen
-    //future Leo! If you ever decide to add more shaders to a pipeline, consider
-    //adding their paths to the end of this function with a default value of ""
-
+              const OptionalShaders& optionalShaders = {}, const float* verts = basicScreenCoords, int floatsPerVertex_ = 2, int vertexAmount_ = 6); //info for verticies, by default render a rectangle size of the screen
     template <typename T,typename... Args>
     void draw(GLenum mode, T t1, Args... args) //pass in a bunch of data and then draw
     { //maybe consider making this a separate function that takes in a BasicRenderPipeline and draws rather than calling it from the Pipeline itself
@@ -161,9 +162,15 @@ public:
 class RenderCamera;
 struct ViewPort //has data about visible area on screen
 {
+    enum PROJECTION_TYPE
+    {
+        ORTHOGRAPHIC = 0, //2d, no depth
+        PERSPECTIVE = 1 //3d (but can be used for 2d)
+    };
     static RenderCamera* currentCamera; //the current camera in use
     static Buffer UBO; //view and projection matricies Uniform Buffer
     static int screenWidth, screenHeight;
+    static PROJECTION_TYPE proj;
     static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
     static ViewRange currentRange; //represents the current range for x,y, and z
     static RenderProgram basicProgram; //generic shader pipeline to render sprites
@@ -182,29 +189,42 @@ struct ViewPort //has data about visible area on screen
     static const glm::vec2& getXRange();
     static const glm::vec2& getYRange();
     static const glm::vec2& getZRange();
+
+    static const float getViewWidth();
+    static const float getViewHeight();
+    static const float getViewDepth();
+
     static void setXRange(float x1, float x2);
     static void setYRange(float y1, float y2);
     static void setZRange(float z1, float z2);
-    static void resetRange();
-    static glm::mat4 getOrtho(); //gets projection matrix
+    static void resetViewRange();
+    static glm::mat4 getProjMatrix(); //gets projection matrix
+    static PROJECTION_TYPE getProj();
+    static constexpr float FOV = 45;
+    static void flipProj();
     static glm::vec2 getScreenDimen();
     static void linkUniformBuffer(unsigned int program); //set a program to use UBO
     static void update();
+private:
+    static void setViewRange(const ViewRange& range);
+    static void resetProjMatrix(); //reset the projection matrix in the uniform buffer
 };
 
 class RenderCamera
 {
 protected:
-    glm::vec4 rect = {0,0,0,0};
+    glm::vec3 pos;
 
 public:
-    virtual void init(int w, int h); //we use an init instead of constructor since we don't always know what the dimensions are when creating the object.
+    virtual void init(const glm::vec3& pos_); //we use an init instead of constructor since we don't always know what the dimensions are when creating the object.
     ~RenderCamera(); //make sure to update the current camera if this camera was the current camera
-    const glm::vec4& getRect() const;
-    void setRect(const glm::vec4& rect_);
+    const glm::vec3& getPos() const;
+    glm::vec4 getRect() const;
+    glm::vec2 getTopLeft() const; //coordinate of the top left corner of the screen
+    void setPos(const glm::vec3& pos_);
+    void setPos(const glm::vec2& pos_);
     void addVector(const glm::vec2& moveVector); //add vector to topleft corner
-    glm::vec2 getCenter();
-    void recenter(const glm::vec2& point);
+    void addVector(const glm::vec3& moveVector);
 
     glm::vec2 toScreen(const glm::vec2& point) const; //converts a rect from the world coordinate to the screen coordinate
     glm::vec4 toScreen(const glm::vec4& rect) const;
@@ -273,31 +293,21 @@ public:
     glm::vec4 subSection = glm::vec4(0); //the portion of the sprite sheet we want to render
 };*/
 
+typedef Uint32 UINT;
 
-class BaseAnimation : public Sprite //the actual animation object
+struct BaseAnimation //represents data used to animate a portion of a sprite sheet.
 {
-    glm::vec2 framesDimen; //frames per Dimension
-    glm::vec4 subSection = {0,0,0,0}; //subsection.xy is the origin of the sprite sheet. This is a standardized value (0-1). subsection.za is the framesPerRow and the number of rows wanted.
-    int fps = 1; //default fps
-public:
-    static getFrameIndex(int startingFrame, int timePerFrame) //given the frame an animation has started at and the time to spend per frame, return which frame should be rendered
-    {
-        if (timePerFrame == 0)
-        {
-            return 0;
-        }
-        return (DeltaTime::getCurrentFrame() - startingFrame)/timePerFrame;
-    }
-    BaseAnimation(std::string source, int speed, int perRow, int rows,  const glm::vec4& sub = {0,0,0,0});
-    BaseAnimation()
-    {
+    glm::vec4 subSection = {0,0,1,1}; //The subsection of the spritesheet we want. All values should be between 0 - 1
+    UINT perRow = 1;//frames per row
+    UINT rows = 1;
+    UINT fps = 1;
 
-    }
-    int getFrames();
-    int getFPS();
-    glm::vec2 getFramesDimen(); //returns {subsection.z,subsection.a}, basically the amount of frames per dimension
-    glm::vec4 getSubSection();
-    void init(std::string source,int speed, int perRow, int rows,  const glm::vec4& sub = {0,0,0,0}); //how many frames per row and how many rows there are
+    UINT getTotalFrames(); //number of frames in the animation
+
+    static glm::vec4 getNthFrame(UINT n, BaseAnimation& anime); //return the nth frame, 0 being the first frame. if "n" is bigger than the totalFrames, then it loops back around (giving index 4 for a 4 frame animation is the same as giving 0)
+    static UINT getFrameIndex(UINT start, BaseAnimation& anime); //given the millisecond an animation has started at and the time to spend per frame, return which frame should be rendered
+    static glm::vec4 getFrameFromStart(UINT startinFrame, BaseAnimation& anime); //given game frame we started at, return the frame of the animation we are in
+    static glm::vec4 normalizePixels(const glm::vec4& rect, Sprite& sprite); //given a subsection of an image in pixels, return the normalized subsection. Any numbers that are already 0-1 will be assumed to already be normalized
 };
 
 class OpaqueManager //manages storing opaque (non-transluscent) fragment render requests

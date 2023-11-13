@@ -126,17 +126,23 @@ bool* MouseManager::getButton(int key)
         throw "Wanted mouse button doesn't exist!";
     }
 }
-void MouseManager::update(SDL_Event& e)
+
+void MouseManager::reset()
 {
     justReleased = -1;
     justClicked = -1;
+    mouseWheel = {0,0};
+}
+
+void MouseManager::update(SDL_Event& e)
+{
+    reset();
     if (e.type == SDL_MOUSEWHEEL)
     {
         mouseWheel = {e.wheel.x,e.wheel.y};
     }
     else
     {
-        mouseWheel = {0,0};
         if (lastEvent != e.type)
         {
             if (e.type == SDL_MOUSEBUTTONDOWN)

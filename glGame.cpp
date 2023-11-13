@@ -108,9 +108,9 @@ glm::vec2 RectPositional::getCenter() const
     return {rect.x + rect.z/2, rect.y + rect.a/2};
 }
 
-void RectPosCamera::init(const std::shared_ptr<RectPositional>& followee_, int w, int h)
+void RectPosCamera::init(const std::shared_ptr<RectPositional>& followee_)
 {
-    RenderCamera::init(w,h);
+    RenderCamera::init(glm::vec3(followee_->getCenter(),0));
     setFollowee(followee_);
 }
 
@@ -123,7 +123,7 @@ void RectPosCamera::update()
 {
     if (followee.lock().get())
     {
-        recenter(followee.lock().get()->getCenter());
+        setPos(glm::vec3(followee.lock().get()->getCenter(),0));
     }
 }
 

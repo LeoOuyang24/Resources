@@ -1,29 +1,43 @@
 #include "physics.h"
 #include "vanilla.h"
 
-void ForcesComponent::applyForce(ForceVector force)
+void ForcePart::setForce(const ForceVector& force_)
 {
-    finalForce += force;
+    force = force_;
+    float length = glm::length(force);
+    if (length > maxMag) //make sure "force" can not be too high
+    {
+        force = maxMag/length*force; //basically run glm::normalize but without recalculating the length (square roots expensive apparently)
+    }
+    force.x = abs(force.x) <= .00001 ? 0 : force.x; //if either force component is too small, round down to 0
+    force.y = abs(force.y) <= .00001 ? 0 : force.y;
+}
+
+void ForcePart::addForce(const ForceVector& force_)
+{
+    setForce(force + force_);
+}
+
+void ForcePart::applyFriction(unsigned int instances)
+{
+    setForce((float)pow(friction,instances)*force);
+
 }
 
 ForcesComponent::ForcesComponent(Entity& entity, float friction_, float maxForce_) : Component(entity), ComponentContainer<ForcesComponent>(&entity),
-                                                                                    friction(friction_), maxForce(maxForce_)
+                                                                                        finalForce({maxForce_,friction_})
 {
 
 }
 
 bool ForcesComponent::getBeingPushed()
 {
-    return finalForce.x != 0 || finalForce.y != 0;
+    return finalForce.force.x != 0 || finalForce.force.y != 0;
 }
 
 void ForcesComponent::addForce(ForceVector force)
 {
-    applyForce(force);
-    if (glm::length(force) > maxForce)
-    {
-        force = glm::normalize(force)*maxForce;
-    }
+    finalForce.addForce(force);
 }
 
 void ForcesComponent::update()
@@ -32,18 +46,14 @@ void ForcesComponent::update()
     if (getBeingPushed() && move)
     {
         float frictionFactor = DeltaTime::deltaTime; //fraction of the friction since last frame
-        if (friction != 1)
+        if (finalForce.friction != 1)
         {
-            frictionFactor = (float)(1.0f - pow(friction,DeltaTime::deltaTime))/(1.0f - friction); //if friction is 1, we set frictionFactor to DeltaTime::deltaTime as that is the amount of friction since last frame.
+            frictionFactor = (float)(1.0f - pow(finalForce.friction,DeltaTime::deltaTime))/(1.0f - finalForce.friction); //if friction is 1, we set frictionFactor to DeltaTime::deltaTime as that is the amount of friction since last frame.
                                                                                                     //otherwise, use formula of finite geometric series to calculate
         }
-        move->addMoveVec(frictionFactor*finalForce); //apply finalForce as if it was applied once a millisecond, with friction applied once a millisecond
+        move->addMoveVec(frictionFactor*finalForce.force); //apply finalForce as if it was applied once a millisecond, with friction applied once a millisecond
         //printRect(glm::vec4(move->getPos(),finalForce));
-        finalForce = (float)pow(friction,DeltaTime::deltaTime)*finalForce; //lower friction based on time passed
-
-        finalForce.x = abs(finalForce.x) <= .00001 ? 0 : finalForce.x; //if either force component is too small, round down to 0
-        finalForce.y = abs(finalForce.y) <= .00001 ? 0 : finalForce.y;
-       // forces.clear();
+        finalForce.applyFriction(DeltaTime::deltaTime);//lower friction based on time passed
     }
 
 }
