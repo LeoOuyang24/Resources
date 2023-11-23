@@ -22,6 +22,12 @@ void addPointToBuffer(float buffer[], glm::vec3 point, int index);
 void addPointToBuffer(float buffer[], glm::vec2 point, int index);
 void addPointToBuffer(float buffer[], glm::vec4 point, int index);
 
+typedef std::vector<int> Numbers; //represents list of numbers where each number is how many GLfloats belong to a vertex attribute
+
+
+Numbers getVertexInputs(std::string vertexPath); //given a vertexShader contents, returns its inputs
+int loadShaders(const GLchar* source, GLenum shaderType, Numbers* numbers = 0); //loads shader given file path. If "shaderType" is vertexshader, it will also load the inputs into "numbers"
+
 class GLContext
 {
     /*
@@ -60,7 +66,6 @@ struct ViewRange //represents the extent of our view range. y is the furthest, x
 };
 typedef GLuint Buffer;
 
-typedef std::initializer_list<int> Numbers; //represents list of numbers where each number is how many GLfloats belong to a vertex attribute
 struct OptionalShaders //represents a list of paths to various shaders
 {
     std::string geometryShader = "";
@@ -95,7 +100,7 @@ struct BasicRenderPipeline //extremely simple class, made for storing simple ren
     Buffer verticies; //VBO for verticies
     int vertexAmount = 0; //number of verticies
     std::vector<char> bytes;
-    void init(std::string vertexPath, std::string fragmentPath, Numbers numbers = {}, //vertex and fragment shader paths as well as amount of data to pass in per render
+    void init(std::string vertexPath, std::string fragmentPath, //vertex and fragment shader paths
               const OptionalShaders& optionalShaders = {}, const float* verts = basicScreenCoords, int floatsPerVertex_ = 2, int vertexAmount_ = 6); //info for verticies, by default render a rectangle size of the screen
     template <typename T,typename... Args>
     void draw(GLenum mode, T t1, Args... args) //pass in a bunch of data and then draw
@@ -112,8 +117,8 @@ struct BasicRenderPipeline //extremely simple class, made for storing simple ren
         glDrawArrays(mode,0,vertexAmount);
     }
 private:
-    void initAttribDivisors(Numbers numbers);
-    void initVerticies(const float* verts, int floatsPerVertex_, int vertexAmount);
+    void initAttribDivisors(Numbers numbers); //initiates inputs, assuming first input is verticies and already set by "initVerticies"
+    void initVerticies(const float* verts, int floatsPerVertex_, int vertexAmount); //initiates argument 0, which is assumed to be verticies.
 };
 
 
@@ -122,12 +127,12 @@ class Sprite;
 class RenderProgram //represents a Sprite shader pipeline (by default only a vertex and a fragment shader).
 {
 protected:
-    void initShaders(std::string vertexPath, std::string fragmentPath,Numbers numbers);
+    void initShaders(std::string vertexPath, std::string fragmentPath);
 
 public:
     BasicRenderPipeline program;
 
-    RenderProgram(std::string vertexPath, std::string fragmentPath,Numbers numbers= {});
+    RenderProgram(std::string vertexPath, std::string fragmentPath);
     RenderProgram()
     {
 
@@ -141,8 +146,8 @@ public:
         if (GLContext::isContextValid())
         glDeleteBuffers(1,&VBO);*/
     }
-    void init(std::string vertexPath, std::string fragmentPath,Numbers numbers);
     void init(std::string vertexPath, std::string fragmentPath);
+//    void init(std::string vertexTemplatePath, std::string fragmentPath, Numbers numbers,)
 
     void setMatrix4fv(std::string name, const GLfloat* value); //pass in the value_ptr of the matrix
     void setVec3fv(std::string name,glm::vec3 value);
@@ -160,7 +165,7 @@ public:
 };
 
 class RenderCamera;
-struct ViewPort //has data about visible area on screen
+struct ViewPort //has data about visible area on screen. Make sure you initialize before you do anything involving rendering
 {
     enum PROJECTION_TYPE
     {
@@ -175,6 +180,7 @@ struct ViewPort //has data about visible area on screen
     static ViewRange currentRange; //represents the current range for x,y, and z
     static RenderProgram basicProgram; //generic shader pipeline to render sprites
     static RenderProgram animeProgram; //shader pipeline to render spritesheets
+
     static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
 
     static glm::vec2 toAbsolute(const glm::vec2& point);//given a screen coordinate, renders it to that point on the screen regardless of zoom
@@ -205,6 +211,7 @@ struct ViewPort //has data about visible area on screen
     static glm::vec2 getScreenDimen();
     static void linkUniformBuffer(unsigned int program); //set a program to use UBO
     static void update();
+
 private:
     static void setViewRange(const ViewRange& range);
     static void resetProjMatrix(); //reset the projection matrix in the uniform buffer

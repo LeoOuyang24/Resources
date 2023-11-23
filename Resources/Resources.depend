@@ -1,10 +1,11 @@
 # depslib dependency file v1.0
-1679110766 source:c:\users\leoou\onedrive\desktop\resources\vanilla.cpp
+1700638693 source:c:\users\leoou\onedrive\desktop\resources\vanilla.cpp
 	<limits.h>
 	<math.h>
+	<fstream>
 	"vanilla.h"
 
-1679110745 c:\users\leoou\onedrive\desktop\resources\vanilla.h
+1700640851 c:\users\leoou\onedrive\desktop\resources\vanilla.h
 	<iostream>
 	<tuple>
 	<math.h>
@@ -15,8 +16,9 @@
 	<memory>
 	<stack>
 	<unordered_map>
+	<regex>
 
-1675487250 source:c:\users\leoou\onedrive\desktop\resources\freetypehelper.cpp
+1700701938 source:c:\users\leoou\onedrive\desktop\resources\freetypehelper.cpp
 	<iostream>
 	"FreeTypeHelper.h"
 	"geometry.h"
@@ -34,7 +36,7 @@
 
 1524386496 c:\users\leoou\onedrive\desktop\freetype-2.9.1\include\freetype\config\ftheader.h
 
-1690730504 c:\users\leoou\onedrive\desktop\resources\geometry.h
+1700689871 c:\users\leoou\onedrive\desktop\resources\geometry.h
 	<vector>
 	<map>
 	"glew.h"
@@ -572,7 +574,7 @@
 1525702984 c:\users\leoou\onedrive\desktop\glm\glm\gtc\type_ptr.inl
 	<cstring>
 
-1692765565 c:\users\leoou\onedrive\desktop\resources\render.h
+1700701917 c:\users\leoou\onedrive\desktop\resources\render.h
 	<iostream>
 	<vector>
 	<map>
@@ -941,7 +943,7 @@
 	"SDLhelper.h"
 	"render.h"
 
-1697863824 source:c:\users\leoou\onedrive\desktop\resources\render.cpp
+1700701974 source:c:\users\leoou\onedrive\desktop\resources\render.cpp
 	<sstream>
 	<fstream>
 	"stb_image.h"
@@ -949,6 +951,7 @@
 	"geometry.h"
 	"render.h"
 	"SDLhelper.h"
+	"resourcesMaster.h"
 
 1672723275 c:\users\leoou\onedrive\desktop\resources\stb_image.h
 	"stb_image.h"
@@ -1377,4 +1380,12 @@
 	<freetype/config/ftheader.h>
 
 1675519205 c:\users\leoou\onedrive\desktop\freetype-2.13.0\include\freetype\config\ftheader.h
+
+1700682147 source:c:\users\leoou\onedrive\desktop\resources\resourcesmaster.cpp
+	"resourcesMaster.h"
+	"vanilla.h"
+
+1700682172 c:\users\leoou\onedrive\desktop\resources\resourcesmaster.h
+	<iostream>
+	<unordered_map>
 

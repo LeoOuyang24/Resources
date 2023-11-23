@@ -13,7 +13,6 @@ bool isClockwise(const glm::vec2& a, const glm::vec2& b, const glm::vec2& center
 bool withinDistance(const glm::vec2& a, const glm::vec2& b, float distance); //returns true if "a" is within a "distance" of "b"
 
 void printRect(const glm::vec4& rect);
-int loadShaders(const GLchar* source, GLenum shaderType );
 float pointDistance(const glm::vec2& v1, const glm::vec2& v2);
 glm::vec2 findMidpoint(const glm::vec4& v1); //midpoint of a line
 bool vecIntersect(const glm::vec4& vec1,const glm::vec4& vec2);

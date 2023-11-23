@@ -2,6 +2,7 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <fstream>
 
 #include "vanilla.h"
 
@@ -47,6 +48,21 @@ std::string convert(int input) //takes an int and returns the int in string form
     std::ostringstream os;
     os << input;
     return os.str();
+}
+
+std::pair<std::string,bool> readFile(std::string file)
+{
+    std::ifstream input;
+    input.open(file);
+    if (input.is_open())
+    {
+        std::stringstream stream;
+        stream << input.rdbuf();
+        input.close();
+
+        return {stream.str(),true};
+    }
+    return {"",false};
 }
 
 bool floatEquals(float a, float b, int precision)

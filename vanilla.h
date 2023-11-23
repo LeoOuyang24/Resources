@@ -11,6 +11,8 @@
 #include <memory>
 #include <stack>
 #include <unordered_map>
+#include <regex>
+
 
 class Named
 {
@@ -41,6 +43,8 @@ std::string convert(double input);
 std::string convert(int input); //takes an int and returns the int in string form
 
 double convert(std::string input);
+
+std::pair<std::string,bool> readFile(std::string file); //reads "file" and returns the contents. The bool represents whether or not the file was found and successfully opened
 
 int charCount(std::string s, char c); //returns how many times c shows up in s;
 
@@ -409,6 +413,18 @@ void fillBytesVec(std::vector<char>& bytesVec, int totalBytes, T t1, Args... arg
     fillBytesVecWork(bytesVec,0,totalBytes,t1,args...);
 }
 
+template<typename Lambda>
+void regexSearch(std::string reg, std::string str, Lambda lambda)
+{
+    //given a string and a regex, parses the string using the regex, and runs "lambda" on each match
+    //lambda: (std::sregex_iterator& -> void)
+    std::regex rgx(reg);
+    for (std::sregex_iterator it = std::sregex_iterator(str.begin(), str.end(), rgx);
+    it != std::sregex_iterator(); it++)
+    {
+        lambda(it);
+    }
+}
 
 
 

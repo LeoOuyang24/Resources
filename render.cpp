@@ -1,7 +1,6 @@
 #include <sstream>
 #include <fstream>
 
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -10,6 +9,7 @@
 #include "geometry.h"
 #include "render.h"
 #include "SDLhelper.h"
+#include "resourcesMaster.h"
 
 bool GLContext::context = false;
 SDL_Window* GLContext::window = 0;
@@ -59,18 +59,75 @@ void addPointToBuffer(float buffer[], glm::vec2 point, int index)
     addPointToBuffer(buffer, {point.x, point.y, 0}, index);
 }
 
-int loadShaders(const GLchar* source, GLenum shaderType )
+
+Numbers getVertexInputs(std::string vertexFile)
 {
-    std::ifstream input;
-    input.open(source);
-    int shader = -1;
-    if (input.is_open())
+    Numbers numbers;
+    regexSearch("layout \\(location = [0-9]+\\) in (bool|int|float|vec([2-4])|mat([2-4]))",vertexFile,[&numbers](std::sregex_iterator& it){
+    std::string type = (*it)[1];
+    if (type == "bool" || type == "int" || type == "float")
     {
-        std::stringstream stream;
-        stream << input.rdbuf();
-         shader = glCreateShader(shaderType);
-         std::string str = stream.str();
+        numbers.push_back(1);
+    }
+    else if (type.substr(0,3) == "vec")
+    {
+        numbers.push_back(convert((*it)[2]));
+    }
+    else if (type.substr(0,3) == "mat")
+    {
+        numbers.push_back(pow(convert((*it)[2]),2));
+    }
+    }); //replace environment variables
+    return numbers;
+}
+
+
+int loadShaders(const GLchar* source, GLenum shaderType, Numbers* numbers )
+{
+    auto result = readFile(source);
+
+    int shader = -1;
+    if (result.second)
+    {
+        std::string str = result.first;
+
+        shader = glCreateShader(shaderType);
+
+        auto lambda = [&str,source](std::sregex_iterator& it){
+                    std::string varName = (*it)[1];
+                    if (ResourcesConfig::config.find(varName) != ResourcesConfig::config.end())
+                    {
+                        str = str.substr(0,it->position(0)) + ResourcesConfig::config[varName] + str.substr(it->position(0) + it->length(), str.size() - 1);
+                    }
+                    }; //lambda to replace environment variables.
+        std::string varDefRegex = "\\$\\{(.*)\\}"; //regex for finding variables
+        std::ifstream openIncludeFile;
+        regexSearch(varDefRegex,str,lambda); //replace environment variables
+
+        regexSearch("#include \"((.+\/)*[^\/]+)\"",str,[&openIncludeFile,&str,source](std::sregex_iterator& it){
+                    std::string fileName = (*it)[1];//(*it)[2];
+                    openIncludeFile.open(fileName);
+                    if (openIncludeFile.is_open())
+                    {
+                        std::stringstream stream;
+                        stream << openIncludeFile.rdbuf();
+                        str = str.substr(0,it->position(0)) + stream.str() + str.substr(it->position(0) + it->length(), str.size() - 1);
+                    }
+                    else
+                    {
+                        std::cout << "Error loading shader " << source << ": Failed to find open include file " << fileName << std::endl;
+                    }
+                    }); //import include files
+
+        regexSearch(varDefRegex,str,lambda); //replace environment variables inside include files
+
+        if (shaderType == GL_VERTEX_SHADER && numbers)
+        {
+            *numbers = getVertexInputs(str);
+        }
+
         const char* code = str.c_str();
+
         glShaderSource(shader,1, &code, NULL);
         glCompileShader(shader);
         int success;
@@ -90,13 +147,14 @@ int loadShaders(const GLchar* source, GLenum shaderType )
 
 }
 
-void BasicRenderPipeline::init(std::string vertexPath, std::string fragmentPath, Numbers numbers, const OptionalShaders& optionalShaders, const float* verts, int floatsPerVertex_ , int vertexAmount_)
+void BasicRenderPipeline::init(std::string vertexPath, std::string fragmentPath, const OptionalShaders& optionalShaders, const float* verts, int floatsPerVertex_ , int vertexAmount_)
 {
     vertexAmount = vertexAmount_;
 
     GLuint fragment = -1, vertex= -1, geometry = -1, tess = -1;
     program = glCreateProgram();
-    vertex = loadShaders(vertexPath.c_str(), GL_VERTEX_SHADER );
+    Numbers inputs;
+    vertex = loadShaders(vertexPath.c_str(), GL_VERTEX_SHADER, &inputs );
     fragment = loadShaders(fragmentPath.c_str(),GL_FRAGMENT_SHADER);
     glAttachShader(program,vertex);
     glAttachShader(program, fragment);
@@ -116,7 +174,7 @@ void BasicRenderPipeline::init(std::string vertexPath, std::string fragmentPath,
     glGenBuffers(1,&VBO);
 
     initVerticies(verts,floatsPerVertex_,vertexAmount_);
-    initAttribDivisors(numbers);
+    initAttribDivisors(inputs);
 }
 
 void BasicRenderPipeline::initVerticies(const float* verts, int floatsPerVertex_ , int vertexAmount_)
@@ -146,11 +204,12 @@ void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
     dataAmount = total*sizeof(GLfloat);
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER,VBO);
-    int index = 1; //we start at 0 because RenderProgram uses index 0 to store verticies
+    int index = 1; //we start at 1 because RenderProgram uses index 0 to store verticies
     int aggregate = 0;
 
-    for (auto num : numbers)
+    while (index < numbers.size()) //we skip the first input, assuming it is the vertex. If your vertex shader's first input is not verticies, this function will not work
     {
+        int num = numbers[index];
         for (int i = 0; i < num; i+= 4) //usually this only runs once, but if you have something that's larger than 4 floats (matricies) this will pass in every 4 floats in
         {
             int amount = std::min(num-i,4); //can't store larger than a vec4 at a time
@@ -164,22 +223,22 @@ void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
     }
 }
 
-void RenderProgram::initShaders(std::string vertexPath, std::string fragmentPath, Numbers numbers)
+void RenderProgram::initShaders(std::string vertexPath, std::string fragmentPath)
 {
-    program.init(vertexPath,fragmentPath, numbers,{}, textureVerticies,4,6);
+    program.init(vertexPath,fragmentPath, {}, textureVerticies,4,6);
 }
 
-
-RenderProgram::RenderProgram(std::string vertexPath, std::string fragmentPath,Numbers numbers)
+void RenderProgram::init(std::string vertexPath, std::string fragmentPath)
 {
-    init(vertexPath,fragmentPath,numbers);
-}
-void RenderProgram::init(std::string vertexPath, std::string fragmentPath,Numbers numbers)
-{
-    initShaders(vertexPath, fragmentPath, numbers);
+    initShaders(vertexPath, fragmentPath);
     ViewPort::linkUniformBuffer(ID());
     //initBuffers();
 
+}
+
+RenderProgram::RenderProgram(std::string vertexPath, std::string fragmentPath)
+{
+    init(vertexPath, fragmentPath);
 }
 
 void RenderProgram::use()
@@ -256,12 +315,11 @@ ViewRange ViewPort::currentRange;
 RenderProgram ViewPort::basicProgram;
 RenderProgram ViewPort::animeProgram;
 
+
 void ViewPort::init(int screenWidth, int screenHeight)
 {
     ViewPort::screenWidth = screenWidth;
     ViewPort::screenHeight = screenHeight;
-
-
 
     glewExperimental = true;
 
@@ -288,8 +346,10 @@ glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
 
 
 
-    basicProgram.init("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/fragmentShader.h",{4,1,1,1});
-    animeProgram.init("../../resources/shaders/vertex/animationShader.h","../../resources/shaders/fragment/fragmentShader.h",{4,1,4,1,1});
+    basicProgram.init(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/vertex/betterShader.h",
+                      ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/fragment/fragmentShader.h");
+    animeProgram.init(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/vertex/animationShader.h",
+                      ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/fragment/fragmentShader.h");
 
     glGenBuffers(1,&UBO);
 
@@ -904,7 +964,7 @@ void PolyRender::init(int screenWidth, int screenHeight)
 
 
 
-    polyRenderer.init("../../resources/shaders/vertex/polygonVertex.h","../../resources/shaders/fragment/simpleFragment.h",{});
+    polyRenderer.init("../../resources/shaders/vertex/polygonVertex.h","../../resources/shaders/fragment/simpleFragment.h");
 
     glPrimitiveRestartIndex(restart);
     glEnable(GL_PRIMITIVE_RESTART);
