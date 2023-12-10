@@ -59,23 +59,24 @@ void addPointToBuffer(float buffer[], glm::vec2 point, int index)
     addPointToBuffer(buffer, {point.x, point.y, 0}, index);
 }
 
-
-Numbers getVertexInputs(std::string vertexFile)
+std::string glslTypesCaptureGroup = "(bool|int|float|vec([2-4])|mat([2-4]))"; //regex for capturing glsl types
+std::string findVertexInputsRgx = "layout \\(location = ([0-9]+)\\) in " + glslTypesCaptureGroup +" .+;\\s*"; //regex for vertex shader inputs
+Numbers getVertexInputs(const std::string& vertexFile)
 {
     Numbers numbers;
-    regexSearch("layout \\(location = [0-9]+\\) in (bool|int|float|vec([2-4])|mat([2-4]))",vertexFile,[&numbers](std::sregex_iterator& it){
-    std::string type = (*it)[1];
+    regexSearch(findVertexInputsRgx,vertexFile,[&numbers](std::sregex_iterator& it){
+    std::string type = (*it)[2];
     if (type == "bool" || type == "int" || type == "float")
     {
         numbers.push_back(1);
     }
     else if (type.substr(0,3) == "vec")
     {
-        numbers.push_back(convert((*it)[2]));
+        numbers.push_back(std::stoi((*it)[3]));
     }
     else if (type.substr(0,3) == "mat")
     {
-        numbers.push_back(pow(convert((*it)[2]),2));
+        numbers.push_back(pow(std::stoi((*it)[3]),2));
     }
     }); //replace environment variables
     return numbers;
@@ -144,6 +145,75 @@ int loadShaders(const GLchar* source, GLenum shaderType, Numbers* numbers )
         std::cout << "Can't find shader! Source: " << source << std::endl;
     }
     return shader;
+
+}
+
+std::string templateShader(const std::string& shaderContents,
+                           bool isVertex, //whether or not the shader is a vertex shader, determines the syntax of the inputs
+                           std::initializer_list<std::string> inputs,
+                           std::initializer_list<std::string> outputs,
+                           std::initializer_list<std::string> tasks)
+{
+    //each iterator list has to have the type and name of the variable (e.g. "vec2 pos")
+
+    //it is assumed that all inputs in a file will be grouped together as will all outputs. This is not a huge deal except for vertex shaders, where this
+    //function has to find the largest layout number. For simplicity, it is assumed that all the layouts are in the same group of lines, right after one another
+    //and the there are no "holes" in the layouts, meaning if the largest layout number is 10, numbers 0-10 are all used. It is also expected that the layouts
+    //are organized in numerical order, so that the last layout input has the largest index. If you're not organizing your code like this already you should
+    //probably be put down. Finally, comments break this function. Please call stripComments first
+    std::string findLastInputRegex = isVertex ? "(" + findVertexInputsRgx + ")+" : //finds all the existing vertex inputs
+                                     "(in " + glslTypesCaptureGroup + " .+\\n)+";
+
+    std::string finalShader = "";
+    //handle inputs
+    regexSearch(findLastInputRegex,shaderContents,[&shaderContents,&finalShader,&inputs,isVertex](std::sregex_iterator& it)
+                {
+                    int layout = 0; //largest layout parameter, only used for vertex shaders
+
+
+                    if (isVertex) //find the largest layout parameter
+                    {
+                        layout = std::stoi((*it)[2]); //the 2nd capture group is the last number in the regex. Not sure how this works exactly but it seems to
+                    }
+
+                    int i = 1;
+                    for (auto input : inputs)
+                    {
+                        if (isVertex)
+                        {
+                            finalShader += "layout (location = " + std::to_string(layout + i) + ") ";
+                        }
+                        finalShader += "in " + input + ";\n";
+                        i++;
+                    }
+                    finalShader = shaderContents.substr(0, it->position(0) + it->length()) + finalShader + shaderContents.substr(it->position(0) + it->length(), shaderContents.size());
+                });
+
+    //handle outputs now
+    regexSearch("(out " + glslTypesCaptureGroup + " .+\\n)+", finalShader,[&finalShader,&outputs](std::sregex_iterator& it){
+                    std::string newOutputs = "";
+                    for (auto output : outputs)
+                    {
+                        newOutputs += "out " + output + ";\n";
+                    }
+                    finalShader = finalShader.substr(0, it->position(0) + it->length()) + newOutputs + finalShader.substr(it->position(0) + it->length(), finalShader.size());
+                } );
+
+    //modify the main function
+     regexSearch("void main\\(\\)\\s*\\{([\\s\\S]*)\\}", finalShader,[&finalShader,&tasks](std::sregex_iterator& it){
+                    std::string newTasks = "";
+                    for (auto task : tasks)
+                    {
+                        newTasks += task + ";\n"; //no need to provide semicolons, we provide them for you!
+                    }
+                    finalShader = finalShader.substr(0, it->position(1) + it->length(1)) + "\n" + newTasks + finalShader.substr(it->position(1) + it->length(1), finalShader.size());
+                } );
+    return finalShader;
+}
+
+std::string stripComments(const std::string& shaderContents)
+{
+    return std::regex_replace (shaderContents,std::regex("\\/\\/.+\\n"),"\n");
 
 }
 

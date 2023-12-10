@@ -65,38 +65,25 @@
 		<Unit filename="../physics.h" />
 		<Unit filename="../render.cpp" />
 		<Unit filename="../render.h" />
+		<Unit filename="../resourcesMaster.cpp" />
+		<Unit filename="../resourcesMaster.h" />
 		<Unit filename="../sequencer.cpp" />
 		<Unit filename="../sequencer.h" />
+		<Unit filename="../shaders/common/vertex_common.h" />
 		<Unit filename="../shaders/fragment/blurShader.h" />
-		<Unit filename="../shaders/fragment/dottedFragment.h" />
-		<Unit filename="../shaders/fragment/fragmentShader.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="../shaders/fragment/outlineShader.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="../shaders/fragment/paintShader.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="../shaders/fragment/simpleFragment.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="../shaders/fragment/wordFragment.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
+		<Unit filename="../shaders/fragment/fragmentShader.h" />
+		<Unit filename="../shaders/fragment/outlineShader.h" />
+		<Unit filename="../shaders/fragment/simpleFragment.h" />
+		<Unit filename="../shaders/fragment/simpleTextureFragment.h" />
+		<Unit filename="../shaders/fragment/wordFragment.h" />
+		<Unit filename="../shaders/vertex/animationShader.h" />
 		<Unit filename="../shaders/vertex/betterShader.h" />
-		<Unit filename="../shaders/vertex/polygonVertex.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="../shaders/vertex/simpleVertex.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="../shaders/vertex/vertexShader.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="../shaders/vertex/wordVertex.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
+		<Unit filename="../shaders/vertex/dottedVertex.h" />
+		<Unit filename="../shaders/vertex/polygonVertex.h" />
+		<Unit filename="../shaders/vertex/simpleTextureVertex.h" />
+		<Unit filename="../shaders/vertex/simpleVertex.h" />
+		<Unit filename="../shaders/vertex/vertexShader.h" />
+		<Unit filename="../shaders/vertex/wordVertex.h" />
 		<Unit filename="../stb_image.h" />
 		<Unit filename="../vanilla.cpp" />
 		<Unit filename="../vanilla.h" />

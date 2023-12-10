@@ -4,7 +4,7 @@ layout (location = 0) in vec4 values;
 layout (location = 1) in vec4 rect;
 layout (location = 2) in int depth;
 layout (location = 3) in float radians;
-layout (location = 4) in float effect;
+layout (location = 4) in int effect;
 
 layout (std140) uniform Matrices
 {
@@ -12,29 +12,14 @@ layout (std140) uniform Matrices
     mat4 view;
 };
 
+#include "${resources_dir}/shaders/common/vertex_common.h"
 
 out vec2 texCoord;
 
 void main()
 {
-    float z = values.z;
-    float a = values.a;
-    /*if (effect == 1)
-    {
-        z*=-1;
-    }
-    else
-    {
-        if (effect == 2)
-        {
-            a*=-1;
-        }
-    }*/
-    vec2 transformed = vec2(values.xy * rect.zw*.5); //scale
-    transformed = vec2(cos(radians)*transformed.x - sin(radians)*transformed.y,sin(radians)*transformed.x + cos(radians)*transformed.y); //rotate
-    transformed += rect.xy + rect.zw*.5; //move
-    gl_Position = projection*view*vec4(transformed,depth,1);
-        texCoord = vec2(z,a);
+    texCoord = getTransformed(effect,values,rect,radians,vec4(0,0,1,1),projection,view);
+
    // gl_Position.z = depth;
 
 }

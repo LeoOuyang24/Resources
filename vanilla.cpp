@@ -35,21 +35,6 @@ int convertTo1(double number) // a method that converts a number to 1 or -1 depe
     return number/(fabs(number));
 }
 
-
-std::string convert(double input)
-{
-     std::ostringstream os;
-    os << input;
-    return os.str();
-}
-
-std::string convert(int input) //takes an int and returns the int in string form
-{
-    std::ostringstream os;
-    os << input;
-    return os.str();
-}
-
 std::pair<std::string,bool> readFile(std::string file)
 {
     std::ifstream input;
@@ -98,23 +83,6 @@ double randomDecimal(int places)
 {
     int power = pow(10, places);
     return rand()%(power)/((double)power);
-}
-
-double convert(std::string input)
-{
-  for (int i = 0; i < input.length(); i ++) // checks to see if the input has non-digits in it.
-    {
-        int ascii = int(input[i]);
-        if ((ascii < 48 || ascii > 57) && ascii != 46 && ascii != 45) // The ascii for digits 0-9 is 48 - 57 inclusive. 46 is the ascii for the decimal point. 45 is the negative sign.
-        {
-            std::cout << "Vanilla Warning: conversion of " + input << "will return 0 because input contains non-numbers." << std::endl; // if there are non-digits, warn the user and then return 0.
-            return 0;
-        }
-    }
-    double j;
-     std::istringstream os(input);
-    os >> j;
-    return j;
 }
 
 int charCount(std::string s, char c) //returns how many times c shows up in s

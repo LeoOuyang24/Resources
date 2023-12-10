@@ -25,8 +25,14 @@ void addPointToBuffer(float buffer[], glm::vec4 point, int index);
 typedef std::vector<int> Numbers; //represents list of numbers where each number is how many GLfloats belong to a vertex attribute
 
 
-Numbers getVertexInputs(std::string vertexPath); //given a vertexShader contents, returns its inputs
+Numbers getVertexInputs(const std::string& vertexContents); //given a vertexShader contents, returns its inputs
 int loadShaders(const GLchar* source, GLenum shaderType, Numbers* numbers = 0); //loads shader given file path. If "shaderType" is vertexshader, it will also load the inputs into "numbers"
+//the reason why I went with the design of loading the vertex inputs into a vector provided as part of the parameter is because I wanted to be able to open a
+//vertex file path only once, and then compile the sahders and load the inputs all at once. Feel free to change this future Leo!
+
+std::string templateShader(const std::string& shaderContents, bool isVertex, std::initializer_list<std::string> inputs, std::initializer_list<std::string> outputs, std::initializer_list<std::string> tasks);
+//using a shader as a template, adds some inputs and outputs. ideal for shaders that do pretty much the same thing but may need to pass an additional output to another shader
+std::string stripComments(const std::string& shaderContents); //removes comments from a shader. Critical for loadShader and templateShader
 
 class GLContext
 {

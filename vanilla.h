@@ -38,11 +38,6 @@ size_t hashCombine(size_t h1, size_t h2); //combines two hashes https://stackove
 float round(float decimal, int n); //rounds decimal to the nth digit
 bool angleRange(float rad1, float rad2, float range); //returns true if angle rad1 is within range of rad2 (inclusive)
 double randomDecimal(int places); //generates a random decimal between 0 and 1, not including 1. places is the number of decimal places
-std::string convert(double input);
-
-std::string convert(int input); //takes an int and returns the int in string form
-
-double convert(std::string input);
 
 std::pair<std::string,bool> readFile(std::string file); //reads "file" and returns the contents. The bool represents whether or not the file was found and successfully opened
 
