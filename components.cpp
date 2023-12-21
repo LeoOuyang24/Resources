@@ -329,7 +329,7 @@ void BaseAnimationComponent::update()
     if (entity)
     if (RectComponent* rect = entity->getComponent<RectComponent>())
     {
-        request(ViewPort::animeProgram,{rect->getRect(),zCoord},BaseAnimation::getFrameFromStart(start,anime),rect->getTilt());
+        request(*ViewPort::animeProgram,{rect->getRect(),zCoord},BaseAnimation::getFrameFromStart(start,anime),rect->getTilt());
     }
     if (start == 0)
     {

@@ -58,7 +58,7 @@ class Font
 public:
     static void init(int screenWidth,int screenHeight); //initializes wordProgram and the default alef font
     static Font tnr; //the default alef font
-    static RenderProgram wordProgram;
+    static std::unique_ptr<RenderProgram> wordProgram;
     Font(std::string source);
     Font()
     {

@@ -85,65 +85,94 @@ Numbers getVertexInputs(const std::string& vertexFile)
 
 int loadShaders(const GLchar* source, GLenum shaderType, Numbers* numbers )
 {
-    auto result = readFile(source);
+    return loadShaders({source,shaderType},numbers);
+}
 
-    int shader = -1;
-    if (result.second)
+int loadShaders(LoadShaderInfo&& info, Numbers* numbers)
+{
+    std::string* shaderCode = nullptr;
+    std::pair<std::string, bool> result;
+    //std::cout << info.isFilePath << " " << info.code << "\n";
+    if (info.isFilePath)
     {
-        std::string str = result.first;
+        result = readFile(info.code);
 
-        shader = glCreateShader(shaderType);
-
-        auto lambda = [&str,source](std::sregex_iterator& it){
-                    std::string varName = (*it)[1];
-                    if (ResourcesConfig::config.find(varName) != ResourcesConfig::config.end())
-                    {
-                        str = str.substr(0,it->position(0)) + ResourcesConfig::config[varName] + str.substr(it->position(0) + it->length(), str.size() - 1);
-                    }
-                    }; //lambda to replace environment variables.
-        std::string varDefRegex = "\\$\\{(.*)\\}"; //regex for finding variables
-        std::ifstream openIncludeFile;
-        regexSearch(varDefRegex,str,lambda); //replace environment variables
-
-        regexSearch("#include \"((.+\/)*[^\/]+)\"",str,[&openIncludeFile,&str,source](std::sregex_iterator& it){
-                    std::string fileName = (*it)[1];//(*it)[2];
-                    openIncludeFile.open(fileName);
-                    if (openIncludeFile.is_open())
-                    {
-                        std::stringstream stream;
-                        stream << openIncludeFile.rdbuf();
-                        str = str.substr(0,it->position(0)) + stream.str() + str.substr(it->position(0) + it->length(), str.size() - 1);
-                    }
-                    else
-                    {
-                        std::cout << "Error loading shader " << source << ": Failed to find open include file " << fileName << std::endl;
-                    }
-                    }); //import include files
-
-        regexSearch(varDefRegex,str,lambda); //replace environment variables inside include files
-
-        if (shaderType == GL_VERTEX_SHADER && numbers)
+        int shader = -1;
+        if (result.second)
         {
-            *numbers = getVertexInputs(str);
+            shaderCode = &result.first;
         }
-
-        const char* code = str.c_str();
-
-        glShaderSource(shader,1, &code, NULL);
-        glCompileShader(shader);
-        int success;
-        char infoLog[512];
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-        if (!success)
+        else
         {
-            glGetShaderInfoLog(shader, 512, NULL, infoLog);
-            std::cout << "Error loading shader " << source << ": " << infoLog << std::endl;
+            std::cerr << "Can't find shader! Source: " << info.code << std::endl;
+            return -1;
         }
     }
     else
     {
-        std::cout << "Can't find shader! Source: " << source << std::endl;
+        shaderCode = &info.code;
     }
+
+    //strip comments, makes processing easier
+    *shaderCode = stripComments(*shaderCode);
+
+    //lambda to replace environment variables.
+    auto lambda = [&shaderCode](std::sregex_iterator& it){
+                std::string varName = (*it)[1];
+                if (ResourcesConfig::config.find(varName) != ResourcesConfig::config.end())
+                {
+                    *shaderCode = shaderCode->substr(0,it->position(0)) + ResourcesConfig::config[varName] + shaderCode->substr(it->position(0) + it->length(), shaderCode->size() - 1);
+                }
+                };
+
+    //replace environment variables
+    std::string varDefRegex = "\\$\\{(.*)\\}"; //regex for finding variables
+    regexSearch(varDefRegex,*shaderCode,lambda);
+
+
+    //import include files
+    std::ifstream openIncludeFile;
+    regexSearch("#include \"((.+\/)*[^\/]+)\"",*shaderCode,[&openIncludeFile,&shaderCode,&info](std::sregex_iterator& it){
+                std::string fileName = (*it)[1];//(*it)[2];
+                openIncludeFile.open(fileName);
+                if (openIncludeFile.is_open())
+                {
+                    std::stringstream stream;
+                    stream << openIncludeFile.rdbuf();
+                    *shaderCode = shaderCode->substr(0,it->position(0)) + stream.str() + shaderCode->substr(it->position(0) + it->length(), shaderCode->size() - 1);
+                }
+                else
+                {
+                    std::cout << "Error loading shader " << (info.isFilePath ? info.code : "Unknown Shader") << ": Failed to find open include file " << fileName << std::endl;
+                }
+                });
+    //replace environment variables inside include files
+    regexSearch(varDefRegex,*shaderCode,lambda);
+
+    //get vertex shader inputs
+    if (info.shaderType == GL_VERTEX_SHADER && numbers)
+    {
+        *numbers = getVertexInputs(*shaderCode);
+    }
+
+    //actually create and compile the shader
+    GLuint shader = glCreateShader(info.shaderType);
+
+    const char* code = shaderCode->c_str();
+    glShaderSource(shader,1, &code, NULL);
+    glCompileShader(shader);
+
+    //check for errors with the compilation process
+    int success;
+    char infoLog[512];
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(shader, 512, NULL, infoLog);
+        std::cerr << "Error loading shader " << (info.isFilePath ? info.code : "Unknown Shader") << ": " << infoLog << std::endl;
+        return -1;
+    }
+
     return shader;
 
 }
@@ -217,34 +246,10 @@ std::string stripComments(const std::string& shaderContents)
 
 }
 
-void BasicRenderPipeline::init(std::string vertexPath, std::string fragmentPath, const OptionalShaders& optionalShaders, const float* verts, int floatsPerVertex_ , int vertexAmount_)
+BasicRenderPipeline::BasicRenderPipeline(std::string vertexPath, std::string fragmentPath, const float* verts, int floatsPerVertex_ , int vertexAmount_) : BasicRenderPipeline({{vertexPath,GL_VERTEX_SHADER},{fragmentPath,GL_FRAGMENT_SHADER}},
+                                                                                                                                                                               verts,floatsPerVertex_,vertexAmount_)
 {
-    vertexAmount = vertexAmount_;
 
-    GLuint fragment = -1, vertex= -1, geometry = -1, tess = -1;
-    program = glCreateProgram();
-    Numbers inputs;
-    vertex = loadShaders(vertexPath.c_str(), GL_VERTEX_SHADER, &inputs );
-    fragment = loadShaders(fragmentPath.c_str(),GL_FRAGMENT_SHADER);
-    glAttachShader(program,vertex);
-    glAttachShader(program, fragment);
-    glDeleteShader(fragment);
-    glDeleteShader(vertex);
-    if (optionalShaders.geometryShader != "")
-    {
-        geometry = loadShaders(optionalShaders.geometryShader.c_str(), GL_GEOMETRY_SHADER);
-        glAttachShader(program, geometry);
-        glDeleteShader(geometry);
-    }
-    //add tesselation stuff here, too lazy to do it now
-
-    glLinkProgram(program);
-
-    glGenVertexArrays(1,&VAO);
-    glGenBuffers(1,&VBO);
-
-    initVerticies(verts,floatsPerVertex_,vertexAmount_);
-    initAttribDivisors(inputs);
 }
 
 void BasicRenderPipeline::initVerticies(const float* verts, int floatsPerVertex_ , int vertexAmount_)
@@ -293,86 +298,6 @@ void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
     }
 }
 
-void RenderProgram::initShaders(std::string vertexPath, std::string fragmentPath)
-{
-    program.init(vertexPath,fragmentPath, {}, textureVerticies,4,6);
-}
-
-void RenderProgram::init(std::string vertexPath, std::string fragmentPath)
-{
-    initShaders(vertexPath, fragmentPath);
-    ViewPort::linkUniformBuffer(ID());
-    //initBuffers();
-
-}
-
-RenderProgram::RenderProgram(std::string vertexPath, std::string fragmentPath)
-{
-    init(vertexPath, fragmentPath);
-}
-
-void RenderProgram::use()
-{
-    //setMatrix4fv("view",view);
-    //setMatrix4fv("projection",value_ptr(RenderProgram::getOrtho()));
-    glUseProgram(program.program);
-}
-
-void RenderProgram::setMatrix4fv(std::string name, const GLfloat* value)
-{
-    glUseProgram(ID());
-    glUniformMatrix4fv(glGetUniformLocation(ID(),name.c_str()),1,GL_FALSE,value);
-    glUseProgram(0);
-}
-void RenderProgram::setVec3fv(std::string name,glm::vec3 value)
-{
-    glUseProgram(ID());
-    glUniform3fv(glGetUniformLocation(ID(),name.c_str()),1,glm::value_ptr(value));
-    glUseProgram(0);
-}
-void RenderProgram::setVec4fv(std::string name,glm::vec4 value)
-{
-    glUseProgram(ID());
-    glUniform4fv(glGetUniformLocation(ID(),name.c_str()),1,glm::value_ptr(value));
-    glUseProgram(0);
-}
-void RenderProgram::setVec2fv(std::string name, glm::vec2 value)
-{
-    glUseProgram(ID());
-    glUniform2fv(glGetUniformLocation(ID(),name.c_str()),1,glm::value_ptr(value));
-    glUseProgram(0);
-}
-
-void RenderProgram::draw(Buffer sprite, void* data, int instances)
-{
-    glBindVertexArray(program.VAO);
-    glBindTexture(GL_TEXTURE_2D,sprite);
-
-    if (data)
-    {
-        glBindBuffer(GL_ARRAY_BUFFER,program.VBO);
-        glBufferData(GL_ARRAY_BUFFER,program.dataAmount*instances,data,GL_DYNAMIC_DRAW);
-    }
-
-    use();
-
-    glDrawArraysInstanced(GL_TRIANGLES,0,6,instances);
-
-    //glDrawElementsInstanced(GL_TRIANGLES,6,GL_UNSIGNED_INT,indices,instances);
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER,0);
-}
-
-int RenderProgram::getRequestDataAmount()
-{
-    return program.dataAmount ? program.dataAmount : 1; //return 1 instead of 0 as 0 messes things up.
-}
-
-unsigned int RenderProgram::ID()
-{
-    return program.program;
-}
-
 RenderCamera* ViewPort::currentCamera = nullptr;
 Buffer ViewPort::UBO = 0;
 int ViewPort::screenWidth = 0;
@@ -382,8 +307,8 @@ ViewPort::PROJECTION_TYPE ViewPort::proj = ORTHOGRAPHIC;
 ViewRange ViewPort::baseRange;
 ViewRange ViewPort::currentRange;
 
-RenderProgram ViewPort::basicProgram;
-RenderProgram ViewPort::animeProgram;
+std::unique_ptr<RenderProgram> ViewPort::basicProgram;
+std::unique_ptr<RenderProgram> ViewPort::animeProgram;
 
 
 void ViewPort::init(int screenWidth, int screenHeight)
@@ -416,9 +341,9 @@ glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
 
 
 
-    basicProgram.init(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/vertex/betterShader.h",
+    basicProgram = std::make_unique<RenderProgram>(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/vertex/betterShader.h",
                       ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/fragment/fragmentShader.h");
-    animeProgram.init(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/vertex/animationShader.h",
+    animeProgram = std::make_unique<RenderProgram>(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/vertex/animationShader.h",
                       ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/fragment/fragmentShader.h");
 
     glGenBuffers(1,&UBO);
@@ -641,6 +566,69 @@ void ViewPort::resetProjMatrix()
     glBufferData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4) + sizeof(float), glm::value_ptr(getProjMatrix()), GL_STATIC_DRAW); // allocate enough memory for two 4x4 matricies and the camera position. Remember that a glm::vec4 is 16 bytes, so each matrix is 64 bytes
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+RenderProgram::RenderProgram(std::string vertexShader, std::string fragmentShader, const float* verts, int floatsPerVertex_, int vertexAmount_) : BasicRenderPipeline({{vertexShader,GL_VERTEX_SHADER},{fragmentShader,GL_FRAGMENT_SHADER}},
+                                                                                                                                                                               verts,floatsPerVertex_,vertexAmount_)
+{
+
+}
+
+void RenderProgram::use()
+{
+    //setMatrix4fv("view",view);
+    //setMatrix4fv("projection",value_ptr(RenderProgram::getOrtho()));
+    glUseProgram(program);
+}
+
+void RenderProgram::setMatrix4fv(std::string name, const GLfloat* value)
+{
+    glUseProgram(program);
+    glUniformMatrix4fv(glGetUniformLocation(program,name.c_str()),1,GL_FALSE,value);
+    glUseProgram(0);
+}
+void RenderProgram::setVec3fv(std::string name,glm::vec3 value)
+{
+    glUseProgram(program);
+    glUniform3fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
+    glUseProgram(0);
+}
+void RenderProgram::setVec4fv(std::string name,glm::vec4 value)
+{
+    glUseProgram(program);
+    glUniform4fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
+    glUseProgram(0);
+}
+void RenderProgram::setVec2fv(std::string name, glm::vec2 value)
+{
+    glUseProgram(program);
+    glUniform2fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
+    glUseProgram(0);
+}
+
+void RenderProgram::drawInstanced(Buffer sprite, void* data, int instances)
+{
+    glBindVertexArray(VAO);
+    glBindTexture(GL_TEXTURE_2D,sprite);
+
+    if (data)
+    {
+        glBindBuffer(GL_ARRAY_BUFFER,VBO);
+        glBufferData(GL_ARRAY_BUFFER,dataAmount*instances,data,GL_DYNAMIC_DRAW);
+    }
+
+    use();
+
+    glDrawArraysInstanced(GL_TRIANGLES,0,6,instances);
+
+    //glDrawElementsInstanced(GL_TRIANGLES,6,GL_UNSIGNED_INT,indices,instances);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER,0);
+}
+
+int RenderProgram::getRequestDataAmount()
+{
+    return dataAmount ? dataAmount : 1; //return 1 instead of 0 as 0 messes things up.
 }
 
 RenderCamera::~RenderCamera()
@@ -980,7 +968,7 @@ void TransManager::render()
                 std::cout << f << " ";
             }
             std::cout << "\n";*/
-            it->program.draw(it->sprite.getTexture(),&buffer[0],buffer.size()/it->program.getRequestDataAmount()); //draw
+            it->program.drawInstanced(it->sprite.getTexture(),&buffer[0],buffer.size()/it->program.getRequestDataAmount()); //draw
             buffer.clear(); //clear our buffer
         }
     }
@@ -1001,7 +989,7 @@ void OpaqueManager::render()
        if (it->second.size() > 0) //render all current sprite parameters in one go, assuming there are any
        {
             int requestAmount = it->first.second.getRequestDataAmount();
-            it->first.second.draw(it->first.first.getTexture(),&it->second[0],it->second.size()/(requestAmount));
+            it->first.second.drawInstanced(it->first.first.getTexture(),&it->second[0],it->second.size()/(requestAmount));
             it->second.clear();
        }
     }
@@ -1019,7 +1007,7 @@ unsigned int PolyRender::lineVBO = -1;
 unsigned int PolyRender::polyVBO = -1;
 unsigned int PolyRender::colorVBO = -1;
 unsigned short PolyRender::restart = 65535;
-RenderProgram PolyRender::polyRenderer;
+std::unique_ptr<RenderProgram> PolyRender::polyRenderer;
 std::vector<std::pair<glm::vec3,glm::vec4>> PolyRender::lines;
 PolyStorage<glm::vec4> PolyRender::polyColors;
 PolyStorage<glm::vec3> PolyRender::polyPoints;
@@ -1034,7 +1022,7 @@ void PolyRender::init(int screenWidth, int screenHeight)
 
 
 
-    polyRenderer.init("../../resources/shaders/vertex/polygonVertex.h","../../resources/shaders/fragment/simpleFragment.h");
+    polyRenderer = std::make_unique<RenderProgram>("../../resources/shaders/vertex/polygonVertex.h","../../resources/shaders/fragment/simpleFragment.h");
 
     glPrimitiveRestartIndex(restart);
     glEnable(GL_PRIMITIVE_RESTART);
@@ -1244,7 +1232,7 @@ void PolyRender::renderLines()
     glEnableVertexAttribArray(1);
     //glVertexAttribDivisor(1,1);
 
-    polyRenderer.use();
+    polyRenderer->use();
 
     glDrawArrays(GL_LINES,0,size);
     glBindVertexArray(0);
@@ -1271,7 +1259,7 @@ void PolyRender::renderPolygons()
     glEnableVertexAttribArray(1);
     //glVertexAttribDivisor(1,1);
 
-    polyRenderer.use();
+    polyRenderer->use();
     glDrawElements(GL_TRIANGLE_STRIP,polyIndices.size(),GL_UNSIGNED_INT,&polyIndices[0]);
 
     glBindBuffer(GL_ARRAY_BUFFER,0);

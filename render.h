@@ -24,15 +24,28 @@ void addPointToBuffer(float buffer[], glm::vec4 point, int index);
 
 typedef std::vector<int> Numbers; //represents list of numbers where each number is how many GLfloats belong to a vertex attribute
 
+struct LoadShaderInfo
+{
+    //holds info about a type of shader and how to load it
+    std::string code = ""; //either the filepath to the shader or the raw code of the shader
+    GLenum shaderType = GL_VERTEX_SHADER; //type of shader.
+    bool isFilePath = true; //true if "code" is a filepath, false if "code" is the code of the shader
+};
+
 
 Numbers getVertexInputs(const std::string& vertexContents); //given a vertexShader contents, returns its inputs
-int loadShaders(const GLchar* source, GLenum shaderType, Numbers* numbers = 0); //loads shader given file path. If "shaderType" is vertexshader, it will also load the inputs into "numbers"
+
+//loads shader given file path. If "shaderType" is vertexshader, it will also load the inputs into "numbers". Returns the shader handle or -1 on failure
 //the reason why I went with the design of loading the vertex inputs into a vector provided as part of the parameter is because I wanted to be able to open a
 //vertex file path only once, and then compile the sahders and load the inputs all at once. Feel free to change this future Leo!
+int loadShaders(const GLchar* source, GLenum shaderType, Numbers* numbers = 0);
+int loadShaders(LoadShaderInfo&& info, Numbers* numbers = 0);
 
-std::string templateShader(const std::string& shaderContents, bool isVertex, std::initializer_list<std::string> inputs, std::initializer_list<std::string> outputs, std::initializer_list<std::string> tasks);
 //using a shader as a template, adds some inputs and outputs. ideal for shaders that do pretty much the same thing but may need to pass an additional output to another shader
-std::string stripComments(const std::string& shaderContents); //removes comments from a shader. Critical for loadShader and templateShader
+std::string templateShader(const std::string& shaderContents, bool isVertex, std::initializer_list<std::string> inputs, std::initializer_list<std::string> outputs, std::initializer_list<std::string> tasks);
+
+ //removes comments from a shader. Critical for loadShader and templateShader
+std::string stripComments(const std::string& shaderContents);
 
 class GLContext
 {
@@ -72,12 +85,6 @@ struct ViewRange //represents the extent of our view range. y is the furthest, x
 };
 typedef GLuint Buffer;
 
-struct OptionalShaders //represents a list of paths to various shaders
-{
-    std::string geometryShader = "";
-    std::string tesselationShader="";
-};
-
 const float textureVerticies[24] = { //verticies of textures
     -1, 1, 0, 1, //top left
     1, 1, 1, 1, //top right
@@ -106,8 +113,44 @@ struct BasicRenderPipeline //extremely simple class, made for storing simple ren
     Buffer verticies; //VBO for verticies
     int vertexAmount = 0; //number of verticies
     std::vector<char> bytes;
-    void init(std::string vertexPath, std::string fragmentPath, //vertex and fragment shader paths
-              const OptionalShaders& optionalShaders = {}, const float* verts = basicScreenCoords, int floatsPerVertex_ = 2, int vertexAmount_ = 6); //info for verticies, by default render a rectangle size of the screen
+
+    //initializes BasicRenderPipeline with a bunch of shaders and vertices. Do not pass in multiple vertex shaders
+    template<size_t N>
+    BasicRenderPipeline(LoadShaderInfo (&&info)[N], const float* verts = basicScreenCoords, int floatsPerVertex_ = 2, int vertexAmount_ = 6)
+    {
+        vertexAmount = vertexAmount_;
+        program = glCreateProgram();
+
+        Numbers numbahs;
+        for (auto&& shaderInfo : info)
+        {
+            GLuint shader = loadShaders(std::move(shaderInfo),&numbahs);
+            if (shader != -1)
+            {
+                glAttachShader(program,shader);
+                glDeleteShader(shader);
+            }
+        }
+        glLinkProgram(program);
+
+        glGenVertexArrays(1,&VAO);
+        glGenBuffers(1,&VBO);
+
+        initVerticies(verts,floatsPerVertex_,vertexAmount_);
+        initAttribDivisors(numbahs);
+    }
+    //warning: if you call the constructor like this:
+    //BasicRenderPipeline stars({{"./shaders/gravityVertexShader.h",GL_VERTEX_SHADER,true},{"./shaders/starShader.h",GL_FRAGMENT_SHADER,true}});
+    //it'll default to the constructor below, which is obviously not correct. The "explicit" helps prevent the program from compiling. Instead, call like:
+    //BasicRenderPipeline stars({LoadShaderInfo{"./shaders/gravityVertexShader.h",GL_VERTEX_SHADER,true},{"./shaders/starShader.h",GL_FRAGMENT_SHADER,true}});
+    //if your array doesn't have two elements (either less or more) you do not have to worry about this.
+
+    //construct renderpipeline from shader paths.
+    explicit BasicRenderPipeline(std::string vertexPath, std::string fragmentPath, //vertex and fragment shader paths
+            const float* verts = basicScreenCoords, int floatsPerVertex_ = 2, int vertexAmount_ = 6); //info for verticies, by default render a rectangle size of the screen
+
+
+
     template <typename T,typename... Args>
     void draw(GLenum mode, T t1, Args... args) //pass in a bunch of data and then draw
     { //maybe consider making this a separate function that takes in a BasicRenderPipeline and draws rather than calling it from the Pipeline itself
@@ -128,49 +171,8 @@ private:
 };
 
 
-
-class Sprite;
-class RenderProgram //represents a Sprite shader pipeline (by default only a vertex and a fragment shader).
-{
-protected:
-    void initShaders(std::string vertexPath, std::string fragmentPath);
-
-public:
-    BasicRenderPipeline program;
-
-    RenderProgram(std::string vertexPath, std::string fragmentPath);
-    RenderProgram()
-    {
-
-    }
-    ~RenderProgram()
-    {
-        /*if (GLContext::isContextValid())
-        glDeleteVertexArrays(1,&VAO);
-        if (GLContext::isContextValid())
-        glDeleteBuffers(1,&verticiesVBO);
-        if (GLContext::isContextValid())
-        glDeleteBuffers(1,&VBO);*/
-    }
-    void init(std::string vertexPath, std::string fragmentPath);
-//    void init(std::string vertexTemplatePath, std::string fragmentPath, Numbers numbers,)
-
-    void setMatrix4fv(std::string name, const GLfloat* value); //pass in the value_ptr of the matrix
-    void setVec3fv(std::string name,glm::vec3 value);
-    void setVec4fv(std::string name, glm::vec4 value);
-    void setVec2fv(std::string name, glm::vec2 value);
-    void use();
-    virtual void draw(Buffer texture, void* data, int instances);
-
-    int getRequestDataAmount(); //bytes of data needed for this render program
-    unsigned int ID();
-
-
-
-
-};
-
 class RenderCamera;
+class RenderProgram;
 struct ViewPort //has data about visible area on screen. Make sure you initialize before you do anything involving rendering
 {
     enum PROJECTION_TYPE
@@ -184,8 +186,8 @@ struct ViewPort //has data about visible area on screen. Make sure you initializ
     static PROJECTION_TYPE proj;
     static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
     static ViewRange currentRange; //represents the current range for x,y, and z
-    static RenderProgram basicProgram; //generic shader pipeline to render sprites
-    static RenderProgram animeProgram; //shader pipeline to render spritesheets
+    static std::unique_ptr<RenderProgram> basicProgram; //generic shader pipeline to render sprites
+    static std::unique_ptr<RenderProgram> animeProgram; //shader pipeline to render spritesheets
 
     static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
 
@@ -221,6 +223,36 @@ struct ViewPort //has data about visible area on screen. Make sure you initializ
 private:
     static void setViewRange(const ViewRange& range);
     static void resetProjMatrix(); //reset the projection matrix in the uniform buffer
+};
+
+
+class Sprite;
+class RenderProgram : public BasicRenderPipeline //represents a Sprite shader pipeline.
+{
+public:
+    using BasicRenderPipeline::BasicRenderPipeline;
+    template<size_t N>
+    RenderProgram(LoadShaderInfo (&&info)[N], const float* verts = textureVerticies, int floatsPerVertex_ = 4, int vertexAmount_ = 6) : BasicRenderPipeline(std::move(info),verts,floatsPerVertex_,vertexAmount_)
+    {
+        ViewPort::linkUniformBuffer(program);
+    }
+    RenderProgram(std::string vertexShader, std::string fragmentShader, const float* verts = textureVerticies, int floatsPerVertex_ = 4, int vertexAmount_ = 6);
+
+//    void init(std::string vertexTemplatePath, std::string fragmentPath, Numbers numbers,)
+
+    void setMatrix4fv(std::string name, const GLfloat* value); //pass in the value_ptr of the matrix
+    void setVec3fv(std::string name,glm::vec3 value);
+    void setVec4fv(std::string name, glm::vec4 value);
+    void setVec2fv(std::string name, glm::vec2 value);
+    void use();
+    virtual void drawInstanced(Buffer texture, void* data, int instances);
+
+    int getRequestDataAmount(); //bytes of data needed for this render program
+    unsigned int ID();
+
+
+
+
 };
 
 class RenderCamera
@@ -421,7 +453,7 @@ struct PolyRender
     static PolyStorage<glm::vec3> polyPoints; //points of polygons
     static PolyStorage<GLuint> polyIndices;
     static int polygonRequests; //number of requests for a polygon
-    static RenderProgram polyRenderer;
+    static std::unique_ptr<RenderProgram> polyRenderer;
     static unsigned int VAO;
     static unsigned int lineVBO;
     static unsigned int polyVBO;

@@ -1,5 +1,10 @@
 This document keeps track of all changes as well as considered changes made to the resources as well as why they were made. Consider this a "learning from the past" kind of document. 
 
+12/18/2023:
+	WTF it's been 9 months??
+	BasicRenderPipeline and RenderProgram now no longer use initializing functions and instead have constructors. The reason this wasn't always the design was because I hated the syntax of creating a pointer to an uninitialized pipeline/program but honestly that's better design. Having a pointer means we have more control over when we get to initialize (lazy initializing) and gives us an easier way to make sure an important static member variable has been created (such as the main RenderProgram in a Game class).
+	Speaking of, Renderprogram is now a child class of BasicRenderPipeline and honestly by this time next year, RenderProgram may cease to exist. After BasicRenderPipeline trivialized rendering things, RenderProgram is kind of a wrapper class. Right now, it has a single member variable, which is a BasicRenderPipeline, and then a bunch of functions that set uniforms. That's literally it. Functionality wise, RenderProgram renders sprites, so the verticies it passes in are different and it has to bind a texture before drawing. 
+
 3/10/2023:
 	RenderCamera's static camera has now been moved to ViewPort, as this makes more sense. ViewPort defines rendering to teh screen, it would make sense that it controls the one central camera. Similarly, ViewPort::update has now been updated to take in no parameters, instead using ViewPort's static camera. In case a program wants to use a child class of RenderCamera, ViewPort's static camera is still a pointer to RenderCamera, rather than an actual instance. 
 
