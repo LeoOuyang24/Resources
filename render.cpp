@@ -169,6 +169,7 @@ int loadShaders(LoadShaderInfo&& info, Numbers* numbers)
     if (!success)
     {
         glGetShaderInfoLog(shader, 512, NULL, infoLog);
+        std::cout << code << "\n";
         std::cerr << "Error loading shader " << (info.isFilePath ? info.code : "Unknown Shader") << ": " << infoLog << std::endl;
         return -1;
     }
@@ -251,6 +252,57 @@ BasicRenderPipeline::BasicRenderPipeline(std::string vertexPath, std::string fra
 {
 
 }
+
+void BasicRenderPipeline::setMatrix4fv(std::string name, const GLfloat* value)
+{
+    glUseProgram(program);
+    glUniformMatrix4fv(glGetUniformLocation(program,name.c_str()),1,GL_FALSE,value);
+    glUseProgram(0);
+}
+void BasicRenderPipeline::setVec3fv(std::string name,glm::vec3 value)
+{
+    glUseProgram(program);
+    glUniform3fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
+    glUseProgram(0);
+}
+void BasicRenderPipeline::setVec4fv(std::string name,glm::vec4 value)
+{
+    glUseProgram(program);
+    glUniform4fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
+    glUseProgram(0);
+}
+void BasicRenderPipeline::setVec2fv(std::string name, glm::vec2 value)
+{
+    glUseProgram(program);
+    glUniform2fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
+    glUseProgram(0);
+}
+
+size_t BasicRenderPipeline::getBytesPerRequest()
+{
+    return dataAmount;
+}
+
+Buffer BasicRenderPipeline::getProgram()
+{
+    return program;
+}
+
+Buffer BasicRenderPipeline::getVBO()
+{
+    return VBO;
+}
+
+Buffer BasicRenderPipeline::getVAO()
+{
+    return VAO;
+}
+
+Buffer BasicRenderPipeline::getVerticies()
+{
+    return verticies;
+}
+
 
 void BasicRenderPipeline::initVerticies(const float* verts, int floatsPerVertex_ , int vertexAmount_)
 {
@@ -568,45 +620,7 @@ void ViewPort::resetProjMatrix()
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
-RenderProgram::RenderProgram(std::string vertexShader, std::string fragmentShader, const float* verts, int floatsPerVertex_, int vertexAmount_) : BasicRenderPipeline({{vertexShader,GL_VERTEX_SHADER},{fragmentShader,GL_FRAGMENT_SHADER}},
-                                                                                                                                                                               verts,floatsPerVertex_,vertexAmount_)
-{
-
-}
-
-void RenderProgram::use()
-{
-    //setMatrix4fv("view",view);
-    //setMatrix4fv("projection",value_ptr(RenderProgram::getOrtho()));
-    glUseProgram(program);
-}
-
-void RenderProgram::setMatrix4fv(std::string name, const GLfloat* value)
-{
-    glUseProgram(program);
-    glUniformMatrix4fv(glGetUniformLocation(program,name.c_str()),1,GL_FALSE,value);
-    glUseProgram(0);
-}
-void RenderProgram::setVec3fv(std::string name,glm::vec3 value)
-{
-    glUseProgram(program);
-    glUniform3fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
-    glUseProgram(0);
-}
-void RenderProgram::setVec4fv(std::string name,glm::vec4 value)
-{
-    glUseProgram(program);
-    glUniform4fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
-    glUseProgram(0);
-}
-void RenderProgram::setVec2fv(std::string name, glm::vec2 value)
-{
-    glUseProgram(program);
-    glUniform2fv(glGetUniformLocation(program,name.c_str()),1,glm::value_ptr(value));
-    glUseProgram(0);
-}
-
-void RenderProgram::drawInstanced(Buffer sprite, void* data, int instances)
+/*void RenderProgram::drawInstanced(Buffer sprite, void* data, int instances)
 {
     glBindVertexArray(VAO);
     glBindTexture(GL_TEXTURE_2D,sprite);
@@ -624,12 +638,7 @@ void RenderProgram::drawInstanced(Buffer sprite, void* data, int instances)
     //glDrawElementsInstanced(GL_TRIANGLES,6,GL_UNSIGNED_INT,indices,instances);
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER,0);
-}
-
-int RenderProgram::getRequestDataAmount()
-{
-    return dataAmount ? dataAmount : 1; //return 1 instead of 0 as 0 messes things up.
-}
+}*/
 
 RenderCamera::~RenderCamera()
 {
@@ -730,7 +739,7 @@ bool isTransluscent(unsigned char* sprite, int width, int height)
             case 4:
                 rgb = GL_RGBA;
                 transluscent = isTransluscent(data,width,height);
-                //std::cout << source << " " << transluscent << "\n";
+                std::cout << source << " " << transluscent << "\n";
                 break;
             }
 
@@ -873,92 +882,22 @@ glm::vec4 BaseAnimation::normalizePixels(const glm::vec4& rect, Sprite& sprite)
     }
     return answer;
 }
-/*glm::vec4 BaseAnimation::getPortion(const AnimationParameter& param)
+
+void TransManager::request(const RenderRequest& request, ZType z)
 {
-        //int current =  SDL_GetTicks();
-        /*glm::vec4 backup = subSection;
-        if (param.subSection.z != 0 || param.subSection.a != 0) //if the param.subSection is invalid, use our preset subsection
-        {
-            subSection = param.subSection;
-        }
-        int perRow = subSection.z; //frame per rows
-        int rows = subSection.a; //number of rows
-        int framesSince = BaseAnimation::getFrameIndex(param.start,((param.fps == -1)*fps + (param.fps != -1)*param.fps));
-        if (param.start < 0 )
-        {
-            framesSince = (SDL_GetTicks())/1000.0; //frames that have passed
-        }
-
-        glm::vec4 answer = {frameDimen.x*(framesSince%(perRow)) + subSection.x,
-        (frameDimen.y*((framesSince/perRow)%rows)) + subSection.y,
-        frameDimen.x,
-        frameDimen.y};
-
-        subSection = backup;
-
-        return answer;
-/*}
-
-SpriteParameter BaseAnimation::processParam(const SpriteParameter& sParam,const AnimationParameter& aParam)
-{
-    /*Returns a SpriteParameter that represents what to render. sParam.portion is interpreted as the portion of the sprite sheet to render*/
-    //SpriteParameter param = sParam;
-    /*if (aParam.transform && aParam.camera) //call a camera function on our rect to render it according to the camera
-    {
-        param.rect = ((aParam.camera)->*(aParam.transform))(param.rect);
-    }
-    //double timeSince = current - ptr->start;
-   // int framesSince = ((ptr->fps == -1)*fps + (ptr->fps != -1)*ptr->fps)*timeSince; //frames that have passed
-
-    glm::vec4 portion = getPortion(aParam);
-    param.portion = {param.portion.x + portion.x, param.portion.y + portion.y, param.portion.z*portion.z, param.portion.a*portion.a};*/
-/*    return param;
-}
-
-
-/*void BaseAnimation::renderInstanced(RenderProgram& program, const std::list<FullAnimationParameter>& parameters)
-{
-    auto size = parameters.end();
-    std::vector<SpriteParameter> params;
-    int perRow = subSection.z; //frame per rows
-    int rows = subSection.a; //number of rows
-    for (auto i = parameters.begin(); i != size; ++i)
-    {
-        params.push_back(processParam(i->first,i->second));
-    }
-    Sprite::renderInstanced(program, params);
-}
-
-void BaseAnimation::renderInstanced(RenderProgram& program, const std::vector<SpriteParameter>& parameters)
-{
-    int size = parameters.size();
-    std::vector<SpriteParameter> params;
-    int perRow = subSection.z; //frame per rows
-    int rows = subSection.a; //number of rows
-    for (int i = 0; i < size; i ++)
-    {
-        SpriteParameter param = parameters[i];
-        //double timeSince = current - ptr->start;
-       // int framesSince = ((ptr->fps == -1)*fps + (ptr->fps != -1)*ptr->fps)*timeSince; //frames that have passed
-        param.portion = getPortion({(int)SDL_GetTicks(),-1});
-        params.push_back({param});
-    }
-    Sprite::renderInstanced(program, params);
-}*/
-
-
-
-void TransManager::request(Sprite& sprite, RenderProgram& program, ZType z)
-{
-    requests.insert({sprite,program,z,data.size()});
+    requests.insert({request,z,data.size()});
 }
 
 void TransManager::render()
 {
     for (auto it = requests.begin(); it != requests.end(); ++it)
     {
-        buffer.insert(buffer.end(),&data[it->index],&data[it->index] + it->program.getRequestDataAmount()); //for each request, store the data into buffer
-        if (it == std::prev(requests.end()) || &std::next(it)->sprite != &it->sprite || &std::next(it)->program != &it->program) //if we have run out of requests, or if the next request requires a different sprite/renderprogram
+        buffer.insert(buffer.end(),&data[it->index],&data[it->index] + it->request.program.getBytesPerRequest()); //for each request, store the data into buffer
+        if (it == std::prev(requests.end()) ||
+            &std::next(it)->request.sprite != &it->request.sprite ||
+            &std::next(it)->request.program != &it->request.program ||
+            std::next(it)->request.mode != it->request.mode)
+            //if we have run out of requests, or if the next request requires a different sprite/renderprogram
         {
             /*std::cout << it->sprite.getSource() << ": ";
             for (int i = 0; i < buffer.size(); i += sizeof(float))
@@ -968,12 +907,36 @@ void TransManager::render()
                 std::cout << f << " ";
             }
             std::cout << "\n";*/
-            it->program.drawInstanced(it->sprite.getTexture(),&buffer[0],buffer.size()/it->program.getRequestDataAmount()); //draw
+            render(it->request,&buffer[0],buffer.size()); //draw
             buffer.clear(); //clear our buffer
         }
     }
     requests.clear();
     data.clear();
+}
+
+void TransManager::render(const RenderRequest& request, char* bytes, int size)
+{
+    glBindVertexArray(request.program.getVAO());
+    if (request.sprite)
+    {
+        glBindTexture(GL_TEXTURE_2D,request.sprite->getTexture());
+    }
+
+    if (size > 0)
+    {
+        glBindBuffer(GL_ARRAY_BUFFER,request.program.getVBO());
+        glBufferData(GL_ARRAY_BUFFER,size,bytes,GL_DYNAMIC_DRAW);
+    }
+
+    glUseProgram(request.program.getProgram());
+
+    //glDrawArraysInstanced(program.mode,0,program.vertexAmount,size/program.dataAmount);
+    glDrawArraysInstanced(request.mode,0,request.program.vertexAmount,size/request.program.getBytesPerRequest());
+
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER,0);
 }
 
 OpaqueManager SpriteManager::opaques;
@@ -988,8 +951,8 @@ void OpaqueManager::render()
     {
        if (it->second.size() > 0) //render all current sprite parameters in one go, assuming there are any
        {
-            int requestAmount = it->first.second.getRequestDataAmount();
-            it->first.second.drawInstanced(it->first.first.getTexture(),&it->second[0],it->second.size()/(requestAmount));
+            //it->first.second.drawInstanced(it->first.first.getTexture(),&it->second[0],it->first.second.getBytesPerRequest());
+
             it->second.clear();
        }
     }
@@ -1232,7 +1195,7 @@ void PolyRender::renderLines()
     glEnableVertexAttribArray(1);
     //glVertexAttribDivisor(1,1);
 
-    polyRenderer->use();
+    glUseProgram(polyRenderer->getProgram());
 
     glDrawArrays(GL_LINES,0,size);
     glBindVertexArray(0);
@@ -1259,7 +1222,7 @@ void PolyRender::renderPolygons()
     glEnableVertexAttribArray(1);
     //glVertexAttribDivisor(1,1);
 
-    polyRenderer->use();
+    glUseProgram(polyRenderer->getProgram());
     glDrawElements(GL_TRIANGLE_STRIP,polyIndices.size(),GL_UNSIGNED_INT,&polyIndices[0]);
 
     glBindBuffer(GL_ARRAY_BUFFER,0);

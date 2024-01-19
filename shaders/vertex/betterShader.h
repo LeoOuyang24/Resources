@@ -1,6 +1,6 @@
 #version 330 core
 
-layout (location = 0) in vec4 values;
+layout (location = 0) in vec2 values;
 layout (location = 1) in vec4 rect;
 layout (location = 2) in int depth;
 layout (location = 3) in float radians;

@@ -421,6 +421,34 @@ void regexSearch(std::string reg, std::string str, Lambda lambda)
     }
 }
 
+/**
+  *   \brief Pass a function that is then run on each element in a container. If the function returns true, then it terminates early
+  *
+  *   \param start: iterator to start at
+  *   \param end: iterator to end at, noninclusive
+  *   \param func: A "Callable", which is anything with a () operator. T = (IteratorType) -> void or bool
+  *
+  *   \return nothing lol its a void function
+  **/
+template<typename IteratorType, typename Func>
+void doForEachElement(IteratorType start, IteratorType end, Func func) //run a function on each entity
+{
+    for (auto it = start; it != end; ++it)
+    {
+        if constexpr (!std::is_same<decltype(func(std::declval<IteratorType>())),bool>::value) //if the function doesn't return a bool, keep going until we've processed every planet
+        {
+            func(it);
+        }
+        else //if the function returns bool and is true, we stop running
+        {
+            auto val = func(it);
+            if (val)
+            {
+                return;
+            }
+        }
+    }
+}
 
 
 #endif // VANILLA_H_INCLUDED

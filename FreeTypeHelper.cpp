@@ -3,7 +3,7 @@
 #include "FreeTypeHelper.h"
 #include "geometry.h"
 
-std::unique_ptr<RenderProgram> Font::wordProgram;
+std::unique_ptr<BasicRenderPipeline> Font::wordProgram;
 Font Font::tnr;
 
 
@@ -71,7 +71,7 @@ int Font::writeLength(std::string str)
 
     void Font::init(int screenWidth, int screenHeight)
     {
-        wordProgram = std::make_unique<RenderProgram>("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/wordFragment.h");
+        wordProgram = std::make_unique<BasicRenderPipeline>("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/wordFragment.h");
 
         tnr.init("../../resources/tnr.ttf");
     }
@@ -194,7 +194,7 @@ void Font::requestWrite(const FontParameter& param)
         glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
         GLfloat w = chSize->x*scale;
         GLfloat h = (chSize->y)*scale;
-        SpriteManager::request(*characters[c],*wordProgram,{glm::vec4(pos.x,pos.y,w,h),param.z});
+        SpriteManager::request({*wordProgram,characters[c].get()},param.z,false,glm::vec4(pos.x,pos.y,w,h));
       //  PolyRender::requestRect({pos.x,pos.y,w,h},{1,0,0,1},false,0,-1);
      // printRect({pos.x,pos.y,w,h});
         //SpriteManager::request(*characters[c],{{pos.x,pos.y,w,h},0,param.z});

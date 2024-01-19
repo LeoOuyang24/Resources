@@ -95,7 +95,7 @@ const float textureVerticies[24] = { //verticies of textures
 
     };
 
-struct BasicRenderPipeline //extremely simple class, made for storing simple rendering information
+struct BasicRenderPipeline //made for storing simple rendering information
 {
     static constexpr float basicScreenCoords[12] = { //verticies to render a rectangle the size of the screen
         -1,-1, //bot left
@@ -106,73 +106,44 @@ struct BasicRenderPipeline //extremely simple class, made for storing simple ren
         1,1 //top right
     };
 
-    unsigned int program = 0;
-    size_t dataAmount; //number of bytes per request
-    Buffer VBO;
-    Buffer VAO;
-    Buffer verticies; //VBO for verticies
-    int vertexAmount = 0; //number of verticies
-    std::vector<char> bytes;
+    const int vertexAmount = 0; //number of verticies
 
-    //initializes BasicRenderPipeline with a bunch of shaders and vertices. Do not pass in multiple vertex shaders
+    //constructor that takes in an infinite list of shaders, as many as you want. Implemented below ViewPort
     template<size_t N>
-    BasicRenderPipeline(LoadShaderInfo (&&info)[N], const float* verts = basicScreenCoords, int floatsPerVertex_ = 2, int vertexAmount_ = 6)
-    {
-        vertexAmount = vertexAmount_;
-        program = glCreateProgram();
-
-        Numbers numbahs;
-        for (auto&& shaderInfo : info)
-        {
-            GLuint shader = loadShaders(std::move(shaderInfo),&numbahs);
-            if (shader != -1)
-            {
-                glAttachShader(program,shader);
-                glDeleteShader(shader);
-            }
-        }
-        glLinkProgram(program);
-
-        glGenVertexArrays(1,&VAO);
-        glGenBuffers(1,&VBO);
-
-        initVerticies(verts,floatsPerVertex_,vertexAmount_);
-        initAttribDivisors(numbahs);
-    }
-    //warning: if you call the constructor like this:
-    //BasicRenderPipeline stars({{"./shaders/gravityVertexShader.h",GL_VERTEX_SHADER,true},{"./shaders/starShader.h",GL_FRAGMENT_SHADER,true}});
-    //it'll default to the constructor below, which is obviously not correct. The "explicit" helps prevent the program from compiling. Instead, call like:
-    //BasicRenderPipeline stars({LoadShaderInfo{"./shaders/gravityVertexShader.h",GL_VERTEX_SHADER,true},{"./shaders/starShader.h",GL_FRAGMENT_SHADER,true}});
-    //if your array doesn't have two elements (either less or more) you do not have to worry about this.
+    BasicRenderPipeline(LoadShaderInfo (&&info)[N], const float* verts = basicScreenCoords,
+                                              int floatsPerVertex_ = 2, int vertexAmount_ = 6);
 
     //construct renderpipeline from shader paths.
     explicit BasicRenderPipeline(std::string vertexPath, std::string fragmentPath, //vertex and fragment shader paths
             const float* verts = basicScreenCoords, int floatsPerVertex_ = 2, int vertexAmount_ = 6); //info for verticies, by default render a rectangle size of the screen
-
-
-
+    //initializes BasicRenderPipeline with a bunch of shaders and vertices. Do not pass in multiple vertex shaders
     template <typename T,typename... Args>
-    void draw(GLenum mode, T t1, Args... args) //pass in a bunch of data and then draw
-    { //maybe consider making this a separate function that takes in a BasicRenderPipeline and draws rather than calling it from the Pipeline itself
-        bytes.clear();
-        fillBytesVec(bytes,dataAmount,t1,args...);
-        glBindVertexArray(VAO);
-        if (dataAmount)
-        {
-            glBindBuffer(GL_ARRAY_BUFFER,VBO);
-            glBufferData(GL_ARRAY_BUFFER,dataAmount,&bytes[0],GL_DYNAMIC_DRAW);
-        }
-        glUseProgram(program);
-        glDrawArrays(mode,0,vertexAmount);
-    }
-private:
-    void initAttribDivisors(Numbers numbers); //initiates inputs, assuming first input is verticies and already set by "initVerticies"
+    void draw(GLenum mode, T t1, Args... args);
+
+    void setMatrix4fv(std::string name, const GLfloat* value); //pass in the value_ptr of the matrix
+    void setVec3fv(std::string name,glm::vec3 value);
+    void setVec4fv(std::string name, glm::vec4 value);
+    void setVec2fv(std::string name, glm::vec2 value);
+    size_t getBytesPerRequest();
+    Buffer getProgram();
+    Buffer getVBO();
+    Buffer getVAO();
+    Buffer getVerticies();
     void initVerticies(const float* verts, int floatsPerVertex_, int vertexAmount); //initiates argument 0, which is assumed to be verticies.
+
+private:
+    std::vector<char> bytes;
+    size_t dataAmount = 1; //number of bytes per request
+    Buffer program = 0;
+    Buffer VBO;
+    Buffer VAO;
+    Buffer verticies; //VBO for verticies
+    void initAttribDivisors(Numbers numbers); //initiates inputs, assuming first input is verticies and already set by "initVerticies"
 };
 
+using RenderProgram = BasicRenderPipeline;
 
 class RenderCamera;
-class RenderProgram;
 struct ViewPort //has data about visible area on screen. Make sure you initialize before you do anything involving rendering
 {
     enum PROJECTION_TYPE
@@ -186,8 +157,8 @@ struct ViewPort //has data about visible area on screen. Make sure you initializ
     static PROJECTION_TYPE proj;
     static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
     static ViewRange currentRange; //represents the current range for x,y, and z
-    static std::unique_ptr<RenderProgram> basicProgram; //generic shader pipeline to render sprites
-    static std::unique_ptr<RenderProgram> animeProgram; //shader pipeline to render spritesheets
+    static std::unique_ptr<BasicRenderPipeline> basicProgram; //generic shader pipeline to render sprites
+    static std::unique_ptr<BasicRenderPipeline> animeProgram; //shader pipeline to render spritesheets
 
     static void init(int screenWidth, int screenHeight); //this init function initiates the basic renderprograms
 
@@ -226,34 +197,54 @@ private:
 };
 
 
-class Sprite;
-class RenderProgram : public BasicRenderPipeline //represents a Sprite shader pipeline.
+//warning: if you call the constructor like this:
+//BasicRenderPipeline stars({{"./shaders/gravityVertexShader.h",GL_VERTEX_SHADER,true},{"./shaders/starShader.h",GL_FRAGMENT_SHADER,true}});
+//it'll default to the constructor below, which is obviously not correct. The "explicit" helps prevent the program from compiling. Instead, call like:
+//BasicRenderPipeline stars({LoadShaderInfo{"./shaders/gravityVertexShader.h",GL_VERTEX_SHADER,true},{"./shaders/starShader.h",GL_FRAGMENT_SHADER,true}});
+//if your array doesn't have two elements (either less or more) you do not have to worry about this.
+template<size_t N>
+BasicRenderPipeline::BasicRenderPipeline(LoadShaderInfo (&&info)[N],const float* verts, int floatsPerVertex_, int vertexAmount_) : vertexAmount(vertexAmount_)
 {
-public:
-    using BasicRenderPipeline::BasicRenderPipeline;
-    template<size_t N>
-    RenderProgram(LoadShaderInfo (&&info)[N], const float* verts = textureVerticies, int floatsPerVertex_ = 4, int vertexAmount_ = 6) : BasicRenderPipeline(std::move(info),verts,floatsPerVertex_,vertexAmount_)
+    ViewPort::linkUniformBuffer(program);
+
+    program = glCreateProgram();
+
+    Numbers numbahs;
+    for (auto&& shaderInfo : info)
     {
-        ViewPort::linkUniformBuffer(program);
+        GLuint shader = loadShaders(std::move(shaderInfo),&numbahs);
+        if (shader != -1)
+        {
+            glAttachShader(program,shader);
+            glDeleteShader(shader);
+        }
     }
-    RenderProgram(std::string vertexShader, std::string fragmentShader, const float* verts = textureVerticies, int floatsPerVertex_ = 4, int vertexAmount_ = 6);
+    glLinkProgram(program);
 
-//    void init(std::string vertexTemplatePath, std::string fragmentPath, Numbers numbers,)
+    glGenVertexArrays(1,&VAO);
+    glGenBuffers(1,&VBO);
 
-    void setMatrix4fv(std::string name, const GLfloat* value); //pass in the value_ptr of the matrix
-    void setVec3fv(std::string name,glm::vec3 value);
-    void setVec4fv(std::string name, glm::vec4 value);
-    void setVec2fv(std::string name, glm::vec2 value);
-    void use();
-    virtual void drawInstanced(Buffer texture, void* data, int instances);
-
-    int getRequestDataAmount(); //bytes of data needed for this render program
-    unsigned int ID();
+    initVerticies(verts,floatsPerVertex_,vertexAmount_);
+    initAttribDivisors(numbahs);
+}
 
 
+template <typename T,typename... Args>
+void BasicRenderPipeline::draw(GLenum mode, T t1, Args... args) //pass in a bunch of data and then draw
+{ //maybe consider making this a separate function that takes in a BasicRenderPipeline and draws rather than calling it from the Pipeline itself
+    bytes.clear();
+    fillBytesVec(bytes,dataAmount,t1,args...);
+    glBindVertexArray(VAO);
+    if (dataAmount)
+    {
+        glBindBuffer(GL_ARRAY_BUFFER,VBO);
+        glBufferData(GL_ARRAY_BUFFER,dataAmount,&bytes[0],GL_DYNAMIC_DRAW);
+    }
+    glUseProgram(program);
+    glDrawArrays(mode,0,vertexAmount);
+}
 
 
-};
 
 class RenderCamera
 {
@@ -281,8 +272,8 @@ public:
     glm::vec4 toAbsolute(const glm::vec4& rect) const;
 };
 
-//extern RenderProgram RenderProgram::basicProgram;
-//extern RenderProgram RenderProgram::lineProgram;
+//extern BasicRenderPipeline BasicRenderPipeline::basicProgram;
+//extern BasicRenderPipeline BasicRenderPipeline::lineProgram;
 
 enum RenderEffect
 {
@@ -358,25 +349,32 @@ struct BaseAnimation //represents data used to animate a portion of a sprite she
 class OpaqueManager //manages storing opaque (non-transluscent) fragment render requests
 {
     //opaques can be rendered in any order, since they can't be blended, so OpaqueManager simply allocates contiguous memory for
-    //each Sprite-RenderProgram pair and renders all the data at once
-    struct OpaquePair //hash a pair of Sprite and RenderPrograms by XOring their hashes
+    //each Sprite-BasicRenderPipeline pair and renders all the data at once
+    struct OpaquePair //hash a pair of Sprite and BasicRenderPipelines by XOring their hashes
     {
-        size_t operator()(const std::pair<Sprite&,RenderProgram&>& a) const //we don't have to worry about commutativity because they have different memory addresses
+        size_t operator()(const std::pair<Sprite*,BasicRenderPipeline&>& a) const //we don't have to worry about commutativity because they have different memory addresses
         {
-            return std::hash<Sprite*>()(&a.first) ^ std::hash<RenderProgram*>()(&a.second);
+            return std::hash<Sprite*>()(a.first) ^ std::hash<BasicRenderPipeline*>()(&a.second);
         }
     };
     struct OpaqueEquals //how to determine if two pairs are the same (can't believe I had to specify this tbh)
     {
-        bool operator()(const std::pair<Sprite&,RenderProgram&>& a,const std::pair<Sprite&,RenderProgram&>& b) const
+        bool operator()(const std::pair<Sprite*,BasicRenderPipeline&>& a,const std::pair<Sprite*,BasicRenderPipeline&>& b) const
         {
-            return &a.first == &b.first && &a.second == &b.second;
+            return a.first == b.first && &a.second == &b.second;
         }
     };
 public:
-    std::unordered_map<std::pair<Sprite&,RenderProgram&>,std::vector<char>,OpaquePair,OpaqueEquals> opaquesMap;
+    std::unordered_map<std::pair<Sprite*,BasicRenderPipeline&>,std::vector<char>,OpaquePair,OpaqueEquals> opaquesMap;
     //for each sprite-renderprogram pairing, they have a unique bytes buffer
     void render(); //pass each bytes buffer to rendering pipeline
+};
+
+struct RenderRequest //bare bones info for each request: what sprite is being rendered and how to render it
+{
+    BasicRenderPipeline& program;
+    Sprite* sprite = nullptr; //if null, then not rendering a sprite
+    GLenum mode = GL_TRIANGLES; //primitive we are rendering in
 };
 
 typedef int ZType; //used to represent z values
@@ -384,40 +382,55 @@ struct TransManager //handles transluscent fragment render requests.
 {
      //Transluscents must be rendered after opaques and sorted by distance from the screen from furthest
      //(smallest z) to closest (largest z) to prevent fragments from being discarded via the depth test
-    struct TransRequest //bare bones info for each request: what sprite is being rendered, how to render it, the z value (for sorting) and the index in "data" where the transformations are stored
+    struct TransRequest //each request must be sorted the z value (for sorting) and we need to know the index in "data" where the transformations are stored
     {
-        Sprite& sprite;
-        RenderProgram& program;
+        RenderRequest request;
         ZType z;
         int index;
     };
-    void request(Sprite& sprite, RenderProgram& program, ZType z);
+    /**
+      *   \brief Creates the request
+      *
+      *   \param request: the actual request
+      *   \param z: the z that this request will be rendered at
+      *
+      *   \return nothing
+      **/
+    void request(const RenderRequest& request, ZType z);
     void render();
     std::vector<char> data; //buffer used to store all vertex attributes. Unsorted.
 private:
     struct TransRequestCompare //returns true if "a" is "less than" "b", and thus should be rendered first
     {
-        bool operator()(const TransRequest& a, const TransRequest& b) const //sort by z,then by program, then by sprite
+        bool operator()(const TransRequest& a, const TransRequest& b) const //sort by z, then by render mode, then by program, then by sprite, then by primitive
         {
             if (a.z == b.z)
             {
-                if (&a.program == &b.program)
+                if (&a.request.program == &b.request.program)
                 {
-                    return &a.sprite < &b.sprite;
+                    if (a.request.sprite == b.request.sprite)
+                    {
+                        return a.request.mode < b.request.mode; //mode changes the least between requests, usually sprite-program pairs have the same mode, so we sort it last
+                    }
+                    return &a.request.sprite < &b.request.sprite;
                 }
-                return &a.program < &b.program;
+                return &a.request.program < &b.request.program;
             }
             return a.z < b.z; //fragments with smaller zs get rendered first
         }
     };
+    /**
+      *   \brief Renders every transluscent request, attempting to render all sprites/program pairs in one go for efficiency
+      *
+      *   \param request: the actual request itself
+      *   \param bytes: a pointer to the point in memory where all the data for this rendering is
+      *   \param size: how many bytes we are sending
+      *
+      *   \return nothing
+      **/
+    void render(const RenderRequest& request, char* bytes, int size);
     std::vector<char> buffer; //reusable buffer for sorting data. Used to compile all data one sprite-renderprogram pairing.
     std::multiset<TransRequest,TransRequestCompare> requests;
-};
-
-struct FullPosition //every request, regardless of sprite or render program is going to have a position (rect.xy), dimensions (rect.za), and a z coordinate (z)
-{
-    glm::vec4 rect;
-    ZType z;
 };
 
 class SpriteManager //handles all sprite requests
@@ -426,22 +439,43 @@ class SpriteManager //handles all sprite requests
     static TransManager trans;
 
 public:
+    /**
+      *   \brief Creates a rendering request, which will be rendered at the end of every game loop
+      *
+      *   \param request: the actual request itself
+      *   \param transluscent: only relevant if "request.sprite" is null. Indicates whether a non-sprite request is transluscent
+      *   \param args: any values that the vertex shader needs
+      *
+      *   \return nothing
+      **/
     template<typename... Args>
-    static void request(Sprite& sprite, RenderProgram& program,const FullPosition& pos,Args... args)
+    static void request(const RenderRequest& request, ZType z, bool transluscent, Args... args) //request for non-sprites
     {
-        /*exposed public function, used to make requests. Every request is expected to begin with rect and z. */
-        if (sprite.getTransluscent())
+        if ((request.sprite && request.sprite->getTransluscent()) || transluscent)
         {
-            trans.request(sprite,program,pos.z); //transluscent manager needs to make a request specifically for the sprite-program pairing
-            fillBytesVec(trans.data,program.getRequestDataAmount(),pos.rect,pos.z,args...); //place request into transluscent manager
+            trans.request(request,z); //transluscent manager needs to make a request specifically for the sprite-program pairing
+            fillBytesVec(trans.data,request.program.getBytesPerRequest(),args...); //place request into transluscent manager
         }
         else
         {
-            fillBytesVec(opaques.opaquesMap[{sprite,program}],program.getRequestDataAmount(),pos.rect,pos.z,args...); //place request into opaque manager
+            fillBytesVec(opaques.opaquesMap[{request.sprite,request.program}],request.program.getBytesPerRequest(),args...); //place request into opaque manager
         }
     }
-    static void render();
+    ///Same function as above but you don't have to provide the "transluscent" parameter. Non-sprite requests are automatically put in TransManager
+    ///Recommended for sprites, though can be used for non-sprites
+    template<typename... Args>
+    static void requestSprite(const RenderRequest& request_, const glm::vec4& rect, ZType z, Args... args) //request for sprites
+    {
+        //many sprite shaders have a rect as their 2nd parameter, so this just makes that easier to account for
+        request(request_,z,true,rect,z,args...);
+    }
 
+    /**
+      *   \brief Renders all requests
+      *
+      *   \return nothing
+      **/
+    static void render();
 };
 
 template<typename T>
@@ -453,7 +487,7 @@ struct PolyRender
     static PolyStorage<glm::vec3> polyPoints; //points of polygons
     static PolyStorage<GLuint> polyIndices;
     static int polygonRequests; //number of requests for a polygon
-    static std::unique_ptr<RenderProgram> polyRenderer;
+    static std::unique_ptr<BasicRenderPipeline> polyRenderer;
     static unsigned int VAO;
     static unsigned int lineVBO;
     static unsigned int polyVBO;

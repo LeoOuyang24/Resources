@@ -211,10 +211,10 @@ protected:
 public:
     BaseAnimationComponent(Entity& entity, Sprite& sprite, const BaseAnimation& anime, ZType zCoord_ = 0);
     template<typename... T>
-    void request(RenderProgram& program, const FullPosition& pos, const glm::vec4& subSection, T... stuff) //pass subSection to SpriteManager, as well as any other arguments
+    void request(BasicRenderPipeline& program, const glm::vec4& rect, ZType z, const glm::vec4& subSection, T... stuff) //pass subSection to SpriteManager, as well as any other arguments
     {
         //a shader that expects a BaseAnimation request needs a rect, z, and the subsection of the sprite sheet
-        SpriteManager::request(*spriteSheet,program,pos,subSection,stuff...);
+        SpriteManager::requestSprite({program,spriteSheet},rect,z,subSection,stuff...);
     }
     Sprite* getSpriteSheet();
     virtual void update();

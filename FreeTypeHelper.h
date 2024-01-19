@@ -28,6 +28,7 @@ struct FontParameter //Represents all the information  required to call the writ
 {
     std::string text = "";
     glm::vec4 rect = {0,0,0,0}; //if the width is negative, the height is assumed to be the font size
+    glm::vec4 color = {0,0,0,1};
     double angle = 0;
     float z = 0;
     Align align = LEFT;
@@ -58,7 +59,7 @@ class Font
 public:
     static void init(int screenWidth,int screenHeight); //initializes wordProgram and the default alef font
     static Font tnr; //the default alef font
-    static std::unique_ptr<RenderProgram> wordProgram;
+    static std::unique_ptr<BasicRenderPipeline> wordProgram;
     Font(std::string source);
     Font()
     {
@@ -75,10 +76,7 @@ public:
     ~Font();
 
     };
-class FontProgram : public RenderProgram
-{
 
-};
 
 /*class FontManager
 {
