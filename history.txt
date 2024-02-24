@@ -1,6 +1,26 @@
 This document keeps track of all changes as well as considered changes made to the resources as well as why they were made. Consider this a "learning from the past" kind of document. 
 
-1/12/2023:
+2/23/2024:
+	BasicRenderPipeline now allows users to specify differing divisors for each vertex attribute. This allows for more flexibility. Basically, data is sorted and put into a RenderPayload which provides a byte array for all data of a certain divisor. These buffers are then sent to the GPU.
+	Requests in TransManager have been changed to a singly-linked forward_list which is unsorted until the actual render function is called. All our requests list has to do is add stuff to the end as fast as possible, so a forward_list seemed like the best choice. Then we sort at the end, which should be O(nlogn). Inserting into a red-black tree or multiset is logn, and we have to do it for all n requests, so it should work out to be the same. 
+	OpaqueManager is now GONE. The old way of storing opaques had one byte array for each render request, which at the time was just a Sprite and BasicRenderPipeline pair. In a large project, I expect there to be a lot of small byte arrays just lying around. Seems like a waste of memory, and honestly the overhead of maintaining a single sorted list of requests seems worth it for the memory cost. Sorting being a way to group similar sprites and render pipelines together of course. Wait a minute, this is exactly how TransManager works. In fact, the only difference is that TransManager sorts by z as well. So now, OpaqueManager is just another TransManager. SpriteManager pushes requests to OpaqueManager (a TransManager) the same as pushing to the TransManager except each request has a z of 0. There is a bit of a small redudancy here, since each Opaque request will still compare zs. Seems not that important rn though. 
+
+BENCHMARKS: 
+Rendering 100000 10x10 sprites in a 640x640 screen:
+	Release: 30-50 ms
+	Debug: 60-100 ms
+
+1/18/2024:
+	OpaqueManager now works fully and the whole engine works again.
+	A couple small syntax changes have been made to hopefully make the library easier to use.
+	- SpriteManager now has a requestSprite function, which makes requesting sprites a bit clearner, as opposed to having to pass the z value twice in the parameter
+	- RenderRequest has been created to make handling render requests easier. Passing in this struct means that it'll be easier to manage the number of parameters functions that render will need. RenderProgram is now the first variable in each request, while the sprite and rendering primitive are the 2nd and 3rd, with default values for both; this is because a RenderProgram is always needed but the latter two are optional
+
+Though most of the engine has been streamlined, PolyRender remains a bit of an oddball. It uses BasicRenderPipeline, but still does most of the data storage and rendering by itself. This is due mainly to the fact that it handles verticies differently than most render pipelines. BasicRenderPipeline was done with the idea that verticies were the only data that would change per vertex, whereas everything else would change per rendering call. PolyRender is notably different, which requires its requests to be stored differently and its verticies to change per rendering call. For example, you can't just store one color for all 4 verticies of a render rect request, you have to give a color for each vertex. 
+
+I am interested in fixing this issue but not only does it make making the requests harder, it also makes storing the data for the requests harder. Not sure how I'm gonna do it yet tbh. For now, the work around is to render polygons first.
+
+1/12/2024:
 	Massive changes. 
 	First of all, say good by to RenderProgram. For its last month, RenderProgram was a slightly more specialized version of BasicRenderPipeline that could render sprites but that is no longer the case. SpriteManager now handles ALL rendering, sprites or not and the request function has been changed to match this. Requests now involve a Sprite pointer, which can be null. TransManager now implements this change, why OpaqueManager is still a WIP. Rendering is also now done from the SpriteManager as opposed to the actual pipelines (tho BasicRenderPipeline retains its draw function in case you need to draw something RIGHT NOW) so RenderProgram has nothing really to do. It does live on as a ghost as it is now an alias for BasicRenderPipeline because a lot code refers to RenderPrograms.f
 	The reason for this was because if DEPTH_TEST was turned on, fragments from non-sprite render pipelines would eat underlying fragments even if they were transluscent. This could be worked around by simply turning DEPTH_TEST off and purely using TransManager to sort all fragments. At least in 2D, this works perfectly fine. OpaqueManager would have to be turned off but for most fragments aren't opaque anyway so it's not a huge performance drop. Still, I'm not sure I'm a huge fan of leaving DEPTH_TEST off forever. Leaving it off works for 2D but who knows maybe I'll go 3D someday. Besides, streamlining non-sprite and sprite rendering just makes sense and should've probably been done regardless of the DEPTH_TEST issue. If I'm going to streamline anyway, then why not keep OpaqueManager for a slight performance boost. 

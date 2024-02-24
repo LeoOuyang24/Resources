@@ -2,6 +2,7 @@
 
 #include "FreeTypeHelper.h"
 #include "geometry.h"
+#include "resourcesMaster.h"
 
 std::unique_ptr<BasicRenderPipeline> Font::wordProgram;
 Font Font::tnr;
@@ -43,6 +44,8 @@ Font::Character::Character(char c, FT_Face& face) : Sprite()
     bearing =  glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top);
     advance =    face->glyph->advance.x;
 
+    //transluscent = true;
+
 }
 
 const glm::vec2& Font::Character::getBearing()
@@ -71,7 +74,13 @@ int Font::writeLength(std::string str)
 
     void Font::init(int screenWidth, int screenHeight)
     {
-        wordProgram = std::make_unique<BasicRenderPipeline>("../../resources/shaders/vertex/betterShader.h","../../resources/shaders/fragment/wordFragment.h");
+        std::string source = templateShader(stripComments(readFile(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/vertex/betterShader.h").first), true,
+                                            {"vec4 color"},
+                                            {"vec4 shade"},
+                                            {"shade = color"});
+        std::cout << source << "\n";
+        wordProgram = std::unique_ptr<BasicRenderPipeline>(new BasicRenderPipeline({LoadShaderInfo{source,GL_VERTEX_SHADER,false},
+                                                                                   LoadShaderInfo{ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/fragment/wordFragment.h",GL_FRAGMENT_SHADER,true}}));
 
         tnr.init("../../resources/tnr.ttf");
     }
@@ -139,7 +148,7 @@ glm::vec2 Font::getDimen(std::string text, GLfloat hScale, GLfloat vScale)
     return {totalWidth,maxHeight};
 }
 
-void Font::requestWrite(const FontParameter& param)
+void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipeline)
 {
     float scale;
     glm::vec4 absRect = absoluteValueRect(param.rect);
@@ -190,11 +199,12 @@ void Font::requestWrite(const FontParameter& param)
         const glm::vec2* chSize = &ch->getSize();
         GLfloat xpos = x +bearing->x*scale;
         GLfloat ypos = y+ (maxVert.x - bearing->y)*scale;
-        //std::cout << c << " " << xpos<< " "<< ypos << std::endl;
         glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
         GLfloat w = chSize->x*scale;
         GLfloat h = (chSize->y)*scale;
-        SpriteManager::request({*wordProgram,characters[c].get()},param.z,false,glm::vec4(pos.x,pos.y,w,h));
+
+        //SpriteManager::request({*wordProgram,characters[c].get()},param.z,false,glm::vec4(pos.x,pos.y,w,h));
+        SpriteManager::requestSprite({pipeline,characters[c].get()},glm::vec4(pos.x,pos.y,w,h),param.z,0,0,param.color);
       //  PolyRender::requestRect({pos.x,pos.y,w,h},{1,0,0,1},false,0,-1);
      // printRect({pos.x,pos.y,w,h});
         //SpriteManager::request(*characters[c],{{pos.x,pos.y,w,h},0,param.z});

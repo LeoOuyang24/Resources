@@ -53,7 +53,7 @@ class Font
     };
 
     std::unordered_map<GLchar,std::unique_ptr<Character>> characters;
-    glm::vec2 maxVert; //x is max bearing.y, y is maximum space underneath the bearing. Sum of x and y is the maximum height we need
+    glm::vec2 maxVert = {0,0}; //x is max bearing.y, y is maximum space underneath the bearing. Sum of x and y is the maximum height we need
     std::string font = "";
     int writeLength(std::string str);
 public:
@@ -67,7 +67,7 @@ public:
     }
     void init(std::string source);
     glm::vec2 getDimen(std::string text, GLfloat hScale, GLfloat vScale); //gets the dimensions on text printed if the text were to be printed. The height is based on the bearing rather than the actual character height
-    void requestWrite(const FontParameter& param);
+    void requestWrite(const FontParameter& param, BasicRenderPipeline& pipeline = *wordProgram); //idk, I feel like the pipeline should not be part of the FontParameter. I can't explain why, just a gut feeling
     Character& getChar(GLchar c)
     {
         return *characters[c].get();

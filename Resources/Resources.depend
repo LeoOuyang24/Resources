@@ -5,7 +5,7 @@
 	<fstream>
 	"vanilla.h"
 
-1705042772 c:\users\leoou\onedrive\desktop\resources\vanilla.h
+1708750463 c:\users\leoou\onedrive\desktop\resources\vanilla.h
 	<iostream>
 	<tuple>
 	<math.h>
@@ -18,12 +18,13 @@
 	<unordered_map>
 	<regex>
 
-1705468980 source:c:\users\leoou\onedrive\desktop\resources\freetypehelper.cpp
+1708751057 source:c:\users\leoou\onedrive\desktop\resources\freetypehelper.cpp
 	<iostream>
 	"FreeTypeHelper.h"
 	"geometry.h"
+	"resourcesMaster.h"
 
-1705124804 c:\users\leoou\onedrive\desktop\resources\freetypehelper.h
+1706498013 c:\users\leoou\onedrive\desktop\resources\freetypehelper.h
 	<ft2build.h>
 	<unordered_map>
 	<memory>
@@ -574,13 +575,13 @@
 1525702984 c:\users\leoou\onedrive\desktop\glm\glm\gtc\type_ptr.inl
 	<cstring>
 
-1705469583 c:\users\leoou\onedrive\desktop\resources\render.h
+1708670469 c:\users\leoou\onedrive\desktop\resources\render.h
 	<iostream>
 	<vector>
 	<map>
 	<unordered_map>
 	<list>
-	<set>
+	<forward_list>
 	"glew.h"
 	"glm.hpp"
 	"gtc/matrix_transform.hpp"
@@ -943,7 +944,7 @@
 	"SDLhelper.h"
 	"render.h"
 
-1705215507 source:c:\users\leoou\onedrive\desktop\resources\render.cpp
+1708670357 source:c:\users\leoou\onedrive\desktop\resources\render.cpp
 	<sstream>
 	<fstream>
 	"stb_image.h"

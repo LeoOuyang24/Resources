@@ -14,9 +14,9 @@
 bool GLContext::context = false;
 SDL_Window* GLContext::window = 0;
 
-void GLContext::init(int screenWidth, int screenHeight)
+void GLContext::init(int screenWidth, int screenHeight, bool fullscreen)
 {
-    window = SDL_CreateWindow("Project",SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,screenWidth, screenHeight, SDL_WINDOW_OPENGL);
+    window = SDL_CreateWindow("Project",SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,screenWidth, screenHeight, SDL_WINDOW_OPENGL | (fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0));
     SDL_GL_CreateContext(window);
     context = true;
 }
@@ -247,10 +247,32 @@ std::string stripComments(const std::string& shaderContents)
 
 }
 
-BasicRenderPipeline::BasicRenderPipeline(std::string vertexPath, std::string fragmentPath, const float* verts, int floatsPerVertex_ , int vertexAmount_) : BasicRenderPipeline({{vertexPath,GL_VERTEX_SHADER},{fragmentPath,GL_FRAGMENT_SHADER}},
-                                                                                                                                                                               verts,floatsPerVertex_,vertexAmount_)
+
+BasicRenderPipeline::BasicRenderPipeline(std::string vertexPath, std::string fragmentPath, const DivisorStorage& divisors_, const float* verts, int floatsPerVertex_ , int vertexAmount_) : BasicRenderPipeline({{vertexPath,GL_VERTEX_SHADER},{fragmentPath,GL_FRAGMENT_SHADER}},
+                                                                                                                                                                                            divisors_,verts,floatsPerVertex_,vertexAmount_)
 {
 
+}
+
+void BasicRenderPipeline::bufferPayload(RenderPayload& payload)
+{
+    glBindVertexArray(VAO);
+    for (auto it = payload.begin(); it != payload.end(); ++it)
+    {
+        glBindBuffer(GL_ARRAY_BUFFER,vbos[it->first].VBO);
+        //std::cout << it->first << " " << getTotalFloats(it->second,it->first,vertexAmount)<< " " << it->second.bytes.size() << "\n";
+        //std::cout << (float)it->second.bytes[0] << "\n";
+        glBufferData(GL_ARRAY_BUFFER,it->second.size(),&it->second[0],GL_DYNAMIC_DRAW);
+    }
+}
+
+int BasicRenderPipeline::getDivisor(unsigned int index)
+{
+    if (index >= divisors.size())
+    {
+        return 1;
+    }
+    return divisors[index];
 }
 
 void BasicRenderPipeline::setMatrix4fv(std::string name, const GLfloat* value)
@@ -288,9 +310,9 @@ Buffer BasicRenderPipeline::getProgram()
     return program;
 }
 
-Buffer BasicRenderPipeline::getVBO()
+Buffer BasicRenderPipeline::getVBO(int divisor)
 {
-    return VBO;
+    return vbos[divisor].VBO;
 }
 
 Buffer BasicRenderPipeline::getVAO()
@@ -303,6 +325,22 @@ Buffer BasicRenderPipeline::getVerticies()
     return verticies;
 }
 
+void BasicRenderPipeline::packData(RenderPayload& payload, char* bytes)
+{
+    int currentByte = 0;
+    int i = 1;
+    for (; i < divisors.size(); ++i)
+    {
+        Bytes* ptr = &payload[getDivisor(i)];
+        size_t totalSize = numbers[i]*sizeof(float);
+        ptr->insert(ptr->end(), &bytes[currentByte] , &bytes[currentByte] + totalSize);
+        currentByte += totalSize;
+    }
+    if (i < numbers.size()) //this only happens if the rest of our divisors are all 1, so just copy the rest of the data into the data for divisor 1
+    {
+        payload[1].insert(payload[1].end(),&bytes[currentByte],&bytes[currentByte]+vbos[1].floatsPerVertex*sizeof(float) - currentByte);
+    }
+}
 
 void BasicRenderPipeline::initVerticies(const float* verts, int floatsPerVertex_ , int vertexAmount_)
 {
@@ -315,7 +353,6 @@ void BasicRenderPipeline::initVerticies(const float* verts, int floatsPerVertex_
         glBufferData(GL_ARRAY_BUFFER, floatsPerVertex_*vertexAmount_*sizeof(float),verts, GL_STATIC_DRAW);
 
         glEnableVertexAttribArray(0);
-
         glVertexAttribPointer(0,floatsPerVertex_,GL_FLOAT,GL_FALSE,0,0);
     }
 }
@@ -323,35 +360,53 @@ void BasicRenderPipeline::initVerticies(const float* verts, int floatsPerVertex_
 void BasicRenderPipeline::initAttribDivisors(Numbers numbers)
 {
     int total = 0;
-    for (auto num: numbers)
+    for (int i = 1; i < numbers.size(); ++i)
     {
-        total += num;
+        int divisor = getDivisor(i);
+        vbos[divisor].floatsPerVertex += numbers[i];
+        glGenBuffers(1,&vbos[divisor].VBO);
+        total += numbers[i]*(divisor == 0 ? vertexAmount : 1); //if an attribute is per vertex, then it needs to be provided once per vertex
     }
-
     dataAmount = total*sizeof(GLfloat);
     glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER,VBO);
-    int index = 1; //we start at 1 because RenderProgram uses index 0 to store verticies
-    int aggregate = 0;
 
+    int index = 1; //we start at 1 because RenderProgram uses index 0 to store verticies
+    std::unordered_map<int,int> aggregates; //how many floats we've put in for each divisor
     while (index < numbers.size()) //we skip the first input, assuming it is the vertex. If your vertex shader's first input is not verticies, this function will not work
     {
-        int num = numbers[index];
+        int num = numbers[index]; //number of floats for this vertex
         for (int i = 0; i < num; i+= 4) //usually this only runs once, but if you have something that's larger than 4 floats (matricies) this will pass in every 4 floats in
         {
             int amount = std::min(num-i,4); //can't store larger than a vec4 at a time
-            glVertexAttribPointer(index, amount, GL_FLOAT, GL_FALSE,total*sizeof(float), (void*)(aggregate*sizeof(float)));
+            int divisor = getDivisor(index - i/4);
+            glBindBuffer(GL_ARRAY_BUFFER,vbos[divisor].VBO);
+            //std::cout << num << " " << divisor << "\n";
+            glVertexAttribPointer(index, amount, GL_FLOAT, GL_FALSE,(vbos[divisor].floatsPerVertex)*sizeof(float), (void*)(aggregates[divisor]*sizeof(float)));
             glEnableVertexAttribArray(index);
-            glVertexAttribDivisor(index, 1);
+            glVertexAttribDivisor(index, divisor);
+
             index ++;
-            aggregate += amount;
+            aggregates[divisor] += amount;
 
         }
     }
 }
 
+void BasicRenderPipeline::packDataHelper(RenderPayload& payload, int divisorsIndex, int vertexIndex)
+{
+    if (divisorsIndex < numbers.size()) //for each divisor that we didn't fully fill up, fill with 0s
+    {
+        //std::cout << divisorsIndex << " " << numbers[divisorsIndex] << "\n";
+        std::vector<char>* bytes = &(payload[getDivisor(divisorsIndex)]);
+        bytes->insert(bytes->end(),numbers[divisorsIndex]*(vertexAmount - vertexIndex)*sizeof(float),0);
+        packDataHelper(payload,divisorsIndex+1,std::max(1,getDivisor(divisorsIndex+1)*vertexAmount-1) );
+
+    }
+}
+
 RenderCamera* ViewPort::currentCamera = nullptr;
 Buffer ViewPort::UBO = 0;
+UBOContents ViewPort::uniforms;
 int ViewPort::screenWidth = 0;
 int ViewPort::screenHeight = 0;
 ViewPort::PROJECTION_TYPE ViewPort::proj = ORTHOGRAPHIC;
@@ -398,9 +453,13 @@ glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     animeProgram = std::make_unique<RenderProgram>(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/vertex/animationShader.h",
                       ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/fragment/fragmentShader.h");
 
+    resetUniforms();
+
     glGenBuffers(1,&UBO);
-
-
+    glBindBuffer(GL_UNIFORM_BUFFER,UBO);
+    glBufferData(GL_UNIFORM_BUFFER,sizeof(UBOContents),nullptr, GL_STATIC_DRAW); // allocate enough memory for our UBO
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 
 }
@@ -440,14 +499,14 @@ glm::vec4 RenderCamera::toAbsolute(const glm::vec4& rect) const
 {
     if (ViewPort::getProj() == ViewPort::PERSPECTIVE)
     {
-        //returns toAbsolute if rect is rendered at 1 distance from the camera
+        //returns toAbsolute if rect is rendered as close to the camera as possible
         glm::vec2 screenDimen = ViewPort::getScreenDimen();
 
-        float screenHeight = 2*(1)*(tan(ViewPort::FOV/180*M_PI/2));
+        float screenHeight = (ViewPort::getZRange().x + 1)*2*(tan(glm::radians(ViewPort::FOV/2)));
         float screenWidth = screenHeight/screenDimen.y*screenDimen.x;
 
-        return glm::vec4(-screenWidth/2 + pos.x + (rect.x)/screenDimen.x*screenWidth,
-                -screenHeight/2 + pos.y + (rect.y)/screenDimen.y*screenHeight,
+        return glm::vec4(-screenWidth + pos.x + (rect.x)/screenDimen.x*screenWidth,
+                -screenHeight + pos.y + (rect.y)/screenDimen.y*screenHeight,
                 rect.z/screenDimen.x*screenWidth,
                 rect.a/screenDimen.y*screenHeight);
     }
@@ -555,6 +614,24 @@ glm::mat4 ViewPort::getProjMatrix()
     return (glm::ortho(currentRange.xRange.x, currentRange.xRange.y, currentRange.yRange.y, currentRange.yRange.x, currentRange.zRange.x, currentRange.zRange.y));
 }
 
+glm::mat4 ViewPort::getViewMatrix()
+{
+    if (currentCamera) //REFACTOR: might be faster to not have to recalculate this every frame
+    {
+        glm::vec3 pos = currentCamera->getPos() - static_cast<float>(proj == ORTHOGRAPHIC)*0.5f*glm::vec3(ViewPort::getViewWidth(),ViewPort::getViewHeight(),0); //for some reason, looking at point(x,y) in ortho view causes point(x,y) to be on the top left corner of the screen
+                                                                                                                 //not sure why, but that's a problem for future leo, this here is a work around
+        return glm::lookAt(pos,glm::vec3(glm::vec2(pos),currentRange.zRange.x),glm::vec3(0,1,0));
+    }
+    else
+    {
+        //glm::vec2 pos = {screenWidth/2,screenHeight/2};
+        return glm::lookAt(glm::vec3(0,0,currentRange.zRange.y),
+                           glm::vec3(0,0,0),
+                           glm::vec3(0,1,0)); //if no camera, put view matrix at farthest possible Z and put {0,0} at the top left corner
+        //glm::lookAt(glm::vec3(pos,currentRange.zRange.y),glm::vec3(pos,currentRange.zRange.x),glm::vec3(0,1,0));
+    }
+}
+
 ViewPort::PROJECTION_TYPE ViewPort::getProj()
 {
     return proj;
@@ -564,7 +641,7 @@ void ViewPort::flipProj()
 {
     proj = static_cast<PROJECTION_TYPE>(!(static_cast<bool>(proj)));
 
-    resetProjMatrix();
+    uniforms.perspectiveMatrix = getProjMatrix();
 }
 
 glm::vec2 ViewPort::getScreenDimen()
@@ -586,36 +663,33 @@ void ViewPort::linkUniformBuffer(unsigned int program)
 void ViewPort::update()
 {
     glBindBuffer(GL_UNIFORM_BUFFER,UBO);
-    glm::mat4 view;
-    if (currentCamera) //REFACTOR: might be faster to not have to recalculate this every frame
-    {
-        glm::vec3 pos = currentCamera->getPos() - static_cast<float>(proj == ORTHOGRAPHIC)*0.5f*glm::vec3(ViewPort::getViewWidth(),ViewPort::getViewHeight(),0); //for some reason, looking at point(x,y) in ortho view causes point(x,y) to be on the top left corner of the screen
-                                                                                                                 //not sure why, but that's a problem for future leo, this here is a work around
-        view = glm::lookAt(pos,glm::vec3(glm::vec2(pos),currentRange.zRange.x),glm::vec3(0,1,0));
-    }
-    else
-    {
-        //glm::vec2 pos = {screenWidth/2,screenHeight/2};
-        view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, currentRange.zRange.y)); //if no camera, put view matrix at farthest possible Z
-        //glm::lookAt(glm::vec3(pos,currentRange.zRange.y),glm::vec3(pos,currentRange.zRange.x),glm::vec3(0,1,0));
-    }
-    glBufferSubData(GL_UNIFORM_BUFFER,sizeof(glm::mat4),sizeof(glm::mat4),glm::value_ptr(view));
-    float cameraZ = currentCamera ? currentCamera->getPos().z : currentRange.zRange.y;
-    glBufferSubData(GL_UNIFORM_BUFFER,2*sizeof(glm::mat4),sizeof(float),&cameraZ);
 
+    uniforms.cameraZ = currentCamera ? currentCamera->getPos().z : 1;
+    uniforms.viewMatrix = getViewMatrix();
+
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(UBOContents), &uniforms); // allocate enough memory for two 4x4 matricies and the camera position. Remember that a glm::vec4 is 16 bytes, so each matrix is 64 bytes
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void ViewPort::setViewRange(const ViewRange& range)
 {
     currentRange = range;
-    resetProjMatrix();
+    uniforms.perspectiveMatrix = getProjMatrix();
 }
 
-void ViewPort::resetProjMatrix()
+void ViewPort::resetUniforms()
 {
     glBindBuffer(GL_UNIFORM_BUFFER,UBO);
-    //float* projection = glm::value_ptr(getOrtho());
-    glBufferData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4) + sizeof(float), glm::value_ptr(getProjMatrix()), GL_STATIC_DRAW); // allocate enough memory for two 4x4 matricies and the camera position. Remember that a glm::vec4 is 16 bytes, so each matrix is 64 bytes
+
+    //reset all values in uniforms
+    uniforms.cameraZ = currentCamera ? currentCamera->getPos().z : ViewPort::getViewDepth();
+    uniforms.perspectiveMatrix = getProjMatrix();
+    uniforms.viewMatrix = getViewMatrix();
+    uniforms.screenDimen = glm::vec2(screenWidth,screenHeight);
+
+    //pass the uniforms
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(UBOContents), &uniforms, GL_STATIC_DRAW); // allocate enough memory for two 4x4 matricies and the camera position. Remember that a glm::vec4 is 16 bytes, so each matrix is 64 bytes
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
@@ -739,7 +813,7 @@ bool isTransluscent(unsigned char* sprite, int width, int height)
             case 4:
                 rgb = GL_RGBA;
                 transluscent = isTransluscent(data,width,height);
-                std::cout << source << " " << transluscent << "\n";
+                //std::cout << source << " " << transluscent << "\n";
                 break;
             }
 
@@ -885,19 +959,21 @@ glm::vec4 BaseAnimation::normalizePixels(const glm::vec4& rect, Sprite& sprite)
 
 void TransManager::request(const RenderRequest& request, ZType z)
 {
-    requests.insert({request,z,data.size()});
+    requests.push_front({request,z,data.size()});
 }
 
 void TransManager::render()
 {
+    requests.sort(TransRequestCompare());
+
+    int instances = 0; //technically can calculate this without making a new variable, but this is more readable
     for (auto it = requests.begin(); it != requests.end(); ++it)
     {
-        buffer.insert(buffer.end(),&data[it->index],&data[it->index] + it->request.program.getBytesPerRequest()); //for each request, store the data into buffer
-        if (it == std::prev(requests.end()) ||
-            &std::next(it)->request.sprite != &it->request.sprite ||
-            &std::next(it)->request.program != &it->request.program ||
-            std::next(it)->request.mode != it->request.mode)
-            //if we have run out of requests, or if the next request requires a different sprite/renderprogram
+        //buffer.insert(buffer.end(),&data[it->index],&data[it->index] + it->request.program.getBytesPerRequest()); //for each request, store the data into buffer
+        it->request.program.packData(buffer,&data[it->index]);
+
+        instances++;
+        if (std::next(it) == requests.end() || !(std::next(it)->request == it->request)) //if we have run out of requests, or if the next request requires a different sprite/renderprogram
         {
             /*std::cout << it->sprite.getSource() << ": ";
             for (int i = 0; i < buffer.size(); i += sizeof(float))
@@ -907,7 +983,8 @@ void TransManager::render()
                 std::cout << f << " ";
             }
             std::cout << "\n";*/
-            render(it->request,&buffer[0],buffer.size()); //draw
+            render(it->request,buffer,instances); //draw
+            instances = 0;
             buffer.clear(); //clear our buffer
         }
     }
@@ -915,7 +992,7 @@ void TransManager::render()
     data.clear();
 }
 
-void TransManager::render(const RenderRequest& request, char* bytes, int size)
+void TransManager::render(const RenderRequest& request, RenderPayload& payload, int instances)
 {
     glBindVertexArray(request.program.getVAO());
     if (request.sprite)
@@ -923,40 +1000,20 @@ void TransManager::render(const RenderRequest& request, char* bytes, int size)
         glBindTexture(GL_TEXTURE_2D,request.sprite->getTexture());
     }
 
-    if (size > 0)
-    {
-        glBindBuffer(GL_ARRAY_BUFFER,request.program.getVBO());
-        glBufferData(GL_ARRAY_BUFFER,size,bytes,GL_DYNAMIC_DRAW);
-    }
+    request.program.bufferPayload(payload);
 
     glUseProgram(request.program.getProgram());
 
     //glDrawArraysInstanced(program.mode,0,program.vertexAmount,size/program.dataAmount);
-    glDrawArraysInstanced(request.mode,0,request.program.vertexAmount,size/request.program.getBytesPerRequest());
+    glDrawArraysInstanced(request.mode,0,request.program.vertexAmount,instances);
 
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER,0);
 }
 
-OpaqueManager SpriteManager::opaques;
+TransManager SpriteManager::opaques;
 TransManager SpriteManager::trans;
-void OpaqueManager::render()
-{
-    /*go through each sprite-program pairing and render their data. A lot simpler than TransManager because the data
-    is already sorted and contiguous*/
-    auto opaqueEnd = opaquesMap.end();
-    int size =  opaquesMap.size();
-   for (auto it = opaquesMap.begin(); it != opaqueEnd; ++it)
-    {
-       if (it->second.size() > 0) //render all current sprite parameters in one go, assuming there are any
-       {
-            //it->first.second.drawInstanced(it->first.first.getTexture(),&it->second[0],it->first.second.getBytesPerRequest());
-
-            it->second.clear();
-       }
-    }
-}
 
 void SpriteManager::render()
 {

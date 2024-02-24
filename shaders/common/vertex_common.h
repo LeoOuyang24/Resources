@@ -1,7 +1,7 @@
 //library functions for vertex shaders
 
 
-vec2 getTransformed(int effect, vec2 values, vec4 rect, float radians, vec4 subsection, mat4 projection, mat4 view)
+vec2 getTransformed(int effect, vec2 values, vec4 rect, float depth, float radians, vec4 subsection, mat4 projection, mat4 view)
 {
     float z = (values.x + 1)/2.0f;
     float a = (values.y + 1)/2.0f;

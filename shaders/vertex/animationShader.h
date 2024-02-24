@@ -24,7 +24,7 @@ out vec4 tint;
 
 void main()
 {
-    texCoord = getTransformed(effect,values,rect,radians,subsection,projection,view);
+    texCoord = getTransformed(effect,values,rect,depth,radians,subsection,projection,view);
 
 
     tint = tint_;

@@ -7,7 +7,7 @@
 #include <map>
 #include <unordered_map>
 #include <list>
-#include <set>
+#include <forward_list>
 
 #include "glew.h"
 
@@ -56,7 +56,7 @@ class GLContext
     static bool context; //true if context is guaranteed to be true;
     static SDL_Window* window;
 public:
-    static void init(int screenWidth, int screenHeight);
+    static void init(int screenWidth, int screenHeight, bool fullscreen = false);
     static bool isContextValid();
     static void update();
     static void terminate();
@@ -95,6 +95,22 @@ const float textureVerticies[24] = { //verticies of textures
 
     };
 
+
+
+struct VBOInfo
+{
+    //stores a VBO and how much data it expects to have per vertex
+    size_t floatsPerVertex = 0; //maximum amount of floats per vertex;
+    Buffer VBO;
+};
+
+
+//for each type of divisor, we get the corresponding data and VBO
+typedef std::unordered_map<int,VBOInfo> VBOs;
+typedef std::vector<char> Bytes;
+typedef std::vector<int> DivisorStorage;
+typedef std::unordered_map<int,Bytes> RenderPayload; //maps divisors to their total data
+
 struct BasicRenderPipeline //made for storing simple rendering information
 {
     static constexpr float basicScreenCoords[12] = { //verticies to render a rectangle the size of the screen
@@ -108,42 +124,68 @@ struct BasicRenderPipeline //made for storing simple rendering information
 
     const int vertexAmount = 0; //number of verticies
 
+    DivisorStorage divisors; //the divisors for each attribute. the index of the vertex corresponds to the attribute index. If not specified, divisor defaults to 1 with the exception of the verticies
+    Numbers numbers; //the number of floats per vertex attribute
+
     //constructor that takes in an infinite list of shaders, as many as you want. Implemented below ViewPort
     template<size_t N>
-    BasicRenderPipeline(LoadShaderInfo (&&info)[N], const float* verts = basicScreenCoords,
+    BasicRenderPipeline(LoadShaderInfo (&&info)[N], const DivisorStorage& divisors_ = {0}, const float* verts = basicScreenCoords,
                                               int floatsPerVertex_ = 2, int vertexAmount_ = 6);
 
     //construct renderpipeline from shader paths.
-    explicit BasicRenderPipeline(std::string vertexPath, std::string fragmentPath, //vertex and fragment shader paths
-            const float* verts = basicScreenCoords, int floatsPerVertex_ = 2, int vertexAmount_ = 6); //info for verticies, by default render a rectangle size of the screen
-    //initializes BasicRenderPipeline with a bunch of shaders and vertices. Do not pass in multiple vertex shaders
+    explicit BasicRenderPipeline(std::string vertexPath, std::string fragmentPath,  //vertex and fragment shader paths
+                const DivisorStorage& divisors_ = {0}, const float* verts = basicScreenCoords, int floatsPerVertex_ = 2, int vertexAmount_ = 6); //info for verticies, by default render a rectangle size of the screen
+
+    //draw the stuff. Recommended more for testing purposes; if you want to draw something you should prioritize using SpriteManager
     template <typename T,typename... Args>
     void draw(GLenum mode, T t1, Args... args);
 
+
+    void bufferPayload(RenderPayload& payload); //buffers the payload's data in the VBOs in preparation for rendering
+    int getDivisor(unsigned int index); //get the attrib divisor of the "index-th" attribute
+
+    //set uniforms
     void setMatrix4fv(std::string name, const GLfloat* value); //pass in the value_ptr of the matrix
     void setVec3fv(std::string name,glm::vec3 value);
     void setVec4fv(std::string name, glm::vec4 value);
     void setVec2fv(std::string name, glm::vec2 value);
+
     size_t getBytesPerRequest();
     Buffer getProgram();
-    Buffer getVBO();
+    Buffer getVBO(int divisor);
     Buffer getVAO();
     Buffer getVerticies();
-    void initVerticies(const float* verts, int floatsPerVertex_, int vertexAmount); //initiates argument 0, which is assumed to be verticies.
 
+    template <typename T,typename... Args>
+    RenderPayload packData(T t1, Args... args); //packs arguments into a RenderPayload based on divisors
+    void packData(RenderPayload& payload, char* bytes ); //packs a series of bytes that is assumed to be the attributes into payload
+    void initVerticies(const float* verts, int floatsPerVertex_, int vertexAmount); //initiates argument 0, which is assumed to be verticies.
 private:
-    std::vector<char> bytes;
     size_t dataAmount = 1; //number of bytes per request
     Buffer program = 0;
-    Buffer VBO;
+    VBOs vbos;
     Buffer VAO;
     Buffer verticies; //VBO for verticies
     void initAttribDivisors(Numbers numbers); //initiates inputs, assuming first input is verticies and already set by "initVerticies"
+    void packDataHelper(RenderPayload& payload, int divisorsIndex, int vertexIndex);
+    template <typename T,typename... Args>
+    void packDataHelper(RenderPayload& payload, int divisorsIndex, int vertexIndex, T t1, Args... args);
 };
 
 using RenderProgram = BasicRenderPipeline;
 
 class RenderCamera;
+
+struct __attribute__((packed, aligned(1))) UBOContents
+{
+    //tightly packed structure that represents the contents of our UBO
+    //tightly packed so we can pass the struct as is into our rendering pipeline
+    glm::mat4 perspectiveMatrix;
+    glm::mat4 viewMatrix;
+    float cameraZ;
+    glm::vec2 screenDimen;
+};
+
 struct ViewPort //has data about visible area on screen. Make sure you initialize before you do anything involving rendering
 {
     enum PROJECTION_TYPE
@@ -152,7 +194,8 @@ struct ViewPort //has data about visible area on screen. Make sure you initializ
         PERSPECTIVE = 1 //3d (but can be used for 2d)
     };
     static RenderCamera* currentCamera; //the current camera in use
-    static Buffer UBO; //view and projection matricies Uniform Buffer
+    static Buffer UBO; //Uniform Buffer
+
     static int screenWidth, screenHeight;
     static PROJECTION_TYPE proj;
     static ViewRange baseRange;  //represents the smallest and largest values x,y,z can be. X and Y should always have 0 as the smallest value.
@@ -184,6 +227,7 @@ struct ViewPort //has data about visible area on screen. Make sure you initializ
     static void setZRange(float z1, float z2);
     static void resetViewRange();
     static glm::mat4 getProjMatrix(); //gets projection matrix
+    static glm::mat4 getViewMatrix();
     static PROJECTION_TYPE getProj();
     static constexpr float FOV = 45;
     static void flipProj();
@@ -192,8 +236,10 @@ struct ViewPort //has data about visible area on screen. Make sure you initializ
     static void update();
 
 private:
+    static UBOContents uniforms; //the uniforms passed to the UBO. Most values are initialized and change very little, but view matrix updates every frame
+
     static void setViewRange(const ViewRange& range);
-    static void resetProjMatrix(); //reset the projection matrix in the uniform buffer
+    static void resetUniforms(); //reset all uniforms
 };
 
 
@@ -203,16 +249,16 @@ private:
 //BasicRenderPipeline stars({LoadShaderInfo{"./shaders/gravityVertexShader.h",GL_VERTEX_SHADER,true},{"./shaders/starShader.h",GL_FRAGMENT_SHADER,true}});
 //if your array doesn't have two elements (either less or more) you do not have to worry about this.
 template<size_t N>
-BasicRenderPipeline::BasicRenderPipeline(LoadShaderInfo (&&info)[N],const float* verts, int floatsPerVertex_, int vertexAmount_) : vertexAmount(vertexAmount_)
+BasicRenderPipeline::BasicRenderPipeline(LoadShaderInfo (&&info)[N],const DivisorStorage& divisors_,const float* verts, int floatsPerVertex_, int vertexAmount_) : vertexAmount(vertexAmount_), divisors(divisors_)
 {
-    ViewPort::linkUniformBuffer(program);
 
     program = glCreateProgram();
+    ViewPort::linkUniformBuffer(program);
 
-    Numbers numbahs;
+
     for (auto&& shaderInfo : info)
     {
-        GLuint shader = loadShaders(std::move(shaderInfo),&numbahs);
+        GLuint shader = loadShaders(std::move(shaderInfo),&numbers);
         if (shader != -1)
         {
             glAttachShader(program,shader);
@@ -222,29 +268,49 @@ BasicRenderPipeline::BasicRenderPipeline(LoadShaderInfo (&&info)[N],const float*
     glLinkProgram(program);
 
     glGenVertexArrays(1,&VAO);
-    glGenBuffers(1,&VBO);
 
     initVerticies(verts,floatsPerVertex_,vertexAmount_);
-    initAttribDivisors(numbahs);
+    initAttribDivisors(numbers);
+
 }
 
 
 template <typename T,typename... Args>
 void BasicRenderPipeline::draw(GLenum mode, T t1, Args... args) //pass in a bunch of data and then draw
-{ //maybe consider making this a separate function that takes in a BasicRenderPipeline and draws rather than calling it from the Pipeline itself
-    bytes.clear();
-    fillBytesVec(bytes,dataAmount,t1,args...);
-    glBindVertexArray(VAO);
-    if (dataAmount)
-    {
-        glBindBuffer(GL_ARRAY_BUFFER,VBO);
-        glBufferData(GL_ARRAY_BUFFER,dataAmount,&bytes[0],GL_DYNAMIC_DRAW);
-    }
+{
+    //maybe consider making this a separate function that takes in a BasicRenderPipeline and draws rather than calling it from the Pipeline itself
+    RenderPayload payload = packData(t1,args...);
+    bufferPayload(payload);
+
     glUseProgram(program);
     glDrawArrays(mode,0,vertexAmount);
 }
 
+template <typename T,typename... Args>
+void BasicRenderPipeline::packDataHelper(RenderPayload& payload, int divisorsIndex, int vertexIndex, T t1, Args... args)
+{
+    std::vector<char>* vecPtr = &payload[getDivisor(divisorsIndex)];
 
+    char* bytesBuffer = reinterpret_cast<char*>(&t1); //convert to string of bytes
+    vecPtr->insert(vecPtr->end(),bytesBuffer, bytesBuffer + sizeof(t1));
+
+    //if we have put in data for each vertex, move onto the next divisors index, which should correspond with the next attribute
+    divisorsIndex += (vertexIndex >= vertexAmount - 1);
+
+    //if the divisor is 0, we move to the next vertex, which could potentially be the 0th vertex if "divisorIndex" just hit 0.
+    //otherwise, we stay at "vertexAmount" - 1, which means we push the next argument assuming that it has a divisor of 1.
+    vertexIndex = (divisors[divisorsIndex] == 0 ? (vertexIndex + 1)%vertexAmount : vertexAmount - 1);
+    packDataHelper(payload,divisorsIndex,vertexIndex, args...);
+}
+
+
+template <typename T,typename... Args>
+RenderPayload BasicRenderPipeline::packData(T t1, Args... args)
+{
+    RenderPayload payload;
+    packDataHelper(payload,1,(divisors[1] == 0 ? 0 : vertexAmount - 1),t1,args...); //start at "divisorsIndex" 1 because verticies are processed separately
+    return payload;
+}
 
 class RenderCamera
 {
@@ -346,35 +412,29 @@ struct BaseAnimation //represents data used to animate a portion of a sprite she
     static glm::vec4 normalizePixels(const glm::vec4& rect, Sprite& sprite); //given a subsection of an image in pixels, return the normalized subsection. Any numbers that are already 0-1 will be assumed to already be normalized
 };
 
-class OpaqueManager //manages storing opaque (non-transluscent) fragment render requests
-{
-    //opaques can be rendered in any order, since they can't be blended, so OpaqueManager simply allocates contiguous memory for
-    //each Sprite-BasicRenderPipeline pair and renders all the data at once
-    struct OpaquePair //hash a pair of Sprite and BasicRenderPipelines by XOring their hashes
-    {
-        size_t operator()(const std::pair<Sprite*,BasicRenderPipeline&>& a) const //we don't have to worry about commutativity because they have different memory addresses
-        {
-            return std::hash<Sprite*>()(a.first) ^ std::hash<BasicRenderPipeline*>()(&a.second);
-        }
-    };
-    struct OpaqueEquals //how to determine if two pairs are the same (can't believe I had to specify this tbh)
-    {
-        bool operator()(const std::pair<Sprite*,BasicRenderPipeline&>& a,const std::pair<Sprite*,BasicRenderPipeline&>& b) const
-        {
-            return a.first == b.first && &a.second == &b.second;
-        }
-    };
-public:
-    std::unordered_map<std::pair<Sprite*,BasicRenderPipeline&>,std::vector<char>,OpaquePair,OpaqueEquals> opaquesMap;
-    //for each sprite-renderprogram pairing, they have a unique bytes buffer
-    void render(); //pass each bytes buffer to rendering pipeline
-};
-
 struct RenderRequest //bare bones info for each request: what sprite is being rendered and how to render it
 {
     BasicRenderPipeline& program;
     Sprite* sprite = nullptr; //if null, then not rendering a sprite
     GLenum mode = GL_TRIANGLES; //primitive we are rendering in
+
+    bool operator==( const RenderRequest& r2) const
+    {
+        return &program == &r2.program && sprite == r2.sprite && mode == r2.mode;
+    }
+
+    bool operator<(const RenderRequest& b) const
+    {
+         if (&program == &b.program)
+        {
+            if (sprite == b.sprite)
+            {
+                return mode < b.mode; //mode changes the least between requests, usually sprite-program pairs have the same mode, so we sort it last
+            }
+            return sprite < b.sprite;
+        }
+        return &program < &b.program;
+    }
 };
 
 typedef int ZType; //used to represent z values
@@ -406,15 +466,7 @@ private:
         {
             if (a.z == b.z)
             {
-                if (&a.request.program == &b.request.program)
-                {
-                    if (a.request.sprite == b.request.sprite)
-                    {
-                        return a.request.mode < b.request.mode; //mode changes the least between requests, usually sprite-program pairs have the same mode, so we sort it last
-                    }
-                    return &a.request.sprite < &b.request.sprite;
-                }
-                return &a.request.program < &b.request.program;
+                return a.request < b.request;
             }
             return a.z < b.z; //fragments with smaller zs get rendered first
         }
@@ -428,14 +480,15 @@ private:
       *
       *   \return nothing
       **/
-    void render(const RenderRequest& request, char* bytes, int size);
-    std::vector<char> buffer; //reusable buffer for sorting data. Used to compile all data one sprite-renderprogram pairing.
-    std::multiset<TransRequest,TransRequestCompare> requests;
+    void render(const RenderRequest& request, RenderPayload& payload, int instances); //renders all data in payload
+
+    RenderPayload buffer; //reusable buffer for sorting data. Used to compile all data one sprite-renderprogram pairing.
+    std::forward_list<TransRequest> requests; //unsorted list of requests, sorted before we render
 };
 
 class SpriteManager //handles all sprite requests
 {
-    static OpaqueManager opaques;
+    static TransManager opaques;
     static TransManager trans;
 
 public:
@@ -458,7 +511,8 @@ public:
         }
         else
         {
-            fillBytesVec(opaques.opaquesMap[{request.sprite,request.program}],request.program.getBytesPerRequest(),args...); //place request into opaque manager
+            opaques.request(request,0);
+            fillBytesVec(opaques.data,request.program.getBytesPerRequest(),args...); //place request into transluscent manager
         }
     }
     ///Same function as above but you don't have to provide the "transluscent" parameter. Non-sprite requests are automatically put in TransManager
