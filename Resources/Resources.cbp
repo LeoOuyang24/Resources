@@ -60,7 +60,6 @@
 			<Option target="&lt;{~None~}&gt;" />
 		</Unit>
 		<Unit filename="../pathfind.cpp" />
-		<Unit filename="../pathfind.h" />
 		<Unit filename="../physics.cpp" />
 		<Unit filename="../physics.h" />
 		<Unit filename="../render.cpp" />
@@ -69,6 +68,7 @@
 		<Unit filename="../resourcesMaster.h" />
 		<Unit filename="../sequencer.cpp" />
 		<Unit filename="../sequencer.h" />
+		<Unit filename="../shaders/common/uniforms.h" />
 		<Unit filename="../shaders/common/vertex_common.h" />
 		<Unit filename="../shaders/fragment/blurShader.h" />
 		<Unit filename="../shaders/fragment/fragmentShader.h" />

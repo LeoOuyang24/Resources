@@ -376,36 +376,48 @@ struct AllDerivedFrom<Base, Derived, Ds...>
 };
 
 
+template<typename T,typename... Args>
+struct __attribute__((packed, aligned(1)))  TightTuple;
 
-void fillBytesVecWork( std::vector<char>& bytesVec,size_t bytes,int finalBytes);//base case after all attributes have been processeed
-
-
-template<typename T, typename... Args>
-void fillBytesVecWork(std::vector<char>& bytesVec, size_t bytes,int finalBytes, T t1, Args... args) //fill a byte array with "args"
+template<typename T>
+struct __attribute__((packed, aligned(1)))  TightTuple<T>
 {
-    /*main workhorse function. "bytes" is the number of bytes we've already
-    processed, useful to make sure our request wasn't too big or small. "bytesVec" is the vector we will be storing our bytes in,
-    which differs depending on opaque vs transluscent fragments.*/
-    if (bytes >= finalBytes)
+    T t;
+    TightTuple(T t_) : t(t_)
     {
-        fillBytesVecWork(bytesVec,bytes,finalBytes); //terminate early if too many arguments were provided. base case is in vanilla.cpp
-    }
-    else
-    {
-        char* bytesBuffer = reinterpret_cast<char*>(&t1); //convert to string of bytes
-        //std::cout << typeid(t1).name() << "\n";
-        bytesVec.insert(bytesVec.end(),bytesBuffer,bytesBuffer + sizeof(t1)); //insert it into the appropriate vector
-         fillBytesVecWork(bytesVec,bytes + sizeof(t1), finalBytes, args...); //continue unpacking parameters
-    }
-}
 
+    }
+};
 
 template<typename T, typename... Args>
-void fillBytesVec(std::vector<char>& bytesVec, int totalBytes, T t1, Args... args) //fill a byte array with "args"
+struct TightTuple
+{
+    T t;
+    TightTuple<Args...> next;
+    TightTuple(T t_, Args... args) : t(t_), next(args...)
+    {
+
+    }
+};
+
+
+template<typename... Args>
+void fillBytesVec(std::vector<char>& bytesVec, int totalBytes, Args... args) //fill a byte array with "args"
 {
     /*Recursively fill "bytesVec" with the bytes of our arguments. "totalBytes" is the total number of bytes of data we are providing, useful if we want to
     pad with 0s if we under supplied arguments; -1 to do no padding*/
-    fillBytesVecWork(bytesVec,0,totalBytes,t1,args...);
+
+    TightTuple tup(args...);
+    char* bytes = reinterpret_cast<char*>(&tup);
+    /*for (int i = 0; i < sizeof(tup); i += sizeof(float))
+    {
+        float x;
+        memcpy(&x, bytes +  i, sizeof(float));
+        std::cout << x << " ";
+    }
+    std::cout << "\n";*/
+    bytesVec.insert(bytesVec.end(),bytes,bytes+sizeof(tup));
+    bytesVec.resize(bytesVec.size() + totalBytes - sizeof(tup),'\0');
 }
 
 template<typename Lambda>

@@ -259,7 +259,7 @@ void BasicRenderPipeline::bufferPayload(RenderPayload& payload)
     glBindVertexArray(VAO);
     for (auto it = payload.begin(); it != payload.end(); ++it)
     {
-        glBindBuffer(GL_ARRAY_BUFFER,vbos[it->first].VBO);
+        glBindBuffer(GL_ARRAY_BUFFER,getVBO(it->first));
         //std::cout << it->first << " " << getTotalFloats(it->second,it->first,vertexAmount)<< " " << it->second.bytes.size() << "\n";
         //std::cout << (float)it->second.bytes[0] << "\n";
         glBufferData(GL_ARRAY_BUFFER,it->second.size(),&it->second[0],GL_DYNAMIC_DRAW);
@@ -964,7 +964,7 @@ void TransManager::request(const RenderRequest& request, ZType z)
 
 void TransManager::render()
 {
-    requests.sort(TransRequestCompare());
+    requests.sort();
 
     int instances = 0; //technically can calculate this without making a new variable, but this is more readable
     for (auto it = requests.begin(); it != requests.end(); ++it)

@@ -6,7 +6,7 @@ This document keeps track of all changes as well as considered changes made to t
 	OpaqueManager is now GONE. The old way of storing opaques had one byte array for each render request, which at the time was just a Sprite and BasicRenderPipeline pair. In a large project, I expect there to be a lot of small byte arrays just lying around. Seems like a waste of memory, and honestly the overhead of maintaining a single sorted list of requests seems worth it for the memory cost. Sorting being a way to group similar sprites and render pipelines together of course. Wait a minute, this is exactly how TransManager works. In fact, the only difference is that TransManager sorts by z as well. So now, OpaqueManager is just another TransManager. SpriteManager pushes requests to OpaqueManager (a TransManager) the same as pushing to the TransManager except each request has a z of 0. There is a bit of a small redudancy here, since each Opaque request will still compare zs. Seems not that important rn though. 
 
 BENCHMARKS: 
-Rendering 100000 10x10 sprites in a 640x640 screen:
+Rendering 100000 10x10 sprites of benchmark_test.png in a 640x640 screen:
 	Release: 30-50 ms
 	Debug: 60-100 ms
 

@@ -78,7 +78,6 @@ int Font::writeLength(std::string str)
                                             {"vec4 color"},
                                             {"vec4 shade"},
                                             {"shade = color"});
-        std::cout << source << "\n";
         wordProgram = std::unique_ptr<BasicRenderPipeline>(new BasicRenderPipeline({LoadShaderInfo{source,GL_VERTEX_SHADER,false},
                                                                                    LoadShaderInfo{ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/fragment/wordFragment.h",GL_FRAGMENT_SHADER,true}}));
 

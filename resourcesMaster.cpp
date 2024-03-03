@@ -19,6 +19,6 @@ void ResourcesConfig::loadConfig()
     //no matter what, the "resources_dir" variable should be set
     if (config.find(RESOURCES_DIR) == config.end())
     {
-        config[RESOURCES_DIR] = "../../resources";
+        config[RESOURCES_DIR] = "C:/Users/leoou/OneDrive/Desktop/resources";
     }
 }

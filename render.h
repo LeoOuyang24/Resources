@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <list>
 #include <forward_list>
+#include <set>
 
 #include "glew.h"
 
@@ -182,8 +183,11 @@ struct __attribute__((packed, aligned(1))) UBOContents
     //tightly packed so we can pass the struct as is into our rendering pipeline
     glm::mat4 perspectiveMatrix;
     glm::mat4 viewMatrix;
-    float cameraZ;
     glm::vec2 screenDimen;
+    float cameraZ;
+
+    //TODO: Uniform buffers have wack ass layouts. This current structure is set up to avoid any issues but adding more entries may cause them. Look up std140 layout
+
 };
 
 struct ViewPort //has data about visible area on screen. Make sure you initialize before you do anything involving rendering
@@ -429,7 +433,7 @@ struct RenderRequest //bare bones info for each request: what sprite is being re
         {
             if (sprite == b.sprite)
             {
-                return mode < b.mode; //mode changes the least between requests, usually sprite-program pairs have the same mode, so we sort it last
+                return mode <= b.mode; //mode changes the least between requests, usually sprite-program pairs have the same mode, so we sort it last
             }
             return sprite < b.sprite;
         }
@@ -447,6 +451,10 @@ struct TransManager //handles transluscent fragment render requests.
         RenderRequest request;
         ZType z;
         int index;
+        bool operator<(const TransRequest& b) const
+        {
+            return (z == b.z) ? (request < b.request) : (z < b.z);
+        }
     };
     /**
       *   \brief Creates the request
@@ -460,17 +468,6 @@ struct TransManager //handles transluscent fragment render requests.
     void render();
     std::vector<char> data; //buffer used to store all vertex attributes. Unsorted.
 private:
-    struct TransRequestCompare //returns true if "a" is "less than" "b", and thus should be rendered first
-    {
-        bool operator()(const TransRequest& a, const TransRequest& b) const //sort by z, then by render mode, then by program, then by sprite, then by primitive
-        {
-            if (a.z == b.z)
-            {
-                return a.request < b.request;
-            }
-            return a.z < b.z; //fragments with smaller zs get rendered first
-        }
-    };
     /**
       *   \brief Renders every transluscent request, attempting to render all sprites/program pairs in one go for efficiency
       *
@@ -488,10 +485,10 @@ private:
 
 class SpriteManager //handles all sprite requests
 {
+public:
     static TransManager opaques;
     static TransManager trans;
 
-public:
     /**
       *   \brief Creates a rendering request, which will be rendered at the end of every game loop
       *
@@ -508,6 +505,10 @@ public:
         {
             trans.request(request,z); //transluscent manager needs to make a request specifically for the sprite-program pairing
             fillBytesVec(trans.data,request.program.getBytesPerRequest(),args...); //place request into transluscent manager
+            /*TightTuple tup(args...);
+            char* bytes = reinterpret_cast<char*>(&tup);
+            //trans.data.resize(trans.data.size() + request.program.getBytesPerRequest() - sizeof(tup),0);
+            trans.data.insert(trans.data.end(),bytes,bytes+sizeof(tup));*/
         }
         else
         {
@@ -515,6 +516,7 @@ public:
             fillBytesVec(opaques.data,request.program.getBytesPerRequest(),args...); //place request into transluscent manager
         }
     }
+
     ///Same function as above but you don't have to provide the "transluscent" parameter. Non-sprite requests are automatically put in TransManager
     ///Recommended for sprites, though can be used for non-sprites
     template<typename... Args>
