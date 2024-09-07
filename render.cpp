@@ -64,19 +64,19 @@ std::string findVertexInputsRgx = "layout \\(location = ([0-9]+)\\) in " + glslT
 Numbers getVertexInputs(const std::string& vertexFile)
 {
     Numbers numbers;
-    regexSearch(findVertexInputsRgx,vertexFile,[&numbers](std::sregex_iterator& it){
-    std::string type = (*it)[2];
+    regexSearch(findVertexInputsRgx,vertexFile,[&numbers](std::smatch& it){
+    std::string type = it[2];
     if (type == "bool" || type == "int" || type == "float")
     {
         numbers.push_back(1);
     }
     else if (type.substr(0,3) == "vec")
     {
-        numbers.push_back(std::stoi((*it)[3]));
+        numbers.push_back(std::stoi((it)[3]));
     }
     else if (type.substr(0,3) == "mat")
     {
-        numbers.push_back(pow(std::stoi((*it)[3]),2));
+        numbers.push_back(pow(std::stoi((it)[3]),2));
     }
     }); //replace environment variables
     return numbers;
@@ -97,7 +97,6 @@ int loadShaders(LoadShaderInfo&& info, Numbers* numbers)
     {
         result = readFile(info.code);
 
-        int shader = -1;
         if (result.second)
         {
             shaderCode = &result.first;
@@ -117,37 +116,46 @@ int loadShaders(LoadShaderInfo&& info, Numbers* numbers)
     *shaderCode = stripComments(*shaderCode);
 
     //lambda to replace environment variables.
-    auto lambda = [&shaderCode](std::sregex_iterator& it){
-                std::string varName = (*it)[1];
+    auto lambda = [](std::string& str, const std::smatch& it){
+                std::string varName = (it)[1];
                 if (ResourcesConfig::config.find(varName) != ResourcesConfig::config.end())
                 {
-                    *shaderCode = shaderCode->substr(0,it->position(0)) + ResourcesConfig::config[varName] + shaderCode->substr(it->position(0) + it->length(), shaderCode->size() - 1);
+                    //std::cout << varName << " " << ResourcesConfig::config[varName] << "\n";
+                    return ResourcesConfig::config[varName];
+                    //std::cout << "ASDF: " << it[0] << " " << it.position(0)<< "\n";
                 }
+                return std::string(it[0]);
                 };
 
     //replace environment variables
-    std::string varDefRegex = "\\$\\{(.*)\\}"; //regex for finding variables
-    regexSearch(varDefRegex,*shaderCode,lambda);
+    std::string varDefRegex = "\\$\\{(.*)\\}"; //regex for finding variables ${variable_name}
+    std::regex reg = std::regex(varDefRegex);
+    *shaderCode = regexReplace(reg,*shaderCode,lambda);
 
 
     //import include files
     std::ifstream openIncludeFile;
-    regexSearch("#include \"((.+\/)*[^\/]+)\"",*shaderCode,[&openIncludeFile,&shaderCode,&info](std::sregex_iterator& it){
-                std::string fileName = (*it)[1];//(*it)[2];
+    *shaderCode = regexReplace(std::regex("#include \"((.+\/)*[^\/]+)\"\\n"),*shaderCode,[&openIncludeFile,&shaderCode,&info](std::string,std::smatch& it){
+                std::string fileName = it[1];//(*it)[2];
                 openIncludeFile.open(fileName);
                 if (openIncludeFile.is_open())
                 {
                     std::stringstream stream;
                     stream << openIncludeFile.rdbuf();
-                    *shaderCode = shaderCode->substr(0,it->position(0)) + stream.str() + shaderCode->substr(it->position(0) + it->length(), shaderCode->size() - 1);
+                    openIncludeFile.close();
+                    return stream.str();
                 }
                 else
                 {
-                    std::cout << "Error loading shader " << (info.isFilePath ? info.code : "Unknown Shader") << ": Failed to find open include file " << fileName << std::endl;
+                    openIncludeFile.close();
+                    std::cerr << "Error loading shader " << (info.isFilePath ? info.code : "Unknown Shader") << ": Failed to find open include file " << fileName << std::endl;
+                    throw std::logic_error("Error loading shader");
+                    return std::string();
+
                 }
                 });
     //replace environment variables inside include files
-    regexSearch(varDefRegex,*shaderCode,lambda);
+    *shaderCode = regexReplace(reg,*shaderCode,lambda);
 
     //get vertex shader inputs
     if (info.shaderType == GL_VERTEX_SHADER && numbers)
@@ -157,6 +165,9 @@ int loadShaders(LoadShaderInfo&& info, Numbers* numbers)
 
     //actually create and compile the shader
     GLuint shader = glCreateShader(info.shaderType);
+
+
+    //std::cout << *shaderCode << "\n";
 
     const char* code = shaderCode->c_str();
     glShaderSource(shader,1, &code, NULL);
@@ -170,7 +181,7 @@ int loadShaders(LoadShaderInfo&& info, Numbers* numbers)
     {
         glGetShaderInfoLog(shader, 512, NULL, infoLog);
         std::cout << code << "\n";
-        std::cerr << "Error loading shader " << (info.isFilePath ? info.code : "Unknown Shader") << ": " << infoLog << std::endl;
+        std::cerr << "Error loading shader " << (info.isFilePath ? info.code : "Unknown Shader") << ": " << infoLog << " " << code << std::endl;
         return -1;
     }
 
@@ -196,14 +207,14 @@ std::string templateShader(const std::string& shaderContents,
 
     std::string finalShader = "";
     //handle inputs
-    regexSearch(findLastInputRegex,shaderContents,[&shaderContents,&finalShader,&inputs,isVertex](std::sregex_iterator& it)
+    regexSearch(findLastInputRegex,shaderContents,[&shaderContents,&finalShader,&inputs,isVertex](const std::smatch& it)
                 {
                     int layout = 0; //largest layout parameter, only used for vertex shaders
 
 
                     if (isVertex) //find the largest layout parameter
                     {
-                        layout = std::stoi((*it)[2]); //the 2nd capture group is the last number in the regex. Not sure how this works exactly but it seems to
+                        layout = std::stoi((it)[2]); //the 2nd capture group is the last number in the regex. Not sure how this works exactly but it seems to
                     }
 
                     int i = 1;
@@ -213,30 +224,38 @@ std::string templateShader(const std::string& shaderContents,
                         {
                             finalShader += "layout (location = " + std::to_string(layout + i) + ") ";
                         }
+                        else if (input[0] == 'i' && input[1] == 'n' && input[2] == 't') //if our input is an int
+                        {
+                            finalShader += "flat ";//add "flat" keyword
+                        }
                         finalShader += "in " + input + ";\n";
                         i++;
                     }
-                    finalShader = shaderContents.substr(0, it->position(0) + it->length()) + finalShader + shaderContents.substr(it->position(0) + it->length(), shaderContents.size());
+                    finalShader = shaderContents.substr(0, it.position(0) + it.length()) + finalShader + shaderContents.substr(it.position(0) + it.length(), shaderContents.size());
                 });
 
     //handle outputs now
-    regexSearch("(out " + glslTypesCaptureGroup + " .+\\n)+", finalShader,[&finalShader,&outputs](std::sregex_iterator& it){
+    regexSearch("(out " + glslTypesCaptureGroup + " .+\\n)+", finalShader,[&finalShader,&outputs](std::smatch& it){
                     std::string newOutputs = "";
                     for (auto output : outputs)
                     {
+                        if (output[0] == 'i' && output[1] == 'n' && output[2] == 't') //if our input is an int
+                        {
+                            newOutputs += "flat ";//add "flat" keyword
+                        }
                         newOutputs += "out " + output + ";\n";
                     }
-                    finalShader = finalShader.substr(0, it->position(0) + it->length()) + newOutputs + finalShader.substr(it->position(0) + it->length(), finalShader.size());
+                    finalShader = finalShader.substr(0, it.position(0) + it.length()) + newOutputs + finalShader.substr(it.position(0) + it.length(), finalShader.size());
                 } );
 
     //modify the main function
-     regexSearch("void main\\(\\)\\s*\\{([\\s\\S]*)\\}", finalShader,[&finalShader,&tasks](std::sregex_iterator& it){
+     regexSearch("void main\\(\\)\\s*\\{([\\s\\S]*)\\}", finalShader,[&finalShader,&tasks](std::smatch& it){
                     std::string newTasks = "";
                     for (auto task : tasks)
                     {
                         newTasks += task + ";\n"; //no need to provide semicolons, we provide them for you!
                     }
-                    finalShader = finalShader.substr(0, it->position(1) + it->length(1)) + "\n" + newTasks + finalShader.substr(it->position(1) + it->length(1), finalShader.size());
+                    finalShader = finalShader.substr(0, it.position(1) + it.length(1)) + "\n" + newTasks + finalShader.substr(it.position(1) + it.length(1), finalShader.size());
                 } );
     return finalShader;
 }
@@ -480,7 +499,7 @@ glm::vec2 RenderCamera::toScreen(const glm::vec2& point) const
     return (point - getTopLeft())/glm::vec2(ViewPort::getViewWidth(),ViewPort::getViewHeight())*ViewPort::getScreenDimen();
 }
 
-glm::vec4 RenderCamera::toWorld(const glm::vec4& change) const
+glm::vec4 RenderCamera::toWorld(const glm::vec4& change, ZType z) const
 {
     //REFACTOR: Finish this for perspective mode
 
@@ -488,11 +507,19 @@ glm::vec4 RenderCamera::toWorld(const glm::vec4& change) const
     return {point.x,point.y , change.z, change.a};
 }
 
-glm::vec2 RenderCamera::toWorld(const glm::vec2& point) const
+glm::vec2 RenderCamera::toWorld(const glm::vec2& point,ZType z) const
 {    //REFACTOR: Finish this for perspective mode
+    glm::vec2 screenDimen = ViewPort::getScreenDimen();
 
-     glm::vec2 screenDimen = ViewPort::getScreenDimen();
-    return getTopLeft() + glm::vec2(point.x/screenDimen.x*ViewPort::getViewWidth(), (point.y/screenDimen.y*ViewPort::getViewHeight()));
+    if (ViewPort::getProj() == ViewPort::PERSPECTIVE)
+    {
+        float screenHeight = 2*( getPos().z - z)*(tan(glm::radians(ViewPort::FOV/2)));
+        float screenWidth = screenHeight/screenDimen.y*screenDimen.x;
+        return glm::vec2(getPos()) + glm::vec2((point.x - screenDimen.x/2)/screenDimen.x*screenWidth, ((point.y - screenDimen.y/2)/screenDimen.y*screenHeight));
+    }
+
+
+    return getTopLeft()+ glm::vec2((point.x)/screenDimen.x*ViewPort::getViewWidth(), ((point.y)/screenDimen.x*ViewPort::getViewHeight()));
 }
 
 glm::vec4 RenderCamera::toAbsolute(const glm::vec4& rect) const
@@ -526,14 +553,14 @@ glm::vec4 ViewPort::toAbsolute(const glm::vec4& rect)
     return currentCamera ? currentCamera->toAbsolute(rect) : rect;
 }
 
-glm::vec2 ViewPort::toWorld(const glm::vec2& point)
+glm::vec2 ViewPort::toWorld(const glm::vec2& point, ZType z)
 {
-    return currentCamera ? currentCamera->toWorld(point) : point;
+    return currentCamera ? currentCamera->toWorld(point,z) : point;
 }
 
-glm::vec4 ViewPort::toWorld(const glm::vec4& rect)
+glm::vec4 ViewPort::toWorld(const glm::vec4& rect, ZType z)
 {
-    return glm::vec4(toWorld({rect.x,rect.y}),rect.z,rect.a);
+    return glm::vec4(toWorld({rect.x,rect.y},z),rect.z,rect.a);
 }
 
 glm::vec2 ViewPort::toScreen(const glm::vec2& point)
@@ -667,7 +694,7 @@ void ViewPort::update()
     uniforms.cameraZ = currentCamera ? currentCamera->getPos().z : 1;
     uniforms.viewMatrix = getViewMatrix();
 
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(UBOContents), &uniforms); // allocate enough memory for two 4x4 matricies and the camera position. Remember that a glm::vec4 is 16 bytes, so each matrix is 64 bytes
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(UBOContents), &uniforms);
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
@@ -795,7 +822,7 @@ bool isTransluscent(unsigned char* sprite, int width, int height)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 
-            int channels;
+            int channels = 0;
             //auto imageData = cv::imread(source);
             unsigned char* data = stbi_load(source.c_str(),&width, &height, &channels, 0);
             int rgb = 0;// GL_RGB*!transparent + GL_RGBA*transparent;
@@ -971,7 +998,6 @@ void TransManager::render()
     {
         //buffer.insert(buffer.end(),&data[it->index],&data[it->index] + it->request.program.getBytesPerRequest()); //for each request, store the data into buffer
         it->request.program.packData(buffer,&data[it->index]);
-
         instances++;
         if (std::next(it) == requests.end() || !(std::next(it)->request == it->request)) //if we have run out of requests, or if the next request requires a different sprite/renderprogram
         {
@@ -1042,7 +1068,8 @@ void PolyRender::init(int screenWidth, int screenHeight)
 
 
 
-    polyRenderer = std::make_unique<RenderProgram>("../../resources/shaders/vertex/polygonVertex.h","../../resources/shaders/fragment/simpleFragment.h");
+    polyRenderer = std::make_unique<RenderProgram>(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/vertex/polygonVertex.h",
+                                                   ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/fragment/simpleFragment.h");
 
     glPrimitiveRestartIndex(restart);
     glEnable(GL_PRIMITIVE_RESTART);

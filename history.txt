@@ -1,5 +1,21 @@
 This document keeps track of all changes as well as considered changes made to the resources as well as why they were made. Consider this a "learning from the past" kind of document. 
 
+8/12/2024:
+	Sequencer now uses std::function rather than SequenceUnits and Callables. Well, SequenceUnit still exists, but it's just a type def for an std::function. I have long been worried about std::function's overhead issues but honestly, I don't think it's a big deal. Using std::function on the other hand, allows me to just straight up pass lambdas into Sequencers to construct them, which is a nice bit of syntactical sugar. You can do this with templates, but at some point that template has to be brought down into a std::list. The old SequenceUnit and Callable system was basically a wrapper for this. If you then want to also pass in lambdas into the functions directly without using std::function, you'll have a function that looks like this:
+
+template<typename T>
+void addUnit(T t)
+{
+
+}
+
+This function can literally take anything, so in order for it to not clash with the normal functions that add a SequenceUnit or SequenceUnit shared pointer, you have to give this function a different name. But that messes with setup(...), which is supposed to allow us to add SequenceUnits, SequenceUnit shared pointers, and raw lambdas since you can no longer use function overloads to automatically call the correct addUnit variation.
+
+This is all a very convoluted way of saying, that I think the old SequenceUnit system was a bit overcooked. It maybe was a little more efficient, if that, who knows I didn't actually test it. Why reinvent the wheel for (maybe) marginally more efficiency when std::function makes the code so much more readable?
+
+8/11/2024:
+	Coming back from a Godot break, I've changed RenderRequest to no longer consider sprites when ordering in TransManager. This was done as an efficiency concern: by comparing sprites, sprites of the same kind could all be rendered in one go. However, it meant that there was no ordering based on request order. If Sprite A was requested first, then Sprite B, and let's say Sprite A has a higher memory address than Sprite B, Sprite B would be rendered first. Doesn't it make a lot more sense for a sprite that was requested first to be rendered first? There is of course a performance hit but let's be real here, how often have I really needed to render a ton of shit all at once? I think I've been overthinking efficiency at the cost of ease of use. I'm not making a state of the art engine over here. 
+
 2/23/2024:
 	BasicRenderPipeline now allows users to specify differing divisors for each vertex attribute. This allows for more flexibility. Basically, data is sorted and put into a RenderPayload which provides a byte array for all data of a certain divisor. These buffers are then sent to the GPU.
 	Requests in TransManager have been changed to a singly-linked forward_list which is unsorted until the actual render function is called. All our requests list has to do is add stuff to the end as fast as possible, so a forward_list seemed like the best choice. Then we sort at the end, which should be O(nlogn). Inserting into a red-black tree or multiset is logn, and we have to do it for all n requests, so it should work out to be the same. 

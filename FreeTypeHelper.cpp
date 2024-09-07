@@ -44,7 +44,9 @@ Font::Character::Character(char c, FT_Face& face) : Sprite()
     bearing =  glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top);
     advance =    face->glyph->advance.x;
 
-    //transluscent = true;
+    //characters are ALWAYS transluscent. They are always a mix of red pixels and black pixels, the latter of which the fragment shader then deletes
+    //by that definition, they are technically always opaque but because the black pixels are basically transparent, they are actually always transluscent
+    transluscent = true;
 
 }
 
@@ -81,7 +83,7 @@ int Font::writeLength(std::string str)
         wordProgram = std::unique_ptr<BasicRenderPipeline>(new BasicRenderPipeline({LoadShaderInfo{source,GL_VERTEX_SHADER,false},
                                                                                    LoadShaderInfo{ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/fragment/wordFragment.h",GL_FRAGMENT_SHADER,true}}));
 
-        tnr.init("../../resources/tnr.ttf");
+        tnr.init(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/tnr.ttf");
     }
     Font::Font(std::string source)
     {

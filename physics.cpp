@@ -82,7 +82,7 @@ glm::vec2 ChainLinkComponent::getLinkPos()
 {
     if (BasicMoveComponent* move = entity->getComponent<BasicMoveComponent>())
     {
-        return move->getCenter();
+        return move->getPositional().getCenter();
     }
 }
 
@@ -106,7 +106,7 @@ void ChainLinkComponent::update()
                 if (pointDistance(downPoint,ourPoint) > linkDist)
                 {
                     glm::vec2 disp = linkDist*glm::normalize(downPoint - ourPoint);
-                    move->setPos(downPoint - disp);
+                    move->getPositional().setPos(downPoint - disp);
                 }
             }
         }
@@ -145,7 +145,7 @@ Chain::Chain(ChainLinkRender renderFunc_, const glm::vec4& color1, const glm::ve
     {
         LinkPtr link = std::shared_ptr<Entity>(new Entity());
         glm::vec2 spawn = start + (float)i*tilt;
-        link->addComponent(*(new MoveComponent(0,glm::vec4(spawn,1,1),*link.get())));
+        link->addComponent(*(new BasicMoveComponent(glm::vec4(spawn,1,1),*link.get())));
         link->addComponent(*(new ChainLinkComponent(*link.get(),prev,linkDist_,tension_,friction_)));
         link->addComponent(*(new ChainRenderComponent(color1 + (float)i/length*gradient,renderFunc_,*link.get())));
         prev = link;
@@ -168,7 +168,7 @@ void Chain::setBottomPos(const glm::vec2& pos)
 
             if (BasicMoveComponent* move = link->getEntity().getComponent<BasicMoveComponent>())
                 {
-                    move->setPos(pos);
+                    (*move).getPositional().setPos(pos);
                 }
         }
 }

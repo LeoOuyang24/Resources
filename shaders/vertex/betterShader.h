@@ -6,15 +6,10 @@ layout (location = 2) in int depth;
 layout (location = 3) in float radians;
 layout (location = 4) in int effect;
 
-layout (std140) uniform Matrices
-{
-    mat4 projection;
-    mat4 view;
-    float cameraZ;
-    vec2 screenDimen;
-};
 
 #include "${resources_dir}/shaders/common/vertex_common.h"
+
+#include "${resources_dir}/shaders/common/uniforms.h"
 
 out vec2 texCoord;
 

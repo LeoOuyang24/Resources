@@ -6,20 +6,25 @@
 #include <unordered_set>
 #include <typeinfo>
 #include <list>
+#include <functional>
 
-#include "glGame.h"
 #include "render.h"
 #include "SDLhelper.h"
 
 class Entity;
 class Component;
 
+typedef std::shared_ptr<Entity> EntityPtr;
 
 
 template<class C>
 class ComponentContainer
 {
 private:
+    //for now, I think raw pointers are safe.
+    //The constructor ensures that our pointer can't be dangling
+    //Insert and remove are both safe
+    //The Entity destructor ensures that it and all its components are removed
     static std::unordered_map<Entity*,C*> components; //used to find components given an entity; use raw pointers because smart pointers are quite hard to manage, since they all have to point to the same thing and copy from one another
     static std::unordered_map<ComponentContainer*, Entity*> entities;
 
@@ -42,37 +47,31 @@ private:
     void remove() //this only removes the pointers; it is expected that whatever actually owned the Component will delete it
     {
         //std::cout << typeid(C).name() << " Deleting: " << components.size() << " " << entities.size()   << std::endl;
-        if (entities.count(this) > 0)
+        auto found = entities.find(this);
+        if (found != entities.end())
        {
-            components.erase(components.find(entities[this]));
-            entities.erase(entities.find(this));
+            components.erase(components.find(found->second));
+            entities.erase(found);
        }
       // Component* ptr = reinterpret_cast<Component*>(this);
 
     }
 
 public:
-    ComponentContainer<C>(Entity* entity)
+    ComponentContainer(EntityPtr entity)
     {
-        insert(entity);
-    }
-    ComponentContainer<C>(Entity& entity)
-    {
-        insert(&entity);
+        insert(entity.get());
     }
     virtual ~ComponentContainer()
     {
-        //std::cout << (components.find(entities[this]) == components.end()) << std::endl;
-              //  std::cout << typeid(this).name() << " Deleting: " <<components.size() << " " << entities.size()<< std::endl;
         remove();
-                   // std::cout << typeid(this).name() << " Deleting2: " <<components.size()  << " " << entities.size()<< std::endl;
-
     }
     static C* getComponent(Entity* e)
     {
-        if (components.count(e) > 0)
+        auto found = components.find(e);
+        if (found != components.end())
         {
-            return components[e];
+            return found->second;
         }
         else
         {
@@ -92,29 +91,69 @@ std::unordered_map<ComponentContainer<C>*, Entity*> ComponentContainer<C>::entit
 class Component : public ComponentContainer<Component>
 {
 protected:
-    Entity* entity;
+    std::weak_ptr<Entity> entity;
 
 public:
-    Component(Entity& owner);
+    Component(EntityPtr owner);
     virtual void update();
     virtual void collide(Entity& other);
     virtual void onDeath();
-    Entity& getEntity();
+    Entity* getEntity();
     virtual ~Component();
 };
 
-class RectComponent : public Component, public ComponentContainer<RectComponent>, public RectPositional
-{
-public:
-    RectComponent(const glm::vec4& rect, Entity& entity);
-    bool collides(const glm::vec4& rect);
-    void setRect(const glm::vec4& rect);
-    virtual void setPos(const glm::vec2& pos);
-    void setCenter(const glm::vec2& center);
-    glm::vec2 getPos();
-    glm::vec2 getCenter();
 
-    virtual ~RectComponent();
+class PositionalComponent : public Component, public ComponentContainer<PositionalComponent>
+{
+protected:
+    glm::vec2 pos;
+    float tilt = 0;
+public:
+    PositionalComponent(const glm::vec2& pos, EntityPtr entity);
+
+    virtual glm::vec2 getPos() const;
+    virtual glm::vec2 getCenter() const;
+    virtual float getTilt() const;
+    virtual glm::vec4 getBoundingRect() const;
+
+    virtual bool collidesRect(const glm::vec4& box) const; //how to determine whether or not this thing collides with a rect (used in quadtree)
+    virtual bool collidesLine(const glm::vec4& line) const; //returns if this collides with a line
+    virtual float distance(const glm::vec2& point) const; //finds how far this positional is from a point (used in to find all objects within a distance
+
+    virtual void setPos(const glm::vec2& pos);
+    void setTilt(float tilt_);
+};
+
+//rectangular hitbox.
+//"pos" becomes the center of the rectangle
+class RectComponent : public PositionalComponent, public ComponentContainer<RectComponent>
+{
+    glm::vec4 rect;
+public:
+    RectComponent(const glm::vec4& rect, EntityPtr entity);
+
+    glm::vec4 getBoundingRect() const;
+
+    bool collidesRect(const glm::vec4& box) const;
+    bool collidesLine(const glm::vec4& line) const;
+    float distance(const glm::vec2& point) const;
+
+    void setPos(const glm::vec2& pos);
+    void setRect(const glm::vec4& rect);
+};
+
+class CircleComponent : public PositionalComponent, public ComponentContainer<CircleComponent>
+{
+    float radius = 1;
+public:
+    CircleComponent(const glm::vec2& point, float radius, EntityPtr entity);
+    float getRadius() const;
+
+    glm::vec4 getBoundingRect() const;
+
+    bool collidesRect(const glm::vec4& box) const;
+    bool collidesLine(const glm::vec4& line) const;
+    float distance(const glm::vec2& point) const;
 };
 
 class BasicMoveComponent : public RectComponent, public ComponentContainer<BasicMoveComponent>
@@ -122,64 +161,11 @@ class BasicMoveComponent : public RectComponent, public ComponentContainer<Basic
 protected:
     glm::vec2 moveVec = glm::vec2(0); //the direction we will be moving in this frame, reset every frame
 public:
-    BasicMoveComponent(const glm::vec4& rect, Entity& entity);
+    BasicMoveComponent(const glm::vec4& rect, EntityPtr& entity);
     void addMoveVec(const glm::vec2& moveVec_); //add to moveVec
     void setMoveVec(const glm::vec2& moveVec_);
     virtual glm::vec2 getNextMoveVector(); //returns the next moveVector to add to position. Usually just moveVec*deltaTime
     void update(); //move moveVec amount and then reset moveVec
-};
-
-class MoveComponent : public BasicMoveComponent, public ComponentContainer<MoveComponent>
-{
-    float angle = 0; //Direction we are moving in. This would be calculated every update call if this wasn't a member variable
-protected:
-    static constexpr float distThreshold = .001; //max distance an entity can be away from a point and still be considered to be on that point
-    float baseSpeed = 0;
-    float speed = 0;
-    float velocity = 0; //the actual amount moved this frame.
-    bool ignoreTarget = 0; //sometimes, we just want to move according to the speed and not worry about target. This allows us to do that
-                            //only speed and angle will be used to calculate movement
-    glm::vec2 target; //point to move towards
-public:
-    MoveComponent(float speed, const glm::vec4& rect, Entity& entity);
-    void teleport(const glm::vec2& point); //centers the entity at the point and sets it as the new target
-    virtual glm::vec2 getNextMoveVector(); //gets the next moveVector
-    virtual void update();
-    virtual bool atPoint(const glm::vec2& point); //whether or not our center is within distThreshold of the point.
-    virtual bool atTarget(); //returns atPoint(target);
-    virtual void setTarget(const glm::vec2& point);
-    virtual const glm::vec2& getTarget();
-    void setTiltTowardsTarget();
-    virtual void setPos(const glm::vec2& pos); //sets both top left corner and target.
-    void setAngle(float val); //really only useful if ignoreTarget is true, since angle is otherwise manually calculated
-    float getAngle();
-    float getVelocity();
-    float getBaseSpeed();
-    float getCurSpeed();
-    void setSpeed(float newSpeed); //sets the speed for this frame only
-    void setIgnoreTarget(bool val);
-    virtual ~MoveComponent();
-
-};
-
-class RealMoveComponent : public MoveComponent, public ComponentContainer<RealMoveComponent> //move component that speeds up and slows down as it leaves/approaches the destination
-{
-    //class doesn't really work with ignoreTarget, so update will almost certainly have to be overriten
-    float accel = 0, decel = 0; //accel and decel = maxSpeed if they are set to 0
-    float maxSpeed = 0; //given a target, represents the maximum speed before having to decelerate
-protected:
-    void accelerate();
-    void decelerate();
-public:
-    RealMoveComponent(float accel_, float deccel_, float speed, const glm::vec4& rect, Entity& entity);
-    void setTarget(const glm::vec2& point);
-    float getAccel();
-    float getDecel();
-    virtual void update();
-    virtual ~RealMoveComponent()
-    {
-
-    }
 };
 
 class RenderComponent : public Component, public ComponentContainer<RenderComponent>
@@ -187,7 +173,7 @@ class RenderComponent : public Component, public ComponentContainer<RenderCompon
 protected:
     ZType zCoord = 0; //the z to render at, optional usage
 public:
-    RenderComponent(Entity& entity, ZType zCoord_ = 0);
+    RenderComponent(EntityPtr& entity, ZType zCoord_ = 0);
     virtual ~RenderComponent();
 
 };
@@ -196,7 +182,7 @@ class RectRenderComponent : public RenderComponent, public ComponentContainer<Re
 {
     glm::vec4 color;
 public:
-    RectRenderComponent(Entity& entity, const glm::vec4& color_);
+    RectRenderComponent(EntityPtr& entity, const glm::vec4& color_);
     //virtual void render(const SpriteParameter& param);
     void update();
 };
@@ -209,7 +195,7 @@ protected:
     BaseAnimation anime;
     Sprite* spriteSheet = 0;
 public:
-    BaseAnimationComponent(Entity& entity, Sprite& sprite, const BaseAnimation& anime, ZType zCoord_ = 0);
+    BaseAnimationComponent(EntityPtr& entity, Sprite& sprite, const BaseAnimation& anime, ZType zCoord_ = 0);
     template<typename... T>
     void request(BasicRenderPipeline& program, const glm::vec4& rect, ZType z, const glm::vec4& subSection, T... stuff) //pass subSection to SpriteManager, as well as any other arguments
     {
@@ -220,28 +206,6 @@ public:
     virtual void update();
 };
 
-/*class SpriteComponent : public RenderComponent, public ComponentContainer<SpriteComponent> //also handles Animations
-{
-    bool animated = false; //whether it's an animation or sprite
-protected:
-    int startingFrame = 0; //this number is useful for calculating which frame to render right now. Used in defaultAParam(); Set to DeltaTime::currentFrame to render the first frame
-    Sprite* sprite = nullptr;
-    SpriteParameter sParam;
-    AnimationParameter aParam;
-public:
-    virtual SpriteParameter defaultSParam(); //returns the sprite parameter used by default
-    virtual AnimationParameter defaultAParam(); //returns the Animation Parameter used by default
-    SpriteComponent(Sprite& sprite_, bool animated_, Entity& entity); //loads a sprite or animation
-    virtual void render(const SpriteParameter& param);
-    void setParam(const SpriteParameter& param, const AnimationParameter& animeParam = AnimationParameter()); //set modified to true if you don't want to call default render
-    void setAParam(const AnimationParameter& animeParam); //set only aParam so sParam isn't overriden
-    void update(); //renders the sprite, taking the RenderCamera into account automatically
-    virtual ~SpriteComponent()
-    {
-
-    }
-};*/
-
 class BaseHealthComponent : public Component, public ComponentContainer<BaseHealthComponent>
 {
 protected:
@@ -250,7 +214,7 @@ protected:
     float maxHealth = 0; //set maxHealth to be negative one to basically have no max health limit
     float health = 0;
 public:
-    BaseHealthComponent(float invulnTime_,float health_, float maxHealth_, Entity& entity);
+    BaseHealthComponent(float invulnTime_,float health_, float maxHealth_, EntityPtr& entity);
     virtual void addHealth(float damage); //damage can be positive or negative
     float getHealth();
     float getMaxHealth();
@@ -261,9 +225,27 @@ public:
     }
 };
 
+typedef int TASK_ID;
 
 class Entity
 {
+    //for now, please do not copy nor move Entities
+    Entity(Entity& )
+    {
+
+    }
+    Entity(Entity&&)
+    {
+
+    }
+    void operator=(Entity&)
+    {
+
+    }
+    void operator=(Entity&&)
+    {
+
+    }
 protected:
     std::unordered_map<Component*,std::shared_ptr<Component>> components;
     TASK_ID taskID = 0; //this ID makes it easy to track if an entity has already called update this frame.
@@ -317,6 +299,48 @@ public:
 
 };
 
+namespace {
+    void checkComponentsBase(auto func)
+    {
+        //func();
+    }
+
+    /*template<typename Component1>
+    void checkComponentsHelper(Entity* entity, auto func)
+    {
+        if (Component1* ptr = entity->getComponent<Component1>())
+        {
+            checkComponentsBase(entity,func);
+        }
+    }*/
+
+    template<typename Component1, typename... Components>
+    void checkComponentsHelper(Entity* entity, auto func)
+    {
+        if (Component1* ptr = entity->getComponent<Component1>())
+        {
+            if constexpr ((sizeof...(Components) == 0))
+            {
+                std::bind_front(func,ptr)();
+            }
+            else
+            {
+                checkComponentsHelper<Components...>(entity,std::bind_front(func,ptr));
+            }
+        }
+    }
+
+}
+template<typename... Components>
+void checkComponents(Entity* entity, auto func)
+{
+    if (entity)
+    {
+        checkComponentsHelper<Components...>(entity,std::bind_front(func,entity));
+    }
+}
+
+
 class EntityAssembler //returns an entity with certain components attached. Unique to different entities
 {
 public:
@@ -329,8 +353,8 @@ public:
     const std::weak_ptr<EntityAssembler> assembler;
     const std::string name;
     const int id;
-    IDComponent(Entity& entity, const std::shared_ptr<EntityAssembler>& assembler_, std::string name_ = "", int id_ = -1);
-    IDComponent(Entity& entity, std::string name_ = "", int id_ = -1); //used if you don't care about assembler
+    IDComponent(EntityPtr& entity, const std::shared_ptr<EntityAssembler>& assembler_, std::string name_ = "", int id_ = -1);
+    IDComponent(EntityPtr& entity, std::string name_ = "", int id_ = -1); //used if you don't care about assembler
 };
 
 class EntityManager //convenient class for storing and updating each entity
@@ -342,13 +366,13 @@ protected:
                                             //returns true if the entity should be deleted after this function call
 public:
     ~EntityManager();
-    virtual void addEntity(Entity& entity);
     virtual void addEntity(const std::shared_ptr<Entity>& entity);
     virtual EntityIt removeEntity(Entity* entity);
     std::shared_ptr<Entity> getEntity(Entity* ptr);
     virtual void update();
 };
 
+class SpatialGrid;
 class EntityPosManager : public EntityManager//Entity Manager that also keeps a quadtree to track entity position
 {
     std::unique_ptr<SpatialGrid> grid;
@@ -358,9 +382,7 @@ public:
     ~EntityPosManager();
     virtual void init(int gridSize);
     SpatialGrid* getContainer(); //can return null, most likely because init was never called
-    using EntityManager::addEntity;
     virtual void addEntity(const std::shared_ptr<Entity>& ptr);
-    virtual void addEntity(Entity& entity, float x, float y, bool centered = true); //sets center position if centered is true, otherwise sets top left corner
     virtual void addEntity(const std::shared_ptr<Entity>& (entity), float x, float y, bool centered = true);
     EntityIt removeEntity(Entity* entity);
     void update();

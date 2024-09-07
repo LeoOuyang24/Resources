@@ -23,6 +23,8 @@ void addPointToBuffer(float buffer[], glm::vec3 point, int index);
 void addPointToBuffer(float buffer[], glm::vec2 point, int index);
 void addPointToBuffer(float buffer[], glm::vec4 point, int index);
 
+
+typedef int ZType; //used to represent z values
 typedef std::vector<int> Numbers; //represents list of numbers where each number is how many GLfloats belong to a vertex attribute
 
 struct LoadShaderInfo
@@ -212,8 +214,8 @@ struct ViewPort //has data about visible area on screen. Make sure you initializ
     static glm::vec2 toAbsolute(const glm::vec2& point);//given a screen coordinate, renders it to that point on the screen regardless of zoom
     static glm::vec4 toAbsolute(const glm::vec4& rect);
 
-    static glm::vec2 toWorld(const glm::vec2& point);//if currentCamera is not null, uses currentCamera to project screen point to world point. Otherwise, return "point"
-    static glm::vec4 toWorld(const glm::vec4& point);
+    static glm::vec2 toWorld(const glm::vec2& point, ZType z = 0);//if currentCamera is not null, uses currentCamera to project screen point to world point. Otherwise, return "point"
+    static glm::vec4 toWorld(const glm::vec4& point, ZType z = 0);
 
     static glm::vec2 toScreen(const glm::vec2& point); //same as toWorld but for toScreen
     static glm::vec4 toScreen(const glm::vec4& point);
@@ -335,9 +337,8 @@ public:
     glm::vec2 toScreen(const glm::vec2& point) const; //converts a rect from the world coordinate to the screen coordinate
     glm::vec4 toScreen(const glm::vec4& rect) const;
 
-    glm::vec2 toWorld(const glm::vec2& point) const; //converts a rect from the screen coordinate to the world coordinate
-    glm::vec4 toWorld(const glm::vec4& rect) const;
-
+    glm::vec2 toWorld(const glm::vec2& point, ZType z = 0) const; //converts a rect from the screen coordinate to the world coordinate. if using perspective mode, assumes the point is at the given z
+    glm::vec4 toWorld(const glm::vec4& rect, ZType z = 0) const; //
     glm::vec2 toAbsolute(const glm::vec2& point) const;//given a screen coordinate, renders it to that point on the screen regardless of zoom
     glm::vec4 toAbsolute(const glm::vec4& rect) const;
 };
@@ -352,14 +353,14 @@ enum RenderEffect
     HORIZMIRROR
 };
 
-bool isTransluscent(unsigned char* sprite, int width, int height); //returns true if sprite has any pixels with an alpha value between 0 and 1, non-inclusive
+bool isTransluscent(unsigned char* sprite, int width, int height); //returns true if sprite has any pixels with an alpha value that is not 1
 
 class Sprite
 {
 protected:
     int width = 0, height = 0;
     unsigned int texture = 0;
-    bool transluscent = false;
+    bool transluscent = false; //returns true if sprite has any pixels with an alpha value that is not 1
 public:
     void load(std::string source);
     std::string source = "";
@@ -431,17 +432,12 @@ struct RenderRequest //bare bones info for each request: what sprite is being re
     {
          if (&program == &b.program)
         {
-            if (sprite == b.sprite)
-            {
-                return mode <= b.mode; //mode changes the least between requests, usually sprite-program pairs have the same mode, so we sort it last
-            }
-            return sprite < b.sprite;
+            return mode < b.mode;
         }
         return &program < &b.program;
     }
 };
 
-typedef int ZType; //used to represent z values
 struct TransManager //handles transluscent fragment render requests.
 {
      //Transluscents must be rendered after opaques and sorted by distance from the screen from furthest
@@ -523,8 +519,9 @@ public:
     static void requestSprite(const RenderRequest& request_, const glm::vec4& rect, ZType z, Args... args) //request for sprites
     {
         //many sprite shaders have a rect as their 2nd parameter, so this just makes that easier to account for
-        request(request_,z,true,rect,z,args...);
+        request(request_,z,(request_.sprite ? request_.sprite->getTransluscent() : true),rect,z,args...);
     }
+
 
     /**
       *   \brief Renders all requests

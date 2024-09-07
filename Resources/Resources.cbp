@@ -14,7 +14,7 @@
 				<Option compiler="mingw-w64" />
 				<Compiler>
 					<Add option="-g" />
-					<Add option="-std=c++17" />
+					<Add option="-std=c++20" />
 				</Compiler>
 			</Target>
 			<Target title="Release">
@@ -34,6 +34,7 @@
 		<Compiler>
 			<Add option="-O3" />
 			<Add option="-Wall" />
+			<Add option="-std=c++20" />
 			<Add directory="../../SDLstuff/SDL2-2.0.8/x86_64-w64-mingw32/include/SDL2" />
 			<Add directory="../../glew-2.0.0/include/GL" />
 			<Add directory="../../glm/glm" />
@@ -47,21 +48,18 @@
 		<Unit filename="../FreeTypeHelper.h" />
 		<Unit filename="../SDLhelper.cpp" />
 		<Unit filename="../SDLhelper.h" />
+		<Unit filename="../benchmark/main.cpp" />
 		<Unit filename="../components.cpp" />
 		<Unit filename="../components.h" />
 		<Unit filename="../geometry.cpp" />
 		<Unit filename="../geometry.h" />
 		<Unit filename="../glGame.cpp" />
 		<Unit filename="../glGame.h" />
-		<Unit filename="../glInterface.cpp">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
 		<Unit filename="../glInterface.h">
 			<Option target="&lt;{~None~}&gt;" />
 		</Unit>
-		<Unit filename="../pathfind.cpp" />
-		<Unit filename="../physics.cpp" />
-		<Unit filename="../physics.h" />
+		<Unit filename="../positionals.cpp" />
+		<Unit filename="../positionals.h" />
 		<Unit filename="../render.cpp" />
 		<Unit filename="../render.h" />
 		<Unit filename="../resourcesMaster.cpp" />
@@ -76,17 +74,23 @@
 		<Unit filename="../shaders/fragment/simpleFragment.h" />
 		<Unit filename="../shaders/fragment/simpleTextureFragment.h" />
 		<Unit filename="../shaders/fragment/wordFragment.h" />
+		<Unit filename="../shaders/vertex/absoluteVertex.h" />
 		<Unit filename="../shaders/vertex/animationShader.h" />
 		<Unit filename="../shaders/vertex/betterShader.h" />
 		<Unit filename="../shaders/vertex/dottedVertex.h" />
 		<Unit filename="../shaders/vertex/polygonVertex.h" />
+		<Unit filename="../shaders/vertex/polygonVertexTest.h" />
 		<Unit filename="../shaders/vertex/simpleTextureVertex.h" />
 		<Unit filename="../shaders/vertex/simpleVertex.h" />
+		<Unit filename="../shaders/vertex/testShader.h" />
 		<Unit filename="../shaders/vertex/vertexShader.h" />
 		<Unit filename="../shaders/vertex/wordVertex.h" />
 		<Unit filename="../stb_image.h" />
 		<Unit filename="../vanilla.cpp" />
 		<Unit filename="../vanilla.h" />
+		<Unit filename="positionals.cpp">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
 		<Extensions>
 			<lib_finder disable_auto="1" />
 		</Extensions>

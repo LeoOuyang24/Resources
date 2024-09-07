@@ -10,11 +10,12 @@ void main()
     vec4 text = texture(sprite,texCoord);
     if (text.r < .1)
     {
-        fragColor = vec4(0);
+        //discard;
+        fragColor = vec4(1,0,0,0);
     }
     else
     {
-        fragColor = vec4(vec3(shade),1);
+        fragColor = shade;
     }
 
 }

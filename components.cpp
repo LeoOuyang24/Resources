@@ -3,10 +3,11 @@
 #include "vanilla.h"
 #include "SDLHelper.h"
 #include "render.h"
+#include "glGame.h"
 
 #include "components.h"
 
-Component::Component(Entity& entity) : ComponentContainer<Component>(nullptr),  entity(&entity)
+Component::Component(std::shared_ptr<Entity> entity_) : ComponentContainer<Component>(EntityPtr(nullptr)),  entity(entity_)
 {
 
 }
@@ -24,9 +25,9 @@ void Component::onDeath()
 
 }
 
-Entity& Component::getEntity()
+Entity* Component::getEntity()
 {
-    return *entity;
+    return entity.lock().get();
 }
 
 Component::~Component()
@@ -34,51 +35,126 @@ Component::~Component()
     //std::cout << this << std::endl;
 }
 
-RectComponent::RectComponent(const glm::vec4& rect, Entity& entity) : Component(entity), ComponentContainer<RectComponent>(&entity), RectPositional(rect)
+PositionalComponent::PositionalComponent(const glm::vec2& pos_, EntityPtr entity) : Component(entity), ComponentContainer<PositionalComponent>(entity), pos(pos_)
 {
 
 }
 
-
-bool RectComponent::collides(const glm::vec4& target)
+glm::vec2 PositionalComponent::getPos() const
 {
-    return vecIntersect(target,rect,0,tilt);
+    return pos;
 }
 
-void RectComponent::setRect(const glm::vec4& rect)
+glm::vec2 PositionalComponent::getCenter() const
 {
-    this->rect.z = rect.z;
-    this->rect.a = rect.a;
-    setPos({rect.x,rect.y});
+    return getPos();
+}
+
+float PositionalComponent::getTilt() const
+{
+    return tilt;
+}
+
+glm::vec4 PositionalComponent::getBoundingRect() const
+{
+    return glm::vec4(getPos(),0,0);
+}
+
+bool PositionalComponent::collidesRect(const glm::vec4& box) const
+{
+    return pointInVec(box,pos);
+}
+
+bool PositionalComponent::collidesLine(const glm::vec4& line) const
+{
+    return pointLineDistance(line,pos) == 0;
+}
+
+float PositionalComponent::distance(const glm::vec2& point) const
+{
+    return glm::length(pos - point);
+}
+
+void PositionalComponent::setPos(const glm::vec2& pos_)
+{
+    pos = pos_;
+}
+
+void PositionalComponent::setTilt(float tilt_)
+{
+    tilt = tilt_;
+}
+
+RectComponent::RectComponent(const glm::vec4& rect_, EntityPtr entity) : PositionalComponent({rect.x + rect.z/2,rect.y + rect.a/2}, entity), ComponentContainer<RectComponent>(entity), rect(rect_)
+{
+
+}
+
+glm::vec4 RectComponent::getBoundingRect() const
+{
+    return rect;
+}
+
+bool RectComponent::collidesRect(const glm::vec4& box) const
+{
+    return vecIntersect(rect,box);
+}
+
+bool RectComponent::collidesLine(const glm::vec4& line) const
+{
+    return lineInVec({line.x,line.y},{line.z,line.a},rect,tilt);
+}
+
+float RectComponent::distance(const glm::vec2& point) const
+{
+    return pointVecDistance(rect,point.x,point.y,tilt);
 }
 
 void RectComponent::setPos(const glm::vec2& pos)
 {
-    this->rect.x = pos.x;
-    this->rect.y = pos.y;
+    glm::vec2 dimen = {rect.z,rect.a};
+    setRect({pos - 0.5f*dimen, dimen});
 }
 
-void RectComponent::setCenter(const glm::vec2& center)
+void RectComponent::setRect(const glm::vec4& rect_)
 {
-    setPos(center - glm::vec2(rect.z/2,rect.a/2));
+    rect = rect_;
+    PositionalComponent::setPos({rect.x + rect.z/2,rect.y + rect.a/2});
+
 }
 
-glm::vec2 RectComponent::getPos()
-{
-    return {rect.x,rect.y};
-}
-
-glm::vec2 RectComponent::getCenter()
-{
-    return {rect.x + rect.z/2, rect.y + rect.a/2};
-}
-
-RectComponent::~RectComponent()
+CircleComponent::CircleComponent(const glm::vec2& center, float radius_, EntityPtr entity) : PositionalComponent(center, entity), ComponentContainer<CircleComponent>(entity), radius(radius_)
 {
 
 }
 
-BasicMoveComponent::BasicMoveComponent(const glm::vec4& rect, Entity& entity) : RectComponent(rect, entity), ComponentContainer<BasicMoveComponent>(entity)
+float CircleComponent::getRadius() const
+{
+    return radius;
+}
+
+glm::vec4 CircleComponent::getBoundingRect() const
+{
+    return glm::vec4(getPos() - glm::vec2(radius),glm::vec2(radius*2));
+}
+
+bool CircleComponent::collidesRect(const glm::vec4& box) const
+{
+    return pointVecDistance(box,getPos().x,getPos().y,0) <= radius;
+}
+
+bool CircleComponent::collidesLine(const glm::vec4& line) const
+{
+    return pointLineDistance(line,getPos()) <= radius;
+}
+
+float CircleComponent::distance(const glm::vec2& point) const
+{
+    float distance = glm::length(getPos()-point);
+    return std::max(distance - radius, distance);
+}
+
+BasicMoveComponent::BasicMoveComponent(const glm::vec4& rect, EntityPtr& entity) : RectComponent(rect, entity), ComponentContainer<BasicMoveComponent>(entity)
 {
 
 }
@@ -101,193 +177,12 @@ glm::vec2 BasicMoveComponent::getNextMoveVector()
 void BasicMoveComponent::update()
 {
     glm::vec2 move = getNextMoveVector();
-    setPos({rect.x + move.x, rect.y+ move.y});
+    setPos(getPos() + move);
 
     moveVec = glm::vec2(0);
 }
 
-MoveComponent::MoveComponent(float speed, const glm::vec4& rect, Entity& entity) : BasicMoveComponent(rect, entity), ComponentContainer<MoveComponent>(&entity),
-                                                                                    baseSpeed(speed),speed(speed)
-{
-    target = {rect.x + rect.z/2, rect.y + rect.a/2};
-}
-
-void MoveComponent::teleport(const glm::vec2& point)
-{
-    rect.x = point.x - rect.z/2; //rect.x += point.x - (rect.x + rect.z/2) -> rect.x = point.x - rect.z/2
-    rect.y = point.y - rect.a/2;
-    setTarget(point);
-}
-
-glm::vec2 MoveComponent::getNextMoveVector()
-{
-    glm::vec2 center = {rect.x + rect.z/2, rect.y + rect.a/2};
-    if (!ignoreTarget)
-    {
-        angle = atan2((target.y - (center.y)),(target.x - (center.x)));
-    }
-    glm::vec2 increment = {cos(angle)*speed*DeltaTime::deltaTime,sin(angle)*speed*DeltaTime::deltaTime};
-
-    if (ignoreTarget)
-    {
-        return increment;
-    }
-    return glm::vec2(absMin(increment.x,target.x - center.x),absMin(increment.y, target.y - center.y));
-}
-
-void MoveComponent::update()
-{
-    glm::vec2 center = getCenter();
-    if (!atTarget() || ignoreTarget)
-    {
-        addMoveVec(getNextMoveVector()); //add getNextMoveVector rather than just straight up setting it equal. This helps add it to any other modifiers (such as those from ForcesComponent)
-        BasicMoveComponent::update();
-    }
-    velocity = pointDistance({rect.x + rect.z/2, rect.y + rect.a/2}, center); //distance between new center vs old center
-    speed = baseSpeed;
-}
-
-bool MoveComponent::atPoint(const glm::vec2& point)
-{
-    glm::vec2 center = getCenter();
-    return pointDistance(getCenter(),point) <= distThreshold;
-}
-
-bool MoveComponent::atTarget()
-{
-    return atPoint(target);
-}
-
-void MoveComponent::setTarget(const glm::vec2& point)
-{
-    target = point;
-}
-
-const glm::vec2& MoveComponent::getTarget()
-{
-    return target;
-}
-
-void MoveComponent::setTiltTowardsTarget()
-{
-     glm::vec2 center = getCenter();
-    tilt = atan2(target.y - center.y ,target.x - center.x);
-}
-
-void MoveComponent::setPos(const glm::vec2& pos)
-{
-    rect.x =pos.x;
-    rect.y = pos.y;
-    target.x = pos.x + rect.z/2;
-    target.y = pos.y + rect.a/2;
-}
-
-void MoveComponent::setAngle(float val)
-{
-    angle = val;
-}
-
-
-float MoveComponent::getAngle()
-{
-    return angle;
-}
-
-float MoveComponent::getVelocity()
-{
-    return velocity;
-}
-
-float MoveComponent::getBaseSpeed()
-{
-    return baseSpeed;
-}
-
-float MoveComponent::getCurSpeed()
-{
-    return speed;
-}
-
-void MoveComponent::setSpeed(float newspeed)
-{
-    speed = newspeed;
-}
-
-void MoveComponent::setIgnoreTarget(bool val)
-{
-    ignoreTarget = val;
-}
-
-MoveComponent::~MoveComponent()
-{
-
-}
-
-void RealMoveComponent::accelerate()
-{
-    speed = std::max(0.0f,std::min(speed + accel*DeltaTime::deltaTime,baseSpeed)); //accelerate
-}
-
-void RealMoveComponent::decelerate()
-{
-    speed = std::max(0.0f,std::min(speed - decel*DeltaTime::deltaTime,baseSpeed));
-}
-
-RealMoveComponent::RealMoveComponent(float accel_, float deccel_, float speed, const glm::vec4& rect, Entity& entity) : MoveComponent(speed, rect, entity),
-                                                                                                                            ComponentContainer<RealMoveComponent>(entity),
-                                                                                                                            accel(accel_ == 0 ? speed : accel_),
-                                                                                                                            decel(deccel_ == 0 ? speed : deccel_)
-{
-    speed = 0;
-}
-
-void RealMoveComponent::setTarget(const glm::vec2& point)
-{
-    if (point != target)
-    {
-        glm::vec2 center= getCenter();
-        speed =0;
-          maxSpeed = std::min(baseSpeed,(float)sqrt(2*pointDistance(point,center)*accel*decel/(accel + decel)));
-          tilt = atan2(point.y - center.y ,point.x - center.x);
-    }
-    MoveComponent::setTarget(point);
-}
-
-float RealMoveComponent::getAccel()
-{
-    return accel;
-}
-
-float RealMoveComponent::getDecel()
-{
-    return decel;
-}
-
-void RealMoveComponent::update()
-{
-    if (!atTarget())
-    {
-       // float dist = pointDistance(getCenter(),target);
-        float decelDist = maxSpeed/decel*maxSpeed/2.0; //Distance traveled while decelerating; integral of speed vs time with a constant deceleration rate.
-        if (pointDistance(getCenter(),target) > decelDist)
-        {
-            accelerate();
-        }
-        else
-        {
-            decelerate();
-            speed = std::max(MoveComponent::distThreshold,speed);
-        }
-        setTiltTowardsTarget(); //convenient to constnatly set this angle in case it doesn't get set incorrectly
-    }
-
-  //  std::cout << speed << "\n";
-    float oldSpeed = speed;
-    MoveComponent::update(); //we want to use every part of MoveComponent::update except the part where it overrides our speed
-    speed = oldSpeed;
-}
-
-RenderComponent::RenderComponent(Entity& entity, ZType zCoord_ ) : Component(entity), ComponentContainer<RenderComponent>(&entity), zCoord(zCoord_)
+RenderComponent::RenderComponent(EntityPtr& entity, ZType zCoord_ ) : Component(entity), ComponentContainer<RenderComponent>(entity), zCoord(zCoord_)
 {
 
 }
@@ -296,24 +191,24 @@ RenderComponent::~RenderComponent()
 
 }
 
-RectRenderComponent::RectRenderComponent(Entity& entity, const glm::vec4& color_) : color(color_),  RenderComponent(entity), ComponentContainer<RectRenderComponent>(entity)
+RectRenderComponent::RectRenderComponent(EntityPtr& entity, const glm::vec4& color_) : color(color_),  RenderComponent(entity), ComponentContainer<RectRenderComponent>(entity)
 {
 
 }
 
 void RectRenderComponent::update()
 {
-    if (entity)
+    if (Entity* entity = getEntity())
     {
-        if (auto rect = entity->getComponent<RectComponent>())
+        if (auto rect = entity->getComponent<PositionalComponent>())
         {
-            glm::vec4 box = rect->getRect();
+            glm::vec4 box = rect->getBoundingRect();
             PolyRender::requestRect(box,color,true,rect->getTilt(),0);
         }
     }
 }
 
-BaseAnimationComponent::BaseAnimationComponent(Entity& entity, Sprite& sprite_, const BaseAnimation& anime_, ZType zCoord_) : RenderComponent(entity, zCoord_), ComponentContainer<BaseAnimationComponent>(entity),
+BaseAnimationComponent::BaseAnimationComponent(EntityPtr& entity, Sprite& sprite_, const BaseAnimation& anime_, ZType zCoord_) : RenderComponent(entity, zCoord_), ComponentContainer<BaseAnimationComponent>(entity),
                                                                                                  anime(anime_), spriteSheet(&sprite_)
 {
 
@@ -326,10 +221,10 @@ Sprite* BaseAnimationComponent::getSpriteSheet()
 
 void BaseAnimationComponent::update()
 {
-    if (entity)
-    if (RectComponent* rect = entity->getComponent<RectComponent>())
+    if (Entity* entity = getEntity())
+    if (PositionalComponent* rect = entity->getComponent<PositionalComponent>())
     {
-        request(*ViewPort::animeProgram,rect->getRect(),zCoord,BaseAnimation::getFrameFromStart(start,anime),rect->getTilt());
+        request(*ViewPort::animeProgram,rect->getBoundingRect(),zCoord,BaseAnimation::getFrameFromStart(start,anime),rect->getTilt());
     }
     if (start == 0)
     {
@@ -356,7 +251,7 @@ void BaseAnimationComponent::update()
     return param;
 }*/
 
-/*SpriteComponent::SpriteComponent(Sprite& sprite_, bool animated_, Entity& entity) : RenderComponent(entity),
+/*SpriteComponent::SpriteComponent(Sprite& sprite_, bool animated_, EntityPtr& entity) : RenderComponent(entity),
                                                                                                                 ComponentContainer<SpriteComponent>(entity),
                                                                                                                         sprite(&sprite_),
                                                                                                                         animated(animated_)
@@ -397,7 +292,7 @@ void SpriteComponent::update()
         setParam(defaultSParam(),defaultAParam()); //reset params
 }
 */
-BaseHealthComponent::BaseHealthComponent(float invulnTime_, float health_,float maxHealth_, Entity& entity) :
+BaseHealthComponent::BaseHealthComponent(float invulnTime_, float health_,float maxHealth_, EntityPtr& entity) :
                                                                 Component(entity), ComponentContainer<BaseHealthComponent>(entity),
                                                                 invulnTime(invulnTime_), health(health_), maxHealth(maxHealth_) //health
 {
@@ -500,7 +395,7 @@ Entity* EntityAssembler::assemble()
     return nullptr;
 }
 
-IDComponent::IDComponent(Entity& entity, const std::shared_ptr<EntityAssembler>& assembler_, std::string name_, int id_) :
+IDComponent::IDComponent(EntityPtr& entity, const std::shared_ptr<EntityAssembler>& assembler_, std::string name_, int id_) :
                                                                                                 Component(entity),
                                                                                                 ComponentContainer<IDComponent>(entity),
                                                                                                 assembler(assembler_),
@@ -510,7 +405,7 @@ IDComponent::IDComponent(Entity& entity, const std::shared_ptr<EntityAssembler>&
 
 }
 
-IDComponent::IDComponent(Entity& entity, std::string name_, int id_) : Component(entity),
+IDComponent::IDComponent(EntityPtr& entity, std::string name_, int id_) : Component(entity),
                                                                         ComponentContainer<IDComponent>(entity),
                                                                         name(name_),
                                                                         id(id_)
@@ -529,12 +424,6 @@ EntityManager::~EntityManager()
     entities.clear();
 }
 
-void EntityManager::addEntity(Entity& entity)
-{
-    std::shared_ptr<Entity> ptr(&entity);
-    addEntity(ptr);
-}
-
 void EntityManager::addEntity(const std::shared_ptr<Entity>& entity)
 {
     if (entities.find(entity.get()) == entities.end() && entity.get())
@@ -550,6 +439,7 @@ EntityManager::EntityIt EntityManager::removeEntity(Entity* entity)
     {
         return entities.erase(it);
     }
+    return it;
 }
 
 std::shared_ptr<Entity> EntityManager::getEntity(Entity* ptr)
@@ -568,6 +458,7 @@ std::shared_ptr<Entity> EntityManager::getEntity(Entity* ptr)
 void EntityManager::update()
 {
     auto end = entities.end();
+    int i = 0;
     for (auto it = entities.begin(); it != end;)
     {
        if (forEachEntity(*it->first))
@@ -578,17 +469,19 @@ void EntityManager::update()
        {
            ++it;
        }
+       i++;
     }
 }
 
 bool EntityPosManager::forEachEntity(Entity& entity)
 {
-    if (RectComponent* rect = entity.getComponent<RectComponent>())
+    if (PositionalComponent* rect = entity.getComponent<PositionalComponent>())
     {
         glm::vec4 oldPos = rect->getBoundingRect();
         entity.update();
-        grid->findNearest(*rect,[&entity](Positional& r1){
-                              Entity* e1 = &static_cast<RectComponent&>(r1).getEntity();
+        grid->findNearest(*rect,[&entity](PositionalComponent& r1){
+                              Entity* e1 = static_cast<PositionalComponent&>(r1).getEntity();
+                              if (e1)
                               e1->collide(entity);
                               });
         grid->update(*rect,oldPos);
@@ -621,40 +514,32 @@ SpatialGrid* EntityPosManager::getContainer()
 void EntityPosManager::addEntity(const std::shared_ptr<Entity>& entity)
 {
     EntityManager::addEntity(entity);
-    if (auto rect = entity->getComponent<RectComponent>())
+    if (auto rect = entity->getComponent<PositionalComponent>())
     {
         grid->insert(*rect);
     }
 }
 
-void EntityPosManager::addEntity(Entity& entity, float x, float y, bool centered)
-{
-    if (RectComponent* rect = entity.getComponent<RectComponent>())
-    {
-        rect->setPos({x - centered*rect->getRect().z/2, y - centered*rect->getRect().a/2}); //if centered, we have to adjust the position so that our center is over x and y
-        addEntity(std::shared_ptr<Entity>(&entity));
-    }
-}
-
 void EntityPosManager::addEntity(const std::shared_ptr<Entity>& (entity), float x, float y, bool centered)
 {
-    if (RectComponent* rect = entity->getComponent<RectComponent>())
+    if (PositionalComponent* rect = entity->getComponent<PositionalComponent>())
     {
-        rect->setPos({x - centered*rect->getRect().z/2, y - centered*rect->getRect().a/2}); //if centered, we have to adjust the position so that our center is over x and y
+        rect->setPos({x - centered*rect->getBoundingRect().z/2, y - centered*rect->getBoundingRect().a/2}); //if centered, we have to adjust the position so that our center is over x and y
         addEntity(entity);
     }
 }
 
 EntityPosManager::EntityIt EntityPosManager::removeEntity(Entity* entity)
 {
-    if (entities.find(entity) != entities.end() && entity)
+    if (entity && entities.find(entity) != entities.end())
     {
-        if (RectComponent* rect = entity->getComponent<RectComponent>())
+        if (PositionalComponent* pos = entity->getComponent<PositionalComponent>())
         {
-            grid->remove(*rect);
+            grid->remove(*pos);
         }
         return EntityManager::removeEntity(entity);
     }
+    return entities.end();
 }
 
 void EntityPosManager::update()

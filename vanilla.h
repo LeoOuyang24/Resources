@@ -376,21 +376,12 @@ struct AllDerivedFrom<Base, Derived, Ds...>
 };
 
 
-template<typename T,typename... Args>
-struct __attribute__((packed, aligned(1)))  TightTuple;
 
-template<typename T>
-struct __attribute__((packed, aligned(1)))  TightTuple<T>
-{
-    T t;
-    TightTuple(T t_) : t(t_)
-    {
 
-    }
-};
+template<typename... Args>  struct __attribute__((packed, aligned(1))) TightTuple;
 
 template<typename T, typename... Args>
-struct TightTuple
+struct  TightTuple<T,Args...>
 {
     T t;
     TightTuple<Args...> next;
@@ -400,6 +391,15 @@ struct TightTuple
     }
 };
 
+template<typename T>
+struct TightTuple<T>
+{
+    T t;
+    TightTuple(T t_) : t(t_)
+    {
+
+    }
+};
 
 template<typename... Args>
 void fillBytesVec(std::vector<char>& bytesVec, int totalBytes, Args... args) //fill a byte array with "args"
@@ -407,7 +407,7 @@ void fillBytesVec(std::vector<char>& bytesVec, int totalBytes, Args... args) //f
     /*Recursively fill "bytesVec" with the bytes of our arguments. "totalBytes" is the total number of bytes of data we are providing, useful if we want to
     pad with 0s if we under supplied arguments; -1 to do no padding*/
 
-    TightTuple tup(args...);
+    TightTuple<Args...> tup(args...);
     char* bytes = reinterpret_cast<char*>(&tup);
     /*for (int i = 0; i < sizeof(tup); i += sizeof(float))
     {
@@ -424,13 +424,30 @@ template<typename Lambda>
 void regexSearch(std::string reg, std::string str, Lambda lambda)
 {
     //given a string and a regex, parses the string using the regex, and runs "lambda" on each match
-    //lambda: (std::sregex_iterator& -> void)
+    //lambda: (const std::smatch& -> void)
     std::regex rgx(reg);
-    for (std::sregex_iterator it = std::sregex_iterator(str.begin(), str.end(), rgx);
+    /*for (std::sregex_iterator it = std::sregex_iterator(str.begin(), str.end(), rgx);
     it != std::sregex_iterator(); it++)
     {
         lambda(it);
+    }*/
+    std::smatch match;
+    while (std::regex_search (str,match,rgx)) {
+        lambda(match);
+        str = match.suffix().str();
+   }
+}
+
+template<typename Lambda>
+std::string regexReplace(const std::regex rgx, std::string str, Lambda lambda)
+{
+    //std::cout << str << "\n";
+    std::smatch match;
+    if (std::regex_search(str,match,rgx))
+    {
+        return match.prefix().str() + lambda(str,match) + regexReplace(rgx,match.suffix().str(),lambda);
     }
+    return str;
 }
 
 /**

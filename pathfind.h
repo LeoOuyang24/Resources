@@ -7,6 +7,8 @@
 #include "glGame.h"
 #include "components.h"
 
+//CURRENTLY DEPRECATED
+
 struct PathPoint //includes a point and the line node-node border it resides on
 {
     glm::vec2 point, a, b;
@@ -120,7 +122,7 @@ public:
     void update();
 };
 
-class PathFindComponent : public MoveComponent, public ComponentContainer<PathFindComponent>
+/*class PathFindComponent : public MoveComponent, public ComponentContainer<PathFindComponent>
 {
 protected:
     std::weak_ptr<NavMesh> mesh;
@@ -131,6 +133,6 @@ public:
     virtual void setTarget(const glm::vec2& point);
     virtual bool atTarget(); //returns whether or not we have reached our final target
     void update();
-};
+};*/
 
 #endif // PATHFIND_H_INCLUDED

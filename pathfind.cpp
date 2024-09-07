@@ -1000,9 +1000,9 @@ void EntityTerrainManager::addEntity(Entity& entity, float x, float y, bool cent
     glm::vec2 pos = {x,y}; //adjusted position to move entity to in case there are walls
     if (!mesh->notInWall({x,y,1,1})) //if {x,y} collides with a wall
     {
-        if (RectComponent* rectComp = entity.getComponent<RectComponent>())
+        if (PositionalComponent* rectComp = entity.getComponent<PositionalComponent>())
         {
-            glm::vec4 rect = rectComp->getRect();
+            glm::vec4 rect = rectComp->getPositional().getBoundingRect();
             if (!centered) //for simplicity, we convert pos to the center point. This makes it easier to adjust our node rect later
             {
                 pos.x += rect.z/2;
@@ -1031,7 +1031,7 @@ void EntityTerrainManager::update()
     EntityPosManager::update();
 }
 
-PathFindComponent::PathFindComponent(bool setAngle, std::shared_ptr<NavMesh>& mesh_,float speed, const glm::vec4& rect, Entity& entity) : MoveComponent(speed, rect, entity),
+/*PathFindComponent::PathFindComponent(bool setAngle, std::shared_ptr<NavMesh>& mesh_,float speed, const glm::vec4& rect, Entity& entity) : MoveComponent(speed, rect, entity),
                                                                                                                             ComponentContainer<PathFindComponent>(entity),
                                                                                                                             mesh(mesh_),
                                                                                                                             adjustTilt(setAngle)
@@ -1079,5 +1079,5 @@ void PathFindComponent::update()
     {
         setTiltTowardsTarget();
     }
-}
+}*/
 
