@@ -2,49 +2,19 @@
 <CodeBlocks_layout_file>
 	<FileVersion major="1" minor="0" />
 	<ActiveTarget name="Debug" />
-	<File name="..\geometry.cpp" open="0" top="0" tabpos="18" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\shaders\vertex\vertexShader.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="1566" topLine="6" />
+			<Cursor1 position="50" topLine="5" />
 		</Cursor>
 	</File>
-	<File name="..\shaders\vertex\polygonVertex.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\FreeTypeHelper.h" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="267" topLine="0" />
+			<Cursor1 position="1182" topLine="30" />
 		</Cursor>
 	</File>
-	<File name="..\geometry.h" open="0" top="0" tabpos="21" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\shaders\vertex\animationShader.h" open="0" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="4537" topLine="23" />
-		</Cursor>
-	</File>
-	<File name="..\FreeTypeHelper.h" open="0" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="678" topLine="18" />
-		</Cursor>
-	</File>
-	<File name="..\render.h" open="1" top="1" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="10564" topLine="222" />
-		</Cursor>
-	</File>
-	<File name="..\render.cpp" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="24929" topLine="645" />
-		</Cursor>
-	</File>
-	<File name="..\shaders\vertex\betterShader.h" open="0" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="138" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\vanilla.cpp" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3572" topLine="84" />
-		</Cursor>
-	</File>
-	<File name="..\shaders\fragment\wordFragment.h" open="0" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="287" topLine="0" />
+			<Cursor1 position="132" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="..\components.cpp" open="0" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -52,17 +22,27 @@
 			<Cursor1 position="13943" topLine="526" />
 		</Cursor>
 	</File>
-	<File name="..\resourcesMaster.cpp" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\components.h" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="822" topLine="0" />
+			<Cursor1 position="3711" topLine="99" />
 		</Cursor>
 	</File>
-	<File name="..\SDLhelper.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\FreeTypeHelper.cpp" open="1" top="1" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="2978" topLine="123" />
+			<Cursor1 position="1070" topLine="24" />
 		</Cursor>
 	</File>
-	<File name="..\sequencer.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\resourcesMaster.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="383" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\shaders\vertex\wordVertex.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="115" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\sequencer.h" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="2026" topLine="44" />
 		</Cursor>
@@ -72,24 +52,34 @@
 			<Cursor1 position="1872" topLine="35" />
 		</Cursor>
 	</File>
-	<File name="..\shaders\fragment\fragmentShader.h" open="0" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\geometry.cpp" open="0" top="0" tabpos="18" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="145" topLine="0" />
+			<Cursor1 position="1566" topLine="6" />
 		</Cursor>
 	</File>
-	<File name="..\shaders\vertex\wordVertex.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\resourcesMaster.cpp" open="0" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="115" topLine="0" />
+			<Cursor1 position="822" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="..\sequencer.cpp" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\shaders\vertex\betterShader.h" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="26" topLine="0" />
+			<Cursor1 position="501" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="..\vanilla.h" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\render.cpp" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="11455" topLine="399" />
+			<Cursor1 position="35449" topLine="991" />
+		</Cursor>
+	</File>
+	<File name="..\render.h" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="15869" topLine="350" />
+		</Cursor>
+	</File>
+	<File name="..\shaders\fragment\wordFragment.h" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="299" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="..\glGame.cpp" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -97,14 +87,29 @@
 			<Cursor1 position="2783" topLine="24" />
 		</Cursor>
 	</File>
-	<File name="..\components.h" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+	<File name="..\vanilla.cpp" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="3711" topLine="99" />
+			<Cursor1 position="3572" topLine="84" />
 		</Cursor>
 	</File>
-	<File name="..\shaders\vertex\animationShader.h" open="0" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\geometry.h" open="0" top="0" tabpos="21" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="132" topLine="0" />
+			<Cursor1 position="4537" topLine="23" />
+		</Cursor>
+	</File>
+	<File name="..\SDLhelper.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2978" topLine="123" />
+		</Cursor>
+	</File>
+	<File name="..\shaders\fragment\fragmentShader.h" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="145" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\shaders\vertex\polygonVertex.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="267" topLine="0" />
 		</Cursor>
 	</File>
 	<File name="..\SDLhelper.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -112,9 +117,9 @@
 			<Cursor1 position="107" topLine="4" />
 		</Cursor>
 	</File>
-	<File name="..\shaders\vertex\vertexShader.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\vanilla.h" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="50" topLine="5" />
+			<Cursor1 position="11455" topLine="399" />
 		</Cursor>
 	</File>
 	<File name="..\shaders\common\vertex_common.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -122,14 +127,9 @@
 			<Cursor1 position="38" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="..\FreeTypeHelper.cpp" open="0" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\sequencer.cpp" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="2320" topLine="6" />
-		</Cursor>
-	</File>
-	<File name="..\resourcesMaster.h" open="0" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="383" topLine="0" />
+			<Cursor1 position="26" topLine="0" />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>

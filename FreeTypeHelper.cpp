@@ -4,11 +4,21 @@
 #include "geometry.h"
 #include "resourcesMaster.h"
 
-std::unique_ptr<BasicRenderPipeline> Font::wordProgram;
-Font Font::tnr;
+std::unique_ptr<BasicRenderPipeline> FontGlobals::wordProgram;
+Font FontGlobals::tnr;
 
 
-Font::Character::Character(char c, FT_Face& face) : Sprite()
+Character::Character(char c) : Sprite()
+{
+    letter = c;
+
+    //characters are ALWAYS transluscent. They are always a mix of red pixels and black pixels, the latter of which the fragment shader then deletes
+    //by that definition, they are technically always opaque but because the black pixels are basically transparent, they are actually always transluscent
+    transluscent = true;
+
+}
+
+Character::Character(char c, FT_Face& face) : Character(c)
 {
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D,texture);
@@ -39,26 +49,21 @@ Font::Character::Character(char c, FT_Face& face) : Sprite()
 
     //std::cout << glGetError() << std::endl;
     //std::cout << texture << std::endl;
-    letter = c;
-    size =     glm::vec2(face->glyph->bitmap.width, face->glyph->bitmap.rows);
+    size =     glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows);
     bearing =  glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top);
     advance =    face->glyph->advance.x;
 
-    //characters are ALWAYS transluscent. They are always a mix of red pixels and black pixels, the latter of which the fragment shader then deletes
-    //by that definition, they are technically always opaque but because the black pixels are basically transparent, they are actually always transluscent
-    transluscent = true;
-
 }
 
-const glm::vec2& Font::Character::getBearing()
+const glm::ivec2& Character::getBearing()
 {
     return bearing;
 }
-const glm::vec2& Font::Character::getSize()
+const glm::ivec2& Character::getSize()
 {
     return size;
 }
-GLuint Font::Character::getAdvance()
+GLuint Character::getAdvance()
 {
     return advance;
 }
@@ -74,7 +79,7 @@ int Font::writeLength(std::string str)
     return length;
 }
 
-    void Font::init(int screenWidth, int screenHeight)
+    void FontGlobals::init(int screenWidth, int screenHeight)
     {
         std::string source = templateShader(stripComments(readFile(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/shaders/vertex/betterShader.h").first), true,
                                             {"vec4 color"},
@@ -85,54 +90,12 @@ int Font::writeLength(std::string str)
 
         tnr.init(ResourcesConfig::config[ResourcesConfig::RESOURCES_DIR] + "/tnr.ttf");
     }
+
     Font::Font(std::string source)
     {
         init(source);
     }
-    void Font::init(std::string source)
-    {
 
-        font = source;
-        FT_Library library;
-        if (FT_Init_FreeType(&library))
-        {
-                std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
-        }
-        FT_Face face;
-        if (FT_New_Face(library, source.c_str(),0,&face))
-        {
-            std::cout << "Error loading font: " << source << std::endl;
-        }
-         FT_Set_Pixel_Sizes(face,0,32);
-        //glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        for (GLubyte c = 0; c < 128; c++)
-        {
-
-            // Now store character for later use
-            Character* character = new Character(c,face);
-            auto bearing = &(character->getBearing());
-            if (bearing->y > maxVert.x)
-            {
-                maxVert.x = bearing->y;
-            }
-            auto size = &(character->getSize());
-            if (size->y - bearing->y > maxVert.y)
-            {
-                maxVert.y = size->y - bearing->y;
-            }
-           // character.bearing.x /= 64;
-           // character.bearing.y /=64;
-           //SpriteManager::addSprite(*character);
-            characters[c] = std::unique_ptr<Character>(character);
-        }
-
-
-        FT_Done_Face(face);
-        FT_Done_FreeType(library);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-
-    }
 glm::vec2 Font::getDimen(std::string text, GLfloat hScale, GLfloat vScale)
 {
     std::string::const_iterator c;
@@ -196,8 +159,8 @@ void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipelin
     {
         char c = param.text[i];
         Character* ch = (characters[c].get());
-        const glm::vec2* bearing = &ch->getBearing();
-        const glm::vec2* chSize = &ch->getSize();
+        const glm::ivec2* bearing = &ch->getBearing();
+        const glm::ivec2* chSize = &ch->getSize();
         GLfloat xpos = x +bearing->x*scale;
         GLfloat ypos = y+ (maxVert.x - bearing->y)*scale;
         glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);

@@ -449,7 +449,7 @@ struct TransManager //handles transluscent fragment render requests.
         int index;
         bool operator<(const TransRequest& b) const
         {
-            return (z == b.z) ? (request < b.request) : (z < b.z);
+            return (z < b.z);
         }
     };
     /**
@@ -476,7 +476,7 @@ private:
     void render(const RenderRequest& request, RenderPayload& payload, int instances); //renders all data in payload
 
     RenderPayload buffer; //reusable buffer for sorting data. Used to compile all data one sprite-renderprogram pairing.
-    std::forward_list<TransRequest> requests; //unsorted list of requests, sorted before we render
+    std::list<TransRequest> requests; //unsorted list of requests, sorted before we render
 };
 
 class SpriteManager //handles all sprite requests

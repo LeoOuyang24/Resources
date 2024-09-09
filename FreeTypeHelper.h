@@ -35,39 +35,90 @@ struct FontParameter //Represents all the information  required to call the writ
     VertAlign vertAlign = UP;
 };
 
-class Font
+
+class Character : public Sprite//represents a character in a font
 {
-    class Character : public Sprite//represents a character in a font
-    {
-        char letter;
-      //  GLuint texture = -1;
-        glm::vec2 size; //the dimensions of the character
-        glm::vec2 bearing; //the bearing, or margins of the character
-        GLuint advance; //the total width the character takes up, including the character width, the horizontal bearing, and the space from the next character
-    public:
-        Character(char c, FT_Face& face);
-        const glm::vec2& getBearing();
-        const glm::vec2& getSize();
-        GLuint getAdvance();
-
-    };
-
-    std::unordered_map<GLchar,std::unique_ptr<Character>> characters;
-    glm::vec2 maxVert = {0,0}; //x is max bearing.y, y is maximum space underneath the bearing. Sum of x and y is the maximum height we need
-    std::string font = "";
-    int writeLength(std::string str);
+    char letter;
+protected:
+    glm::ivec2 size; //the dimensions of the character
+    glm::ivec2 bearing; //the bearing, or margins of the character
+    GLuint advance; //the total width the character takes up, including the character width, the horizontal bearing, and the space from the next character
+    Character(char c); //use this constructor if loading the texture is handled by some child class constructor
 public:
-    static void init(int screenWidth,int screenHeight); //initializes wordProgram and the default alef font
+    Character(char c, FT_Face& face);
+    const glm::ivec2& getBearing();
+    const glm::ivec2& getSize();
+    GLuint getAdvance();
+
+};
+
+class Font;
+struct FontGlobals
+{
     static Font tnr; //the default alef font
     static std::unique_ptr<BasicRenderPipeline> wordProgram;
+
+    static void init(int screenWidth,int screenHeight); //initializes wordProgram and the default alef font
+};
+
+class Font
+{
+    glm::vec2 maxVert = {0,0}; //x is max bearing.y, y is maximum space underneath the bearing. Sum of x and y is the maximum height we need
+    std::string font = "";
+protected:
+    std::unordered_map<GLchar,std::unique_ptr<Character>> characters;
+    int writeLength(std::string str);
+public:
     Font(std::string source);
     Font()
     {
 
     }
-    void init(std::string source);
+    //initializes the font
+    //you can specify any child class of Character or use Character itself
+    template <typename T = Character>
+    void init(std::string source)
+        {
+
+        font = source;
+        FT_Library library;
+        if (FT_Init_FreeType(&library))
+        {
+                std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
+        }
+        FT_Face face;
+        if (FT_New_Face(library, source.c_str(),0,&face))
+        {
+            std::cout << "Error loading font: " << source << std::endl;
+        }
+         FT_Set_Pixel_Sizes(face,0,32);
+        //glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        for (GLubyte c = 0; c < 128; c++)
+        {
+
+            // Now store character for later use
+            T* character = new T(c,face);
+            glm::ivec2 bearing = (character->getBearing());
+            if (bearing.y > maxVert.x)
+            {
+                maxVert.x = bearing.y;
+            }
+            glm::ivec2 size = (character->getSize());
+            if (size.y - bearing.y > maxVert.y)
+            {
+                maxVert.y = size.y - bearing.y;
+            }
+            characters[c] = std::unique_ptr<Character>(character);
+        }
+
+        FT_Done_Face(face);
+        FT_Done_FreeType(library);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+
+    }
     glm::vec2 getDimen(std::string text, GLfloat hScale, GLfloat vScale); //gets the dimensions on text printed if the text were to be printed. The height is based on the bearing rather than the actual character height
-    void requestWrite(const FontParameter& param, BasicRenderPipeline& pipeline = *wordProgram); //idk, I feel like the pipeline should not be part of the FontParameter. I can't explain why, just a gut feeling
+    virtual void requestWrite(const FontParameter& param, BasicRenderPipeline& pipeline = *FontGlobals::wordProgram); //idk, I feel like the pipeline should not be part of the FontParameter. I can't explain why, just a gut feeling
     Character& getChar(GLchar c)
     {
         return *characters[c].get();
@@ -76,18 +127,6 @@ public:
     ~Font();
 
     };
-
-
-/*class FontManager
-{
-    Sprite transFish;
-//    std::list<SpriteRequest> requests;
-    RenderProgram program;
-public:
-    FontManager(std::string vectorShader, std::string fragmentShader);
-    void request(Font& font, std::string str, const SpriteParameter& request_);
-    void update();
-};*/
 
 
 #endif // FREETYPEHELPER_H_INCLUDED

@@ -986,7 +986,7 @@ glm::vec4 BaseAnimation::normalizePixels(const glm::vec4& rect, Sprite& sprite)
 
 void TransManager::request(const RenderRequest& request, ZType z)
 {
-    requests.push_front({request,z,data.size()});
+    requests.push_back({request,z,data.size()});
 }
 
 void TransManager::render()
