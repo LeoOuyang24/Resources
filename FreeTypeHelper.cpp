@@ -155,24 +155,28 @@ void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipelin
     //std::cout << length << std::endl;
       //  std::cout << "Start: " << writeRequests.size() << std::endl;
     int size = param.text.size();
+
     for (int i = 0; i < size; ++i)
     {
         char c = param.text[i];
         Character* ch = (characters[c].get());
-        const glm::ivec2* bearing = &ch->getBearing();
-        const glm::ivec2* chSize = &ch->getSize();
-        GLfloat xpos = x +bearing->x*scale;
-        GLfloat ypos = y+ (maxVert.x - bearing->y)*scale;
-        glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
-        GLfloat w = chSize->x*scale;
-        GLfloat h = (chSize->y)*scale;
+        glm::ivec2 bearing = ch->getBearing();
+        glm::ivec2 chSize = ch->getSize();
+        GLfloat xpos = x + bearing.x*scale;
+        GLfloat ypos = y+ (maxVert.x - bearing.y)*scale;
+        //glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
+        glm::vec2 pos = {xpos,ypos};
+        GLfloat w = chSize.x*scale;
+        GLfloat h = (chSize.y)*scale;
 
-        //SpriteManager::request({*wordProgram,characters[c].get()},param.z,false,glm::vec4(pos.x,pos.y,w,h));
-        SpriteManager::requestSprite({pipeline,characters[c].get()},glm::vec4(pos.x,pos.y,w,h),param.z,0,0,param.color);
-      //  PolyRender::requestRect({pos.x,pos.y,w,h},{1,0,0,1},false,0,-1);
-     // printRect({pos.x,pos.y,w,h});
-        //SpriteManager::request(*characters[c],{{pos.x,pos.y,w,h},0,param.z});
-        //characters[c]->request({{pos.x,pos.y,w,h},0,NONE,param.color,&wordProgram,param.z});
+        glm::vec4 normalRect = {xpos,ypos,w,h};
+
+        glm::vec4 finalRect = glm::vec4(rotatePoint(glm::vec2(xpos + w/2, ypos + h/2),{param.rect.x + param.rect.z/2,param.rect.y + param.rect.a/2},param.angle)
+                                        - glm::vec2(w/2,h/2),
+                                        w,h);
+
+        SpriteManager::requestSprite({pipeline,characters[c].get()},finalRect,param.z,param.angle,0,param.color);
+
         x += (ch->getAdvance() >> 6 )*scale;
     }
 
