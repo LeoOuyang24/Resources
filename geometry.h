@@ -35,7 +35,8 @@ bool lineInVec(const glm::vec2& p1, const glm::vec2& p2, const  glm::vec4& r1, d
 bool pointInTriangle (const glm::vec2 a, const glm::vec2& b, const glm::vec2& c, const glm::vec2& p);
 glm::vec4 absoluteValueRect(const glm::vec4& rect); //given a rect with at least one negative dimension, converts it into a regular rect with positive dimensions. A rect with already positive dimensions will return itself
 glm::vec2 pairtoVec(const std::pair<double,double>& pear); //converts a pair to a vec2
-glm::vec2 rotatePoint(const glm::vec2& p, const glm::vec2& rotateAround, double angle); //angle in radians
+glm::vec2 rotatePoint(const glm::vec2& p, const glm::vec2& rotateAround, float angle); //angle in radians
+glm::vec4 rotateRect(const glm::vec4& r, const glm::vec2& rotateAround, float angle); //returns the rect after rotating its center around "rotateAround"
 glm::vec4 moveRect(const glm::vec4& rect, const glm::vec4& wall, const glm::vec2& move, float rotation = 0, float wallRotation = 0); //handles collision detection between a rect moving with the vector move against a wall.
                                                                                             //rects inside the wall will be pushed out
                                                                                             //rotation is the angle rect is rotated at

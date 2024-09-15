@@ -404,10 +404,18 @@ glm::vec2 pairtoVec(const std::pair<double,double>& pear)
     return {pear.first, pear.second};
 }
 
-glm::vec2 rotatePoint(const glm::vec2& p, const glm::vec2& rotateAround, double angle)
+glm::vec2 rotatePoint(const glm::vec2& p, const glm::vec2& rotateAround, float angle)
 {
     glm::vec2 point = {p.x - rotateAround.x,p.y-rotateAround.y};//distances between target and pivot point
     return {point.x*cos(angle)-point.y*sin(angle)+rotateAround.x, point.x*sin(angle) + point.y*cos(angle)+rotateAround.y};
+}
+
+glm::vec4 rotateRect(const glm::vec4& r, const glm::vec2& rotateAround, float angle)
+{
+    glm::vec2 halfSize = 0.5f*glm::vec2(r.z,r.a);
+    return {rotatePoint(glm::vec2(r.x,r.y) + halfSize,rotateAround,angle) - halfSize,
+            r.z,r.a
+            };
 }
 
 glm::vec4 moveRect(const glm::vec4& rect, const glm::vec4& wall, const glm::vec2& move, float rotation, float wallRotation)

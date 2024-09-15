@@ -99,38 +99,52 @@ int Font::writeLength(std::string str)
 glm::vec2 Font::getDimen(std::string text, GLfloat hScale, GLfloat vScale)
 {
     std::string::const_iterator c;
-    double totalWidth = 0, maxHeight = 0;
+    double totalWidth = 0, maxHeight = maxVert.x + maxVert.y, maxWidth = 0;;
     auto end = text.end();
    // std::cout << hScale << " " << vScale << std::endl;
     for (c = text.begin(); c != end; ++c)
     {
-        Character* ch = (characters[*c].get());
-        GLfloat h = ch->getSize().y * vScale;
-        totalWidth += (ch->getAdvance())*hScale/64;
-        maxHeight += (h > maxHeight)*(h-maxHeight);
+        if (*c != '\n')
+        {
+            Character* ch = (characters[*c].get());
+            GLfloat h = ch->getSize().y * vScale;
+            totalWidth += (ch->getAdvance())*hScale/64;
+            //maxHeight += (h > maxHeight)*(h-maxHeight);
+        }
+        else
+        {
+            maxHeight += maxVert.x + maxVert.y;
+            maxWidth = totalWidth > maxWidth ? totalWidth : maxWidth;
+            totalWidth = 0;
+        }
+
+
     }
-    return {totalWidth,maxHeight};
+    maxWidth = totalWidth > maxWidth ? totalWidth : maxWidth;
+    return {maxWidth,maxHeight*vScale};
 }
 
 void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipeline)
 {
-    float scale;
     glm::vec4 absRect = absoluteValueRect(param.rect);
-    glm::vec2 dimen = getDimen(param.text,1,1);
-    if (param.rect.z < 0 )
-    {
-        scale = param.rect.a;
-        absRect.z = dimen.x*scale;
-        absRect.a = dimen.y*scale;
 
+
+    float scale = 1.0f;
+
+    if (param.scale > 0) //if the scale is positive, just mindless use it
+    {
+        scale = param.scale;
     }
     else
     {
-        scale =  std::min((absRect.z/dimen.x),absRect.a/(maxVert.y + maxVert.x));
-    }
-    glm::vec2 center = {absRect.x + absRect.z/2, absRect.y + absRect.a/2};
 
-    auto screenDimen = (ViewPort::getScreenDimen()); //we need to find the dimensions of the screen vs the dimensions of the projection matrix and scale accordingly. We will assume that the ortho and screen dimen start at 0
+        glm::vec2 dimen = getDimen(param.text,abs(param.scale),abs(param.scale));
+
+        scale = dimen.x > absRect.z || dimen.y > absRect.a ? //if the scale is negative, we may want have to clamp to
+                        std::min(absRect.z/dimen.x,absRect.a/dimen.y) ://the size of the rect instead
+                        abs(param.scale);
+    }
+
 
     double x = absRect.x, y = absRect.y;
     switch (param.align)
@@ -146,19 +160,27 @@ void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipelin
     {
     case VERTCENTER:
         y += param.rect.a/2 - getDimen(param.text,1,scale).y/2;
+       // PolyRender::requestRect(glm::vec4(x,y,getDimen(param.text,scale,scale)),glm::vec4(1,0,0,1),false,0,1);
         break;
     case DOWN:
         y += param.rect.a - getDimen(param.text,1,scale).y;
         break;
     }
-//    PolyRender::requestRect(absRect,{0,1,0,1},false,0,-1);
-    //std::cout << length << std::endl;
-      //  std::cout << "Start: " << writeRequests.size() << std::endl;
+
+    int startX = x;
     int size = param.text.size();
+    //PolyRender::requestRect(param.rect,{1,0,0,1},false,0,1);
+    //PolyRender::requestRect(absRect,{1,0,1,1},false,0,1);
 
     for (int i = 0; i < size; ++i)
     {
         char c = param.text[i];
+        if (c == '\n')
+        {
+            y += (maxVert.x + maxVert.y)*scale;
+            x = startX;
+            continue;
+        }
         Character* ch = (characters[c].get());
         glm::ivec2 bearing = ch->getBearing();
         glm::ivec2 chSize = ch->getSize();
@@ -169,11 +191,8 @@ void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipelin
         GLfloat w = chSize.x*scale;
         GLfloat h = (chSize.y)*scale;
 
-        glm::vec4 normalRect = {xpos,ypos,w,h};
 
-        glm::vec4 finalRect = glm::vec4(rotatePoint(glm::vec2(xpos + w/2, ypos + h/2),{param.rect.x + param.rect.z/2,param.rect.y + param.rect.a/2},param.angle)
-                                        - glm::vec2(w/2,h/2),
-                                        w,h);
+        glm::vec4 finalRect = glm::vec4(rotateRect({xpos,ypos,w,h},{param.rect.x + param.rect.z/2,param.rect.y + param.rect.a/2},param.angle));
 
         SpriteManager::requestSprite({pipeline,characters[c].get()},finalRect,param.z,param.angle,0,param.color);
 

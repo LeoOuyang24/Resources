@@ -13,21 +13,24 @@
 
 enum Align
 {
-    LEFT,
-    CENTER,
-    RIGHT
+    LEFT, //align with left border of requested position
+    CENTER, //align with center of requested rect
+    RIGHT //align with right border
 };
 
 enum VertAlign
 {
-    UP,VERTCENTER,DOWN
+    UP,
+    VERTCENTER,
+    DOWN
 };
 
 
 struct FontParameter //Represents all the information  required to call the write function given to a font
 {
     std::string text = "";
-    glm::vec4 rect = {0,0,0,0}; //if the width is negative, the height is assumed to be the font size
+    glm::vec4 rect = {0,0,0,0};
+    float scale = -1.0f; //multiply the dimensions by this number. if negative, try to autofit if the scale is too big
     glm::vec4 color = {0,0,0,1};
     float angle = 0;
     float z = 0;
