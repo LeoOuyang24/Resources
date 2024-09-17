@@ -138,9 +138,9 @@ void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipelin
     else
     {
 
-        glm::vec2 dimen = getDimen(param.text,abs(param.scale),abs(param.scale));
+        glm::vec2 dimen = getDimen(param.text,1,1);
 
-        scale = dimen.x > absRect.z || dimen.y > absRect.a ? //if the scale is negative, we may want have to clamp to
+        scale = dimen.x*abs(param.scale) > absRect.z || dimen.y*abs(param.scale) > absRect.a ? //if the scale is negative, we may want have to clamp to
                         std::min(absRect.z/dimen.x,absRect.a/dimen.y) ://the size of the rect instead
                         abs(param.scale);
     }
@@ -186,10 +186,14 @@ void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipelin
         glm::ivec2 chSize = ch->getSize();
         GLfloat xpos = x + bearing.x*scale;
         GLfloat ypos = y+ (maxVert.x - bearing.y)*scale;
+        //std::cout << y << " " << absRect.y << " " << (maxVert.x - bearing.y)  << "\n";
+
         //glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
         glm::vec2 pos = {xpos,ypos};
         GLfloat w = chSize.x*scale;
         GLfloat h = (chSize.y)*scale;
+
+        //PolyRender::requestRect(glm::vec4(xpos,ypos,w,h),glm::vec4(1,0,0,1),false,0,1);
 
 
         glm::vec4 finalRect = glm::vec4(rotateRect({xpos,ypos,w,h},{param.rect.x + param.rect.z/2,param.rect.y + param.rect.a/2},param.angle));
