@@ -879,21 +879,21 @@ void Sprite::init(std::string source_)
         load(source_);
         source = source_;
     }
-unsigned int Sprite::getTexture()
+unsigned int Sprite::getTexture() const
 {
     return texture;
 }
-std::string Sprite::getSource()
+std::string Sprite::getSource() const
 {
     return source;
 }
 
-bool Sprite::getTransluscent()
+bool Sprite::getTransluscent() const
 {
     return transluscent;
 }
 
-glm::vec2 Sprite::getDimen()
+glm::vec2 Sprite::getDimen() const
 {
     return {width,height};
 }
@@ -1038,13 +1038,11 @@ void TransManager::render(const RenderRequest& request, RenderPayload& payload, 
     glBindBuffer(GL_ARRAY_BUFFER,0);
 }
 
-TransManager SpriteManager::opaques;
 TransManager SpriteManager::trans;
 
 void SpriteManager::render()
 {
 
-    opaques.render();
     trans.render();
 }
 

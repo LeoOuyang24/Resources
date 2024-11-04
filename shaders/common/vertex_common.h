@@ -19,11 +19,8 @@ vec2 getTransformed(int effect, vec2 values, vec4 rect, float depth, float radia
     }
 
 
-    /*int frame = int(mod(fps*(timeSince/1000.0),framesDimen.x*framesDimen.y));
-    float portionX = mod(frame,framesDimen.x)/framesDimen.x;
-    float portionY = int(frame/framesDimen.x)/framesDimen.y;*/
-
     vec2 transformed = vec2(values.xy * rect.zw*.5);
+    //transformed = vec2(cos(radians)*transformed.x + sin(radians),transformed.y );
     transformed = vec2(cos(radians)*transformed.x - sin(radians)*transformed.y,sin(radians)*transformed.x + cos(radians)*transformed.y);
     transformed += rect.xy + rect.zw*.5;
 

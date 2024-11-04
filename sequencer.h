@@ -11,13 +11,12 @@
 
 //this file helps chain events together(ex: create a hitbox when an animation ends)
 //realistically, it'll probably be used with animations primarily but can be used to do anything that occurs over time
-
 typedef std::function<bool(int)> SequenceUnit; //a single unit of a sequence. The runtime is the only variable passed in
+typedef std::shared_ptr<SequenceUnit> UnitPtr;
 class Sequencer
 {
     //runs a sequence of Sequence Units
 protected:
-    typedef std::shared_ptr<SequenceUnit> UnitPtr;
     typedef std::list<UnitPtr> Sequence;
 
     unsigned int startTime = 0;
@@ -36,6 +35,11 @@ protected:
     }
 
 public:
+    template<typename Callable1_, typename... CallableList_>
+    Sequencer(Callable1_ a, CallableList_... b) : Sequencer()
+    {
+        addUnits(a,b...);
+    }
     Sequencer()
     {
         current = sequence.end();
@@ -45,29 +49,24 @@ public:
         startTime = SDL_GetTicks();
         current = sequence.begin();
     }
-    //build a Unit from a function (usually a lambda)
+
     void addUnit(SequenceUnit&& cs)
     {
-        sequence.emplace_back(new SequenceUnit(cs));
+        sequence.emplace_back(new SequenceUnit(std::move(cs)));
     }
     void addUnit(UnitPtr& cs) //if you don't want the Sequencer to own the unit, pass in a shared pointer
     {
         sequence.emplace_back(cs);
     }
 
-
-    template<typename Callable1_, typename Callable2_>
-    void addUnits(Callable1_ a, Callable2_ b)
+    template<typename Callable1_, typename... CallableList_>
+    void addUnits(Callable1_ a, CallableList_... c) //can be used to recursively pass in a list of either SequenceUnit or UnitPtrs
     {
-        addUnit(a);
-        addUnit(b);
-    }
-
-    template<typename Callable1_, typename Callable2_, typename... CallableList_>
-    void addUnits(Callable1_ a, Callable2_ b, CallableList_... c) //can be used to recursively pass in a list of either SequenceUnit or UnitPtrs
-    {
-        addUnit(a);
-        addUnits(b,c...);
+        addUnit(std::forward<Callable1_>(a));
+        if constexpr (sizeof...(c) > 0)
+        {
+            addUnits(std::forward<CallableList_...>(c...));
+        }
     }
     bool done()
     {
@@ -113,13 +112,6 @@ public:
             sequence->reset(); //...reset it
             sequences.insert(sequence); // ...and add it to our sequences to run
         }
-    }
-    template<typename Callable1_, typename Callable2_, typename... CallableList_>
-    void request(Callable1_& a, Callable2_& b, CallableList_&... c) //can be used to recursively pass in a list of Callables or CallablePtrs
-    {
-        Sequencer* sequencer = new Sequencer();
-        sequencer->addUnits(a,b,c...);
-        request(*sequencer);
     }
     static void run()
     {

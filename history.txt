@@ -1,5 +1,8 @@
 This document keeps track of all changes as well as considered changes made to the resources as well as why they were made. Consider this a "learning from the past" kind of document. 
 
+11/3/2024:
+	Removed OpaquesManager. It just causes issues. For example, I ran into an issue where an opaque fragment was getting rendered over because it had the same z as another fragment but was rendered first so it got overshadowed. Maybe I'll add it again later. Honestly the whole rendering library could be streamlined a bit. It's over built rn for "efficiency" but is probably way slower than a simpler engine.
+
 8/12/2024:
 	Sequencer now uses std::function rather than SequenceUnits and Callables. Well, SequenceUnit still exists, but it's just a type def for an std::function. I have long been worried about std::function's overhead issues but honestly, I don't think it's a big deal. Using std::function on the other hand, allows me to just straight up pass lambdas into Sequencers to construct them, which is a nice bit of syntactical sugar. You can do this with templates, but at some point that template has to be brought down into a std::list. The old SequenceUnit and Callable system was basically a wrapper for this. If you then want to also pass in lambdas into the functions directly without using std::function, you'll have a function that looks like this:
 

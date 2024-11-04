@@ -370,11 +370,11 @@ public:
         texture = 0;
     }
     ~Sprite();
-    unsigned int getTexture();
-    std::string getSource();
-    bool getTransluscent();
+    unsigned int getTexture() const;
+    std::string getSource() const;
+    bool getTransluscent() const;
     void init(std::string source);
-    virtual glm::vec2 getDimen();
+    virtual glm::vec2 getDimen() const;
 };
 
 class Sprite9 : public Sprite // This sprite has been split into 9 sections that each scale differently. The corners aren't scaled at all, the top and bottom
@@ -420,7 +420,7 @@ struct BaseAnimation //represents data used to animate a portion of a sprite she
 struct RenderRequest //bare bones info for each request: what sprite is being rendered and how to render it
 {
     BasicRenderPipeline& program;
-    Sprite* sprite = nullptr; //if null, then not rendering a sprite
+    Sprite const* sprite = nullptr; //if null, then not rendering a sprite
     GLenum mode = GL_TRIANGLES; //primitive we are rendering in
 
     bool operator==( const RenderRequest& r2) const
@@ -482,9 +482,7 @@ private:
 class SpriteManager //handles all sprite requests
 {
 public:
-    static TransManager opaques;
     static TransManager trans;
-
     /**
       *   \brief Creates a rendering request, which will be rendered at the end of every game loop
       *
@@ -495,22 +493,15 @@ public:
       *   \return nothing
       **/
     template<typename... Args>
-    static void request(const RenderRequest& request, ZType z, bool transluscent, Args... args) //request for non-sprites
+    static void request(const RenderRequest& request, ZType z, Args... args) //request for non-sprites
     {
-        if ((request.sprite && request.sprite->getTransluscent()) || transluscent)
-        {
-            trans.request(request,z); //transluscent manager needs to make a request specifically for the sprite-program pairing
-            fillBytesVec(trans.data,request.program.getBytesPerRequest(),args...); //place request into transluscent manager
-            /*TightTuple tup(args...);
-            char* bytes = reinterpret_cast<char*>(&tup);
-            //trans.data.resize(trans.data.size() + request.program.getBytesPerRequest() - sizeof(tup),0);
-            trans.data.insert(trans.data.end(),bytes,bytes+sizeof(tup));*/
-        }
-        else
-        {
-            opaques.request(request,0);
-            fillBytesVec(opaques.data,request.program.getBytesPerRequest(),args...); //place request into transluscent manager
-        }
+
+        trans.request(request,z); //transluscent manager needs to make a request specifically for the sprite-program pairing
+        fillBytesVec(trans.data,request.program.getBytesPerRequest(),args...); //place request into transluscent manager
+        /*TightTuple tup(args...);
+        char* bytes = reinterpret_cast<char*>(&tup);
+        //trans.data.resize(trans.data.size() + request.program.getBytesPerRequest() - sizeof(tup),0);
+        trans.data.insert(trans.data.end(),bytes,bytes+sizeof(tup));*/
     }
 
     ///Same function as above but you don't have to provide the "transluscent" parameter. Non-sprite requests are automatically put in TransManager
@@ -519,7 +510,7 @@ public:
     static void requestSprite(const RenderRequest& request_, const glm::vec4& rect, ZType z, Args... args) //request for sprites
     {
         //many sprite shaders have a rect as their 2nd parameter, so this just makes that easier to account for
-        request(request_,z,(request_.sprite ? request_.sprite->getTransluscent() : true),rect,z,args...);
+        request(request_,z,rect,z,args...);
     }
 
 
