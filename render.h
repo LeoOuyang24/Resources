@@ -487,7 +487,6 @@ public:
       *   \brief Creates a rendering request, which will be rendered at the end of every game loop
       *
       *   \param request: the actual request itself
-      *   \param transluscent: only relevant if "request.sprite" is null. Indicates whether a non-sprite request is transluscent
       *   \param args: any values that the vertex shader needs
       *
       *   \return nothing
@@ -495,16 +494,11 @@ public:
     template<typename... Args>
     static void request(const RenderRequest& request, ZType z, Args... args) //request for non-sprites
     {
-
         trans.request(request,z); //transluscent manager needs to make a request specifically for the sprite-program pairing
         fillBytesVec(trans.data,request.program.getBytesPerRequest(),args...); //place request into transluscent manager
-        /*TightTuple tup(args...);
-        char* bytes = reinterpret_cast<char*>(&tup);
-        //trans.data.resize(trans.data.size() + request.program.getBytesPerRequest() - sizeof(tup),0);
-        trans.data.insert(trans.data.end(),bytes,bytes+sizeof(tup));*/
     }
 
-    ///Same function as above but you don't have to provide the "transluscent" parameter. Non-sprite requests are automatically put in TransManager
+    ///Non-sprite requests are automatically put in TransManager
     ///Recommended for sprites, though can be used for non-sprites
     template<typename... Args>
     static void requestSprite(const RenderRequest& request_, const glm::vec4& rect, ZType z, Args... args) //request for sprites

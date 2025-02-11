@@ -21,6 +21,7 @@ T lerp(T a1, T a2, float t, bool clamp = false)
     return a1 + (a2 - a1)*(clamp ? std::max(std::min(t,1.0f),0.0f) : t); //if clamp is true, clamp the float to between 1 and 0
 }
 
+
 int convertTo1(double number); // a method that converts a number to 1 or -1 depending on its sign. If entry is 0, return 0;
 
 bool floatEquals(float a, float b, int precision); //given floats "a" and "b" returns true if they are equivalent up to "precision" decimal points

@@ -113,6 +113,23 @@ public:
             sequences.insert(sequence); // ...and add it to our sequences to run
         }
     }
+
+    //run a sequence after "func" returns true
+    //pray that "sequence" will still be available when "func" returns true
+    template<typename T>
+    static void await(T func, Sequencer& sequence)
+    {
+        request(*(new Sequencer([&sequence,func](int runtime)
+                    {
+                        if (func())
+                        {
+                            request(sequence);
+                            return true;
+                        }
+                        return false;
+                    }
+                                )));
+    }
     static void run()
     {
         auto end = sequences.end();

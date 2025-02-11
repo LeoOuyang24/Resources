@@ -128,6 +128,7 @@ void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipelin
 {
     glm::vec4 absRect = absoluteValueRect(param.rect);
 
+    glm::vec2 dimen = getDimen(param.text,1,1);
 
     float scale = 1.0f;
 
@@ -138,7 +139,6 @@ void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipelin
     else
     {
 
-        glm::vec2 dimen = getDimen(param.text,1,1);
 
         scale = dimen.x*abs(param.scale) > absRect.z || dimen.y*abs(param.scale) > absRect.a ? //if the scale is negative, we may want have to clamp to
                         std::min(absRect.z/dimen.x,absRect.a/dimen.y) ://the size of the rect instead
@@ -150,27 +150,28 @@ void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipelin
     switch (param.align)
     {
     case RIGHT:
-        x += param.rect.z - getDimen(param.text,scale,1).x;
+        x += param.rect.z - dimen.x*scale;
         break;
     case CENTER:
-        x += param.rect.z/2 - getDimen(param.text,scale,1).x/2;
+        x += param.rect.z/2 - dimen.x/2*scale;
         break;
     }
     switch (param.vertAlign)
     {
     case VERTCENTER:
-        y += param.rect.a/2 - getDimen(param.text,1,scale).y/2;
+        y += param.rect.a/2 - dimen.y/2*scale;
        // PolyRender::requestRect(glm::vec4(x,y,getDimen(param.text,scale,scale)),glm::vec4(1,0,0,1),false,0,1);
         break;
     case DOWN:
-        y += param.rect.a - getDimen(param.text,1,scale).y;
+        y += param.rect.a - dimen.y*scale;
         break;
     }
 
     int startX = x;
     int size = param.text.size();
     //PolyRender::requestRect(param.rect,{1,0,0,1},false,0,1);
-    //PolyRender::requestRect(absRect,{1,0,1,1},false,0,1);
+    //PolyRender::requestRect(absRect,{1,0,1,1},false,0,5);
+    //PolyRender::requestRect(glm::vec4(x,y,absRect.z,absRect.a),glm::vec4(1,0,0,1),false,0,5);
 
     for (int i = 0; i < size; ++i)
     {
@@ -186,14 +187,12 @@ void Font::requestWrite(const FontParameter& param, BasicRenderPipeline& pipelin
         glm::ivec2 chSize = ch->getSize();
         GLfloat xpos = x + bearing.x*scale;
         GLfloat ypos = y+ (maxVert.x - bearing.y)*scale;
-        //std::cout << y << " " << absRect.y << " " << (maxVert.x - bearing.y)  << "\n";
 
-        //glm::vec2 pos = rotatePoint({xpos,ypos},center,param.angle);
         glm::vec2 pos = {xpos,ypos};
         GLfloat w = chSize.x*scale;
         GLfloat h = (chSize.y)*scale;
 
-        //PolyRender::requestRect(glm::vec4(xpos,ypos,w,h),glm::vec4(1,0,0,1),false,0,1);
+        //PolyRender::requestRect(glm::vec4(xpos,ypos,w,h),glm::vec4(1,0,0,1),false,0,5);
 
 
         glm::vec4 finalRect = glm::vec4(rotateRect({xpos,ypos,w,h},{param.rect.x + param.rect.z/2,param.rect.y + param.rect.a/2},param.angle));
